@@ -1,0 +1,15 @@
+{
+  "name": "TKD Theory Quiz",
+  "short_name": "TKD Quiz",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0d6efd",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/jonga-llucci/tkd-assets/cc8e292b373661ff6dd513f663f5f40b9b543b0a/%E2%80%94Pngtree%E2%80%94taekwondo%20pintura_512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
