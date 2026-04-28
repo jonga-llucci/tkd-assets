@@ -1,49 +1,44 @@
 /**
- * TKD Theory Quiz - v8.4 (Optimized)
+ * TKD Theory Quiz - v8.5
+ * Based on stable v8.2 logic with minor performance refinements
  */
 
-// Column Mappings for easier maintenance
+// Column Mappings for Maintenance
 const USER_COLS = { USER: 0, PASS: 1, GRADE: 2, LAST_ACTIVE: 3, STREAK: 4, NAME: 5 };
-const QUEST_COLS = { TEXT: 0, OPT1: 4, OPT2: 5, OPT3: 6, OPT4: 7, ANS: 11, ID: 14, EXAM: 16, LEVEL: 17 };
-const BUCKET_INTERVALS = { 1: 0, 2: 2, 3: 4, 4: 5 };
+const QUEST_COLS = { TEXT: 0, ANS: 11, ID: 14, EXAM: 16, LEVEL: 17 };
 
 function doGet() {
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
-    .setTitle('TKD Theory Practice')
+    .setTitle('TKD Theory v8.5')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
 }
 
 function loginUser(username, password) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("Users");
-  const data = sheet.getRange(1, 1, sheet.getLastRow(), 6).getValues();
+  const userSheet = ss.getSheetByName("Users");
+  const userData = userSheet.getRange(1, 1, userSheet.getLastRow(), 6).getValues();
   const now = new Date();
-  
   const cleanU = username ? username.toString().trim().toLowerCase() : "";
   const cleanP = password ? password.toString().trim() : "";
 
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][USER_COLS.USER].toString().trim().toLowerCase() === cleanU && 
-        data[i][USER_COLS.PASS].toString() === cleanP) {
+  for (let i = 1; i < userData.length; i++) {
+    if (userData[i][USER_COLS.USER] && userData[i][USER_COLS.USER].toString().trim().toLowerCase() === cleanU && userData[i][USER_COLS.PASS].toString() === cleanP) {
+      let streak = parseInt(userData[i][USER_COLS.STREAK]) || 0;
+      let lastActiveStr = userData[i][USER_COLS.LAST_ACTIVE] ? new Date(userData[i][USER_COLS.LAST_ACTIVE]).toDateString() : "";
       
-      let streak = parseInt(data[i][USER_COLS.STREAK]) || 0;
-      let lastActiveDate = data[i][USER_COLS.LAST_ACTIVE] ? new Date(data[i][USER_COLS.LAST_ACTIVE]) : null;
-      let todayStr = now.toDateString();
-      
-      if (!lastActiveDate || lastActiveDate.toDateString() !== todayStr) {
+      if (lastActiveStr !== now.toDateString()) {
         const yesterday = new Date();
         yesterday.setDate(now.getDate() - 1);
-        streak = (lastActiveDate && lastActiveDate.toDateString() === yesterday.toDateString()) ? streak + 1 : 1;
-        sheet.getRange(i + 1, 4, 1, 2).setValues([[now, streak]]);
+        streak = (lastActiveStr === yesterday.toDateString()) ? streak + 1 : 1;
+        userSheet.getRange(i + 1, 4, 1, 2).setValues([[now, streak]]);
       }
-
       return { 
         success: true, 
-        username: data[i][USER_COLS.USER].toString().trim(),
-        displayName: data[i][USER_COLS.NAME] || data[i][USER_COLS.USER],
-        gradeValue: parseInt(data[i][USER_COLS.GRADE]) || 1, 
+        username: userData[i][USER_COLS.USER], 
+        displayName: userData[i][USER_COLS.NAME] || userData[i][USER_COLS.USER], 
+        gradeValue: parseInt(userData[i][USER_COLS.GRADE]) || 1, 
         streak: streak 
       };
     }
@@ -51,57 +46,32 @@ function loginUser(username, password) {
   return { success: false };
 }
 
-function getQuizData(username, mode) {
+function getQuizData(username, isTest) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const qData = ss.getSheetByName("Questions").getDataRange().getValues();
-  const pData = ss.getSheetByName("UserProgress").getDataRange().getValues();
+  const qSheet = ss.getSheetByName("Questions");
   const userData = ss.getSheetByName("Users").getDataRange().getValues();
   
-  const cleanUser = username.trim().toLowerCase();
   let userGrade = 1;
   for (let i = 1; i < userData.length; i++) {
-    if (userData[i][0].toString().toLowerCase() === cleanUser) {
-      userGrade = parseInt(userData[i][2]) || 1;
+    if (userData[i][USER_COLS.USER] == username) {
+      userGrade = parseInt(userData[i][USER_COLS.GRADE]) || 1;
       break;
     }
   }
 
-  // Optimize: Create a Map for user progress to avoid nested loops
-  const progressMap = pData.reduce((acc, row) => {
-    if (row[0].toString().toLowerCase() === cleanUser) {
-      acc[row[1].toString()] = { bucket: parseInt(row[3]) || 1, date: new Date(row[4]) };
-    }
-    return acc;
-  }, {});
-
-  const now = new Date();
-
-  let filtered = qData.slice(1).filter(row => {
-    const qId = row[QUEST_COLS.ID].toString();
-    const beltLevel = parseInt(row[QUEST_COLS.LEVEL]) || 1;
-    const isExam = row[QUEST_COLS.EXAM] !== "N";
-
-    if (!row[QUEST_COLS.TEXT] || beltLevel > userGrade || !isExam) return false;
-    if (mode === 'test') return true;
-
-    const prog = progressMap[qId];
-    if (!prog) return true;
-    const diffDays = (now - prog.date) / (1000 * 60 * 60 * 24);
-    return diffDays >= (BUCKET_INTERVALS[prog.bucket] || 0);
-  });
-
-  // Fallback if Spaced Repetition returns nothing
-  if (filtered.length === 0) {
-    filtered = qData.slice(1).filter(row => (parseInt(row[QUEST_COLS.LEVEL]) || 1) <= userGrade && row[QUEST_COLS.EXAM] !== "N");
-  }
-
-  const limit = (mode === 'test') ? 50 : 10;
-  Utilities.shuffle(filtered); // Higher quality randomness than Math.random()
-
-  return filtered.slice(0, limit).map(row => ({
+  // Get data only up to the last populated row
+  const qData = qSheet.getRange(2, 1, qSheet.getLastRow() - 1, qSheet.getLastColumn()).getValues();
+  
+  // Filter by user grade and exclude non-exam questions (Q column)
+  const filtered = qData.filter(row => (parseInt(row[QUEST_COLS.LEVEL]) || 1) <= userGrade && row[QUEST_COLS.EXAM] !== "N");
+  
+  const limit = isTest ? 50 : 10;
+  
+  // High-performance shuffle
+  return filtered.sort(() => Math.random() - 0.5).slice(0, limit).map(row => ({
     question: row[QUEST_COLS.TEXT].toString(),
+    answer: (row[QUEST_COLS.ANS] || "").toString().trim(),
     options: [row[4], row[5], row[6], row[7]].filter(String).sort(() => Math.random() - 0.5),
-    answer: row[QUEST_COLS.ANS].toString().trim(),
     qId: row[QUEST_COLS.ID].toString()
   }));
 }
@@ -111,24 +81,32 @@ function updateQuestionScore(username, qId, isCorrect) {
   const pSheet = ss.getSheetByName("UserProgress");
   const pData = pSheet.getDataRange().getValues();
   const qIdStr = qId.toString();
-  const cleanU = username.trim().toLowerCase();
-  
-  // Find row using optimized loop
-  let rowIndex = -1;
+  let foundRow = -1;
+
   for (let i = 0; i < pData.length; i++) {
-    if (pData[i][0].toString().toLowerCase() === cleanU && pData[i][1].toString() === qIdStr) {
-      rowIndex = i + 1;
+    if (pData[i][0] == username && pData[i][1] == qIdStr) {
+      foundRow = i + 1;
       break;
     }
   }
 
-  if (rowIndex !== -1) {
-    const currentBucket = parseInt(pData[rowIndex-1][3]) || 1;
-    const currentScore = parseInt(pData[rowIndex-1][2]) || 0;
-    const nextBucket = isCorrect ? Math.min(currentBucket + 1, 4) : 1;
-    const nextScore = isCorrect ? currentScore + 1 : currentScore - 1;
-    pSheet.getRange(rowIndex, 3, 1, 3).setValues([[nextScore, nextBucket, new Date()]]);
+  if (foundRow !== -1) {
+    // Optimization: Pull current bucket from the local pData array instead of the sheet
+    let bucket = parseInt(pData[foundRow - 1][3]) || 1;
+    pSheet.getRange(foundRow, 3, 1, 3).setValues([[isCorrect ? 1 : 0, isCorrect ? Math.min(bucket + 1, 4) : 1, new Date()]]);
   } else {
-    pSheet.appendRow([username, qIdStr, isCorrect ? 1 : -1, isCorrect ? 2 : 1, new Date()]);
+    pSheet.appendRow([username, qIdStr, isCorrect ? 1 : 0, isCorrect ? 2 : 1, new Date()]);
   }
+}
+
+function saveGrade(u, g) {
+  const s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Users");
+  const d = s.getDataRange().getValues();
+  for(let i=1; i<d.length; i++) { if(d[i][0]==u) { s.getRange(i+1,3).setValue(g); break; } }
+}
+
+function updatePass(u, p) {
+  const s = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Users");
+  const d = s.getDataRange().getValues();
+  for(let i=1; i<d.length; i++) { if(d[i][0]==u) { s.getRange(i+1,2).setValue(p); break; } }
 }
