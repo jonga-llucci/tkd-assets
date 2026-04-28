@@ -10,7 +10,8 @@ function doGet() {
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
     .setTitle('TKD Theory Practice Quiz')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+    // THIS LINE IS CRITICAL: It tells Google to allow the iframe
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL) 
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
 }
 
