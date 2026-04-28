@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <style>
+    :root { --tkd-blue: #0d6efd; --tkd-red: #dc3545; --tkd-green: #198754; }
+    body { background-color: #f8f9fa; padding-bottom: 110px; font-family: 'Segoe UI', sans-serif; }
+    .view-container { max-width: 500px; margin: 15px auto; padding: 15px; display: none; opacity: 0; transform: translateY(10px); transition: 0.3s ease-out; }
+    .active-view { display: block; opacity: 1; transform: translateY(0); }
+    .quiz-card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.05); min-height: 400px; }
+    .option-btn { width: 100%; margin-bottom: 12px; text-align: left; padding: 18px; border-radius: 12px; border: 2px solid #f0f0f0; background: white; font-weight: 500; transition: 0.2s; }
+    .option-btn:active { transform: scale(0.98); }
+    .progress-wrapper { height: 6px; background: #eee; border-radius: 10px; overflow: hidden; margin-bottom: 20px; }
+    #progress-bar { width: 0%; height: 100%; background: var(--tkd-blue); transition: width 0.4s ease; }
+    .footer-container { position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000; background: white; border-top: 1px solid #eee; }
+    .bottom-nav { height: 85px; display: flex; align-items: center; justify-content: space-around; padding-bottom: 10px; }
+    .nav-item { flex: 1; border: none; background: none; color: #aaa; font-size: 0.8rem; display: flex; flex-direction: column; align-items: center; }
+    .nav-item.active { color: var(--tkd-blue); font-weight: bold; }
+    #loading-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(255,255,255,0.9); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<div id="loading-overlay" class="hidden"><div class="spinner-border text-primary"></div></div>
+
+<div id="view-login" class="view-container active-view">
+  <div class="quiz-card text-center">
+    <h2 class="fw-bold mb-4">TKD Academy</h2>
+    <input type="text" id="user-input" class="form-control mb-3 p-3" placeholder="Username">
+    <input type="password" id="pass-input" class="form-control mb-3 p-3" placeholder="Password">
+    <button class="btn btn-primary w-100 btn-lg" onclick="handleLogin()">Login</button>
+  </div>
+</div>
+
+<div id="view-modes" class="view-container">
+  <div class="quiz-card">
+    <div class="d-flex justify-content-between mb-4">
+      <div><h3 class="mb-0">Hi, <span id="user-welcome"></span></h3><small id="user-streak" class="text-primary fw-bold"></small></div>
+      <i class="bi bi-person-circle fs-1 text-primary"></i>
+    </div>
+    <button class="btn btn-primary w-100 mb-3 p-4 text-start shadow-sm" onclick="startQuiz('practice')">
+      <i class="bi bi-lightning-fill me-2"></i><strong>Daily Practice</strong>
+    </button>
+    <button class="btn btn-outline-danger w-100 p-4 text-start" onclick="startQuiz('test')">
+      <i class="bi bi-stopwatch-fill me-2"></i><strong>Mock Grading</strong>
+    </button>
+  </div>
+</div>
+
+<div id="view-quiz" class="view-container">
+  <div class="progress-wrapper"><div id="progress-bar"></div></div>
+  <div class="quiz-card">
+    <div class="d-flex justify-content-between mb-3">
+      <span id="q-count" class="badge bg-light text-dark border"></span>
+      <span id="timer-display" class="text-danger fw-bold"></span>
+    </div>
+    <h4 id="question-text" class="mb-4 fw-bold"></h4>
+    <div id="options-container"></div>
+    <button id="next-btn" class="btn btn-dark w-100 mt-3 p-3 hidden" onclick="nextQuestion()">Next Question</button>
+  </div>
+</div>
+
+<div id="view-results" class="view-container">
+  <div class="quiz-card text-center">
+    <h2 id="res-title" class="fw-bold"></h2>
+    <h1 id="res-percent" class="display-1 fw-bold text-primary my-3"></h1>
+    <p id="res-score" class="fw-bold text-muted"></p>
+    <div id="review-list" class="text-start mb-4 small" style="max-height: 200px; overflow-y: auto;"></div>
+    <button class="btn btn-primary w-100 p-3 rounded-pill" onclick="switchView('modes')">Home</button>
+  </div>
+</div>
+
+<div class="footer-container hidden" id="navbar">
+  <nav class="bottom-nav">
+    <button class="nav-item active" id="nav-modes" onclick="switchView('modes')"><i class="bi bi-house-door"></i>Home</button>
+    <button class="nav-item" id="nav-account" onclick="switchView('account')"><i class="bi bi-person"></i>Profile</button>
+  </nav>
+</div>
+
+<script>
+  let quizData = [], currentIndex = 0, score = 0, activeUser = "", isQuizActive = false, missedQuestions = [];
+
+  function toggleLoad(s) { document.getElementById('loading-overlay').classList.toggle('hidden', !s); }
+
+  function handleLogin() {
+    const u = document.getElementById('user-input').value, p = document.getElementById('pass-input').value;
+    if(!u || !p) return;
+    toggleLoad(true);
+    google.script.run.withSuccessHandler(res => {
+      toggleLoad(false);
+      if(res.success) {
+        activeUser = res.username;
+        document.getElementById('user-welcome').innerText = res.displayName;
+        document.getElementById('user-streak').innerHTML = `<i class="bi bi-fire"></i> ${res.streak} Day Streak`;
+        document.getElementById('navbar').classList.remove('hidden');
+        switchView('modes');
+      } else { alert("Login Failed"); }
+    }).loginUser(u, p);
+  }
+
+  function startQuiz(mode) {
+    toggleLoad(true); score = 0; currentIndex = 0; missedQuestions = []; isQuizActive = true;
+    google.script.run.withSuccessHandler(data => {
+      toggleLoad(false); quizData = data;
+      switchView('quiz'); showQuestion();
+    }).getQuizData(activeUser, mode);
+  }
+
+  function showQuestion() {
+    const q = quizData[currentIndex];
+    document.getElementById('progress-bar').style.width = (currentIndex / quizData.length * 100) + "%";
+    document.getElementById('q-count').innerText = `Q${currentIndex + 1}/${quizData.length}`;
+    document.getElementById('question-text').innerText = q.question;
+    const cont = document.getElementById('options-container'); cont.innerHTML = '';
+    document.getElementById('next-btn').classList.add('hidden');
+    
+    q.options.forEach(opt => {
+      const b = document.createElement('button'); b.className = 'option-btn'; b.innerText = opt;
+      b.onclick = () => {
+        const isCorrect = (opt === q.answer);
+        if(isCorrect) score++; else missedQuestions.push({q: q.question, a: q.answer});
+        google.script.run.updateQuestionScore(activeUser, q.qId, isCorrect);
+        document.querySelectorAll('.option-btn').forEach(btn => btn.disabled = true);
+        b.style.borderColor = isCorrect ? 'var(--tkd-green)' : 'var(--tkd-red)';
+        b.style.background = isCorrect ? '#e7f3ef' : '#fdecea';
+        document.getElementById('next-btn').classList.remove('hidden');
+      };
+      cont.appendChild(b);
+    });
+  }
+
+  function nextQuestion() {
+    currentIndex++;
+    if(currentIndex < quizData.length) showQuestion();
+    else endQuiz();
+  }
+
+  function endQuiz() {
+    isQuizActive = false;
+    const p = Math.round((score/quizData.length)*100);
+    document.getElementById('res-title').innerText = p >= 75 ? "GREAT JOB!" : "KEEP PRACTICING!";
+    document.getElementById('res-percent').innerText = p + "%";
+    document.getElementById('res-score').innerText = `${score}/${quizData.length} Correct`;
+    const rList = document.getElementById('review-list'); rList.innerHTML = '';
+    missedQuestions.forEach(m => {
+      rList.innerHTML += `<div class="p-2 border-bottom"><b>${m.q}</b><br><span class="text-success">${m.a}</span></div>`;
+    });
+    switchView('results');
+  }
+
+  function switchView(id) {
+    document.querySelectorAll('.view-container').forEach(v => v.classList.remove('active-view'));
+    document.querySelectorAll('.view-container').forEach(v => v.style.display = 'none');
+    const t = document.getElementById('view-' + id);
+    t.style.display = 'block'; setTimeout(() => t.classList.add('active-view'), 10);
+  }
+</script>
+</body>
+</html>
