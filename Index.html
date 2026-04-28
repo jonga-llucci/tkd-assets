@@ -176,7 +176,7 @@
   let quizData = [], currentIndex = 0, score = 0, activeUser = "", timerInterval = null, timeLeft = 0, isQuizActive = false, currentMode = "", questionsAnswered = 0, missedQuestions = [];
   let matchSelected = { qId: null, aId: null, qEl: null, aEl: null }, matchesFound = 0, setsCleared = 0, swipeCorrect = false;
 
-  const loadMsgs = ["Polishing the dobok...", "Sharpening your side kick...", "Reviewing the patterns...", "Warming up for the grading...", "Tying the black belt...", "Focusing your Ki-Hap..."];
+  const loadMsgs = ["Straightening the dobok...", "Sharpening your side kick...", "Reviewing the patterns...", "Warming up for the grading...", "Breathe in and out...","Tying the black belt...", "Learning Korean...", "Focusing your Ki-Hap..."];
 
   function toggleLoad(s) { 
     const l = document.getElementById('loading-overlay');
@@ -207,25 +207,31 @@
     isQuizActive = true; currentMode = mode; questionsAnswered = 0; score = 0; currentIndex = 0; missedQuestions = []; setsCleared = 0;
     document.querySelectorAll('#view-quiz [id^="ui-"]').forEach(el => el.classList.add('hidden'));
     document.getElementById('timer-display').classList.add('hidden');
-    document.getElementById('next-btn').classList.add('hidden'); // Fix: Reset Next Button
+    document.getElementById('next-btn').classList.add('hidden');
     clearInterval(timerInterval);
     toggleLoad(true);
 
     const isGame = mode.startsWith('game_');
-    google.script.run.withSuccessHandler(data => {
-        toggleLoad(false); quizData = data;
-        switchView('quiz');
-        if (mode === 'game_match') setupMatch();
-        else if (mode === 'game_swipe') setupSwipe();
-        else {
-            if(mode === 'test') { 
-              timeLeft = 3600; document.getElementById('timer-display').classList.remove('hidden'); 
-              updateTimerUI(); timerInterval = setInterval(() => { timeLeft--; updateTimerUI(); if(timeLeft<=0) endQuiz(); }, 1000); 
-            }
-            showQuestion();
-        }
-    })[isGame ? 'getGameData' : 'getQuizData'](activeUser, (mode === 'test' ? 'test' : 'practice'));
-  }
+    if (isGame) {
+      // Pass 'mode' as the second argument so the server knows which column to filter
+      google.script.run.withSuccessHandler(data => {
+          toggleLoad(false); quizData = data;
+          switchView('quiz');
+          if (mode === 'game_match') setupMatch();
+          else if (mode === 'game_swipe') setupSwipe();
+      }).getGameData(activeUser, mode); 
+    } else {
+      google.script.run.withSuccessHandler(data => {
+          toggleLoad(false); quizData = data;
+          if(mode === 'test') { 
+            timeLeft = 3600; document.getElementById('timer-display').classList.remove('hidden'); 
+            updateTimerUI(); timerInterval = setInterval(() => { timeLeft--; updateTimerUI(); if(timeLeft<=0) endQuiz(); }, 1000); 
+          }
+          switchView('quiz');
+          showQuestion();
+      }).getQuizData(activeUser, (mode === 'test' ? 'test' : 'practice'));
+    }
+}
 
   function showQuestion() {
     document.getElementById('progress-bar').style.width = ((currentIndex / quizData.length) * 100) + "%";
@@ -273,15 +279,19 @@
                     const q=matchSelected.qEl, a=matchSelected.aEl;
                     setTimeout(() => { 
                         q.classList.add('matched'); a.classList.add('matched'); matchesFound++; 
-                        if(matchesFound === 5) { 
+                        // Inside setupMatch() ... inside the matchesFound === 5 block:
+                        if (matchesFound === 5) { 
                             setsCleared++;
-                            if(setsCleared >= 2) { 
-                                isQuizActive = false;
+                            if (setsCleared >= 2) { 
+                                isQuizActive = false; // Stop the session
                                 document.getElementById('progress-bar').style.width = "100%";
                                 triggerConfetti(); 
-                                setTimeout(() => switchView('game-center'), 2200); 
-                            } else { setupMatch(); }
-                        } 
+                                // Directly back to home (modes) after confetti delay, skipping results
+                                setTimeout(() => switchView('modes'), 2500); 
+                            } else { 
+                                setupMatch(); 
+                            }
+                        }
                     }, 200);
                 } else {
                     const q=matchSelected.qEl, a=matchSelected.aEl;
@@ -303,27 +313,43 @@
     const isLying = Math.random() > 0.5;
     swipeCorrect = !isLying;
     
-    document.getElementById('swipe-term').innerText = q.tfStatement; 
+    // Line 1: SimplifiedDef from Column T
+    document.getElementById('swipe-term').innerText = q.simplifiedDef; 
     
     if (isLying) {
-        const decoys = quizData.filter(d => d.qId !== q.qId);
-        document.getElementById('swipe-def').innerText = decoys[Math.floor(Math.random()*decoys.length)].correctAnswer;
+        // Line 2: Use a decoy from E-H if available, otherwise pick from another question
+        if (q.decoys && q.decoys.length > 0) {
+            document.getElementById('swipe-def').innerText = q.decoys[Math.floor(Math.random() * q.decoys.length)];
+        } else {
+            const externalDecoys = quizData.filter(d => d.qId !== q.qId);
+            document.getElementById('swipe-def').innerText = externalDecoys[Math.floor(Math.random() * externalDecoys.length)].correctAnswer;
+        }
     } else {
+        // Line 2: Correct Answer from Column L
         document.getElementById('swipe-def').innerText = q.correctAnswer;
     }
-  }
-  
-  function handleSwipe(userAnswer) {
+}
+
+function handleSwipe(userAnswer) {
     const q = quizData[currentIndex];
     const isCorrect = (userAnswer === swipeCorrect);
     
-    // Fix: Correct mapping for mistakes review in Game Mode
-    if(isCorrect) score++; else missedQuestions.push({q: q.tfStatement, a: q.correctAnswer});
+    // Log the mistake using the SimplifiedDef (Line 1) and Correct Answer
+    if (isCorrect) {
+        score++;
+    } else {
+        missedQuestions.push({
+            q: q.simplifiedDef, 
+            a: q.correctAnswer
+        });
+    }
     
     google.script.run.updateQuestionScore(activeUser, q.qId, isCorrect);
-    questionsAnswered++; currentIndex++;
-    if(currentIndex >= quizData.length) endQuiz(); else setupSwipe();
-  }
+    questionsAnswered++; 
+    currentIndex++;
+    
+    if (currentIndex >= quizData.length) endQuiz(); else setupSwipe();
+}
 
   function triggerConfetti() {
     for(let i=0; i<70; i++) {

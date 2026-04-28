@@ -150,20 +150,15 @@ function updateQuestionScore(username, qId, isCorrect) {
   }
 }
 
-/**
- * FIXED: Combined matching and T/F data pull
- * Uses Column S (Index 18) and Column T (Index 19)
- */
-function getGameData(username) {
+function getGameData(username, gameType) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const qSheet = ss.getSheetByName("Questions");
-  const userSheet = ss.getSheetByName("Users"); 
+  const userSheet = ss.getSheetByName("Users");
   const userData = userSheet.getDataRange().getValues();
   
   let userGrade = 1;
-  const cleanU = username.toString().trim();
   for (let i = 1; i < userData.length; i++) {
-    if (userData[i][0].toString().trim() == cleanU) { 
+    if (userData[i][0] && userData[i][0].toString().trim() === username.toString().trim()) { 
       userGrade = parseInt(userData[i][2]) || 1; 
       break; 
     }
@@ -171,19 +166,30 @@ function getGameData(username) {
 
   const qData = qSheet.getRange(2, 1, qSheet.getLastRow() - 1, qSheet.getLastColumn()).getValues();
   
-  const filtered = qData.filter(row => 
-    (parseInt(row[17]) || 1) <= userGrade && 
-    row[16] !== "N" && 
-    row[18].toString().trim() !== "" && 
-    row[19].toString().trim() !== ""
-  );
+  const filtered = qData.filter(row => {
+    const isLevelMatch = (parseInt(row[17]) || 1) <= userGrade;
+    const isNotExcluded = row[16] !== "N";
+    
+    if (gameType === 'game_match') {
+      return isLevelMatch && isNotExcluded && row[18].toString().trim() !== ""; // Column S
+    } else {
+      return isLevelMatch && isNotExcluded && row[19].toString().trim() !== ""; // Column T
+    }
+  });
 
-  return filtered.sort(() => Math.random() - 0.5).slice(0, 10).map(row => ({
-    matchingTerm: row[18].toString().trim(), 
-    tfStatement: row[19].toString().trim(),  
-    correctAnswer: row[11].toString().trim(), 
-    qId: row[14].toString()
-  }));
+  return filtered.sort(() => Math.random() - 0.5).slice(0, 10).map(row => {
+    const possibleDecoys = [row[4], row[5], row[6], row[7]].filter(val => 
+      val && val.toString().trim() !== "" && val.toString().trim() !== row[11].toString().trim()
+    );
+
+    return {
+      matchingTerm: row[18].toString().trim(),  // Column S
+      simplifiedDef: row[19].toString().trim(), // Column T
+      correctAnswer: row[11].toString().trim(), // Column L
+      decoys: possibleDecoys,
+      qId: row[14].toString()
+    };
+  });
 }
 
 function saveGrade(username, newGrade) {
