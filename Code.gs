@@ -1,5 +1,5 @@
 /**
- * TKD Theory Quiz - v8.2
+ * TKD Theory Quiz - v8.2 (Corrected)
  * Users Tab Map: A:User | B:Pass | C:Grade | D:LastActive | E:Streak | F:Name(5)
  * Questions Tab Map: A:Quest(0) | ... | O:qId(14) | Q:Exam(16) | R:BeltLevel(17)
  */
@@ -10,7 +10,8 @@ function doGet() {
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
     .setTitle('TKD Theory Practice Quiz')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+    // THIS LINE IS CRITICAL: It tells Google to allow the iframe
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL) 
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
 }
 
@@ -90,8 +91,7 @@ function getQuizData(username, mode) {
     if (questionBeltLevel > userGradeLevel) return false;
 
     // Strict Exam Filter: Column Q must not be "N"
-    const isExamQuestion = (row[16] !== "N");
-    if (!isExamQuestion) return false;
+    if (row[16] === "N") return false;
 
     if (mode === 'test') return true; 
 
@@ -106,12 +106,11 @@ function getQuizData(username, mode) {
   if (filtered.length === 0) {
     filtered = qData.slice(1).filter(row => {
       const level = parseInt(row[17]) || 1;
-      const isExamQuestion = (row[16] !== "N");
-      return row[0] && row[14] && level <= userGradeLevel && isExamQuestion;
+      return row[0] && row[14] && level <= userGradeLevel && row[16] !== "N";
     });
   }
 
-  const limit = (mode === 'test') ? 50 : (mode === 'game_match' ? 10 : 10);
+  const limit = (mode === 'test') ? 50 : 10;
 
   return filtered.map(row => {
     let rawOpts = [row[4], row[5], row[6], row[7]].filter(String);
@@ -141,14 +140,56 @@ function updateQuestionScore(username, qId, isCorrect) {
   }
 
   if (foundRow !== -1) {
-    let currentScore = parseInt(pSheet.getRange(foundRow, 3).getValue()) || 0;
-    let currentBucket = parseInt(pSheet.getRange(foundRow, 4).getValue()) || 1;
+    let currentBucket = parseInt(pData[foundRow - 1][3]) || 1;
+    let currentScore = parseInt(pData[foundRow - 1][2]) || 0;
     let nextBucket = isCorrect ? Math.min(currentBucket + 1, 4) : 1;
     let nextScore = isCorrect ? currentScore + 1 : currentScore - 1;
     pSheet.getRange(foundRow, 3, 1, 3).setValues([[nextScore, nextBucket, now]]);
   } else {
     pSheet.appendRow([cleanUser, qIdStr, isCorrect ? 1 : -1, isCorrect ? 2 : 1, now]);
   }
+}
+
+function getGameData(username, gameType) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const qSheet = ss.getSheetByName("Questions");
+  const userSheet = ss.getSheetByName("Users");
+  const userData = userSheet.getDataRange().getValues();
+  
+  let userGrade = 1;
+  for (let i = 1; i < userData.length; i++) {
+    if (userData[i][0] && userData[i][0].toString().trim() === username.toString().trim()) { 
+      userGrade = parseInt(userData[i][2]) || 1; 
+      break; 
+    }
+  }
+
+  const qData = qSheet.getRange(2, 1, qSheet.getLastRow() - 1, qSheet.getLastColumn()).getValues();
+  
+  const filtered = qData.filter(row => {
+    const isLevelMatch = (parseInt(row[17]) || 1) <= userGrade;
+    const isNotExcluded = row[16] !== "N";
+    
+    if (gameType === 'game_match') {
+      return isLevelMatch && isNotExcluded && row[18].toString().trim() !== ""; // Column S
+    } else {
+      return isLevelMatch && isNotExcluded && row[19].toString().trim() !== ""; // Column T
+    }
+  });
+
+  return filtered.sort(() => Math.random() - 0.5).slice(0, 10).map(row => {
+    const possibleDecoys = [row[4], row[5], row[6], row[7]].filter(val => 
+      val && val.toString().trim() !== "" && val.toString().trim() !== row[11].toString().trim()
+    );
+
+    return {
+      matchingTerm: row[18].toString().trim(),  // Column S
+      simplifiedDef: row[19].toString().trim(), // Column T
+      correctAnswer: row[11].toString().trim(), // Column L
+      decoys: possibleDecoys,
+      qId: row[14].toString()
+    };
+  });
 }
 
 function saveGrade(username, newGrade) {

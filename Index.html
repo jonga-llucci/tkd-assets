@@ -176,7 +176,7 @@
   let quizData = [], currentIndex = 0, score = 0, activeUser = "", timerInterval = null, timeLeft = 0, isQuizActive = false, currentMode = "", questionsAnswered = 0, missedQuestions = [];
   let matchSelected = { qId: null, aId: null, qEl: null, aEl: null }, matchesFound = 0, setsCleared = 0, swipeCorrect = false;
 
-  const loadMsgs = ["Polishing the dobok...", "Sharpening your side kick...", "Reviewing the patterns...", "Warming up for the grading...", "Tying the black belt...", "Focusing your Ki-Hap..."];
+  const loadMsgs = ["Straightening the dobok...", "Sharpening your side kick...", "Reviewing the patterns...", "Warming up for the grading...", "Breathe in and out...","Tying the black belt...", "Learning Korean...", "Focusing your Ki-Hap..."];
 
   function toggleLoad(s) { 
     const l = document.getElementById('loading-overlay');
@@ -207,20 +207,31 @@
     isQuizActive = true; currentMode = mode; questionsAnswered = 0; score = 0; currentIndex = 0; missedQuestions = []; setsCleared = 0;
     document.querySelectorAll('#view-quiz [id^="ui-"]').forEach(el => el.classList.add('hidden'));
     document.getElementById('timer-display').classList.add('hidden');
+    document.getElementById('next-btn').classList.add('hidden');
     clearInterval(timerInterval);
     toggleLoad(true);
-    google.script.run.withSuccessHandler(data => {
-      toggleLoad(false); quizData = data;
-      if(mode === 'test') { 
-        timeLeft = 3600; document.getElementById('timer-display').classList.remove('hidden'); 
-        updateTimerUI(); timerInterval = setInterval(() => { timeLeft--; updateTimerUI(); if(timeLeft<=0) endQuiz(); }, 1000); 
-      }
-      switchView('quiz');
-      if(mode === 'game_match') setupMatch();
-      else if(mode === 'game_swipe') setupSwipe();
-      else showQuestion();
-    }).getQuizData(activeUser, (mode === 'test' ? 'test' : 'practice'));
-  }
+
+    const isGame = mode.startsWith('game_');
+    if (isGame) {
+      // Pass 'mode' as the second argument so the server knows which column to filter
+      google.script.run.withSuccessHandler(data => {
+          toggleLoad(false); quizData = data;
+          switchView('quiz');
+          if (mode === 'game_match') setupMatch();
+          else if (mode === 'game_swipe') setupSwipe();
+      }).getGameData(activeUser, mode); 
+    } else {
+      google.script.run.withSuccessHandler(data => {
+          toggleLoad(false); quizData = data;
+          if(mode === 'test') { 
+            timeLeft = 3600; document.getElementById('timer-display').classList.remove('hidden'); 
+            updateTimerUI(); timerInterval = setInterval(() => { timeLeft--; updateTimerUI(); if(timeLeft<=0) endQuiz(); }, 1000); 
+          }
+          switchView('quiz');
+          showQuestion();
+      }).getQuizData(activeUser, (mode === 'test' ? 'test' : 'practice'));
+    }
+}
 
   function showQuestion() {
     document.getElementById('progress-bar').style.width = ((currentIndex / quizData.length) * 100) + "%";
@@ -248,13 +259,14 @@
     document.getElementById('progress-bar').style.width = ((setsCleared / 2) * 100) + "%";
     document.getElementById('ui-match').classList.remove('hidden');
     document.getElementById('q-count').innerText = `Board ${setsCleared + 1}/2`;
-    const startIdx = setsCleared * 5;
-    const batch = quizData.slice(startIdx, startIdx + 5);
-    let finalBatch = batch.length >= 5 ? batch : quizData.slice(0, 5);
+    
+    // Fix: Defined batch and removed duplicate mapping logic
+    const batch = quizData.slice(setsCleared * 5, (setsCleared + 1) * 5);
+    const qList = batch.map(x => ({ t: x.matchingTerm, id: x.qId, type: 'q' }));
+    const aList = batch.map(x => ({ t: x.correctAnswer, id: x.qId, type: 'a' }));
 
     matchesFound = 0; const grid = document.getElementById('match-grid'); grid.innerHTML = '';
-    const qList = finalBatch.map(x => ({ t: x.question, id: x.qId, type: 'q' }));
-    const aList = finalBatch.map(x => ({ t: x.answer, id: x.qId, type: 'a' }));
+    
     [...qList, ...aList].sort(() => Math.random() - 0.5).forEach(item => {
         const d = document.createElement('div'); d.className = 'match-btn shadow-sm'; d.innerText = item.t;
         d.onclick = () => {
@@ -267,15 +279,19 @@
                     const q=matchSelected.qEl, a=matchSelected.aEl;
                     setTimeout(() => { 
                         q.classList.add('matched'); a.classList.add('matched'); matchesFound++; 
-                        if(matchesFound === 5) { 
+                        // Inside setupMatch() ... inside the matchesFound === 5 block:
+                        if (matchesFound === 5) { 
                             setsCleared++;
-                            if(setsCleared >= 2) { 
-                                isQuizActive = false;
+                            if (setsCleared >= 2) { 
+                                isQuizActive = false; // Stop the session
                                 document.getElementById('progress-bar').style.width = "100%";
                                 triggerConfetti(); 
-                                setTimeout(() => switchView('game-center'), 2200); 
-                            } else { setupMatch(); }
-                        } 
+                                // Directly back to home (modes) after confetti delay, skipping results
+                                setTimeout(() => switchView('modes'), 2500); 
+                            } else { 
+                                setupMatch(); 
+                            }
+                        }
                     }, 200);
                 } else {
                     const q=matchSelected.qEl, a=matchSelected.aEl;
@@ -293,20 +309,47 @@
     document.getElementById('ui-swipe').classList.remove('hidden');
     const q = quizData[currentIndex];
     document.getElementById('q-count').innerText = `Q${currentIndex+1}/${quizData.length}`;
+    
     const isLying = Math.random() > 0.5;
     swipeCorrect = !isLying;
-    document.getElementById('swipe-term').innerText = q.question;
-    const decoys = q.options.filter(o => o !== q.answer);
-    document.getElementById('swipe-def').innerText = isLying ? decoys[Math.floor(Math.random()*decoys.length)] : q.answer;
-  }
-  
-  function handleSwipe(userAnswer) {
+    
+    // Line 1: SimplifiedDef from Column T
+    document.getElementById('swipe-term').innerText = q.simplifiedDef; 
+    
+    if (isLying) {
+        // Line 2: Use a decoy from E-H if available, otherwise pick from another question
+        if (q.decoys && q.decoys.length > 0) {
+            document.getElementById('swipe-def').innerText = q.decoys[Math.floor(Math.random() * q.decoys.length)];
+        } else {
+            const externalDecoys = quizData.filter(d => d.qId !== q.qId);
+            document.getElementById('swipe-def').innerText = externalDecoys[Math.floor(Math.random() * externalDecoys.length)].correctAnswer;
+        }
+    } else {
+        // Line 2: Correct Answer from Column L
+        document.getElementById('swipe-def').innerText = q.correctAnswer;
+    }
+}
+
+function handleSwipe(userAnswer) {
+    const q = quizData[currentIndex];
     const isCorrect = (userAnswer === swipeCorrect);
-    if(isCorrect) score++; else missedQuestions.push({q: quizData[currentIndex].question, a: quizData[currentIndex].answer});
-    google.script.run.updateQuestionScore(activeUser, quizData[currentIndex].qId, isCorrect);
-    questionsAnswered++; currentIndex++;
-    if(currentIndex >= quizData.length) endQuiz(); else setupSwipe();
-  }
+    
+    // Log the mistake using the SimplifiedDef (Line 1) and Correct Answer
+    if (isCorrect) {
+        score++;
+    } else {
+        missedQuestions.push({
+            q: q.simplifiedDef, 
+            a: q.correctAnswer
+        });
+    }
+    
+    google.script.run.updateQuestionScore(activeUser, q.qId, isCorrect);
+    questionsAnswered++; 
+    currentIndex++;
+    
+    if (currentIndex >= quizData.length) endQuiz(); else setupSwipe();
+}
 
   function triggerConfetti() {
     for(let i=0; i<70; i++) {
@@ -341,7 +384,7 @@
 
   function switchView(id) {
     if (isQuizActive && id !== 'quiz') { 
-        const m = new bootstrap.Modal(document.getElementById('confirmModal'));
+        const m = bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmModal'));
         document.getElementById('confirm-end-btn').onclick = () => { m.hide(); endQuiz(); };
         m.show(); return; 
     }
