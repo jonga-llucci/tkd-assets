@@ -6,13 +6,18 @@
 
 const BUCKET_INTERVALS = { 1: 0, 2: 2, 3: 4, 4: 5 };
 
-function doGet() {
+function doGet(e) {
+  // If you visit .../exec?mode=trumps, it loads ONLY the new game
+  if (e.parameter.mode === 'trumps') {
+    return HtmlService.createTemplateFromFile('TulUI')
+      .evaluate()
+      .setTitle('Tul Top Trumps - Dev Mode');
+  }
+
+  // Otherwise, load the normal app
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
-    .setTitle('TKD Theory Practice Quiz')
-    // THIS LINE IS CRITICAL: It tells Google to allow the iframe
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL) 
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
+    .setTitle('TKD Theory Practice Quiz');
 }
 
 function loginUser(username, password) {

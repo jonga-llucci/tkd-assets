@@ -1,9 +1,218 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <base target="_top">
-  </head>
-  <body>
+<head>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <style>
+    /* FIX: Changed background to Light Grey so text is readable */
+    body { background: #f8f9fa; color: #333; font-family: 'Segoe UI', sans-serif; overflow-x: hidden; }
     
-  </body>
+    /* Ensure the container takes up full height and allows vertical scrolling if needed */
+    .game-container { max-width: 450px; margin: auto; padding: 20px; min-height: 100vh; display: flex; flex-direction: column; }
+    
+    .trump-card { 
+      background: white; color: #222; border-radius: 20px; padding: 15px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1); position: relative;
+      flex-grow: 1; /* Allows the card to take up remaining vertical space */
+    }
+    .tul-img { 
+      width: 100%; 
+      max-height: 250px; 
+      object-fit: contain; 
+      
+      /* FIX: This forces the image to the top of its container */
+      object-position: top; 
+      
+      border-radius: 12px; 
+      margin-bottom: 15px; 
+      
+      /* Optional: Change background to match the card (white) 
+         or keep it light grey (#eee) to show the image bounds */
+      background: #fcfcfc; 
+    }
+    
+    .stat-row { 
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 15px; margin: 8px 0; background: white;
+      border: 2px solid #f0f0f0; border-radius: 12px; cursor: pointer; transition: 0.2s;
+    }
+    .stat-row:hover { border-color: #0d6efd; background: #e7f1ff; transform: scale(1.02); }
+    .stat-row strong { font-size: 1.2rem; color: #0d6efd; }
+
+    /* FIX: Removed fixed height and line-clamping so full meaning is displayed */
+    .meaning-text { font-size: 0.85rem; color: #666; line-height: 1.4; margin-top: 15px; }
+    
+    .status-msg { min-height: 60px; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-top: 15px; }
+    .header-count { small text-uppercase fw-bold text-muted; padding: 0 10px; margin-bottom: 15px; }
+
+    .result-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6); display: flex; align-items: center;
+    justify-content: center; z-index: 1000; transition: 0.3s;
+    }
+    .result-box {
+        background: white; padding: 30px; border-radius: 20px;
+        text-align: center; transform: scale(0.8); transition: 0.3s;
+        width: 80%; max-width: 300px;
+    }
+    .result-overlay.show .result-box { transform: scale(1); }
+    .hidden { display: none !important; }
+
+    /* Colors for the result text */
+    .text-win { color: #198754; }
+    .text-loss { color: #dc3545; }
+    .text-draw { color: #ffc107; }
+  </style>
+</head>
+<body>
+
+<div class="game-container">
+  <div class="d-flex justify-content-between header-count">
+    <span>Your Cards: <span id="p-count" class="text-primary">0</span></span>
+    <span>CPU Cards: <span id="c-count" class="text-danger">0</span></span>
+  </div>
+
+  <div id="active-card" class="trump-card">
+    <img id="tul-img" class="tul-img" src="">
+    <h2 id="tul-name" class="fw-bold mb-1">---</h2>
+    <div id="tul-ready" class="badge bg-primary mb-3">Ready: ---</div>
+    
+    <div class="stat-list">
+      <div class="stat-row" onclick="playTurn('movements')">
+        <span><i class="bi bi-activity me-2"></i> Movements</span>
+        <strong id="val-move">0</strong>
+      </div>
+      <div class="stat-row" onclick="playTurn('stances')">
+        <span><i class="bi bi-person-walking me-2"></i> Stances</span>
+        <strong id="val-stances">0</strong>
+      </div>
+      <div class="stat-row" onclick="playTurn('difficulty')">
+        <span><i class="bi bi-star-fill me-2"></i> Difficulty</span>
+        <strong id="val-diff">0</strong>
+      </div>
+    </div>
+    
+    <p class="meaning-text" id="tul-meaning"></p>
+  </div>
+
+  <div id="status" class="status-msg"></div>
+
+  <div id="result-overlay" class="result-overlay hidden">
+    <div id="result-box" class="result-box">
+        <h2 id="result-text">WIN!</h2>
+        <p id="result-details"></p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  let playerHand = [], cpuHand = [];
+  let isProcessing = false;
+
+  window.onload = () => {
+    let user = "Guest";
+    try {
+        user = window.parent.activeUser || "Guest";
+    } catch(e) {
+        console.log("Running in isolated mode");
+    }
+
+    google.script.run.withSuccessHandler(data => {
+      if(data.error) { 
+        document.getElementById('status').innerHTML = `<span class="text-warning text-center">${data.error}</span>`; 
+        return; 
+      }
+      playerHand = data.playerHand;
+      cpuHand = data.cpuHand;
+      updateUI();
+    }).getTulTrumpsData(user);
+  };
+
+  function updateUI() {
+    if (playerHand.length === 0) { showEnd("CPU WINS! Try again?"); return; }
+    if (cpuHand.length === 0) { showEnd("YOU ARE THE CHAMPION!"); return; }
+
+    const cur = playerHand[0];
+    document.getElementById('tul-name').innerText = cur.name;
+    document.getElementById('tul-img').src = cur.img;
+    document.getElementById('tul-ready').innerText = "Ready: " + cur.readyStance;
+    document.getElementById('val-move').innerText = cur.movements;
+    document.getElementById('val-stances').innerText = cur.stances;
+    document.getElementById('val-diff').innerText = cur.difficulty;
+    document.getElementById('tul-meaning').innerText = cur.meaning;
+    
+    document.getElementById('p-count').innerText = playerHand.length;
+    document.getElementById('c-count').innerText = cpuHand.length;
+    isProcessing = false;
+  }
+
+  function playTurn(stat) {
+    if (isProcessing) return;
+    isProcessing = true;
+
+    const pCard = playerHand.shift();
+    const cCard = cpuHand.shift();
+    
+    const overlay = document.getElementById('result-overlay');
+    const resText = document.getElementById('result-text');
+    const resDetails = document.getElementById('result-details');
+
+    // Make the stat name look nice (e.g., "movements" -> "Movements")
+    const statLabel = stat.charAt(0).toUpperCase() + stat.slice(1);
+
+    overlay.classList.remove('hidden');
+    setTimeout(() => overlay.classList.add('show'), 10);
+
+    if (pCard[stat] > cCard[stat]) {
+      resText.innerText = "ROUND WIN!";
+      resText.className = "fw-bold text-win";
+      // Logic: Explain WHY you won
+      resDetails.innerHTML = `<strong>${pCard.name}</strong> beat <strong>${cCard.name}</strong> because it has <strong>${pCard[stat]}</strong> ${stat}, while ${cCard.name} only has ${cCard[stat]}.`;
+      playerHand.push(pCard, cCard);
+    } 
+    else if (pCard[stat] < cCard[stat]) {
+      resText.innerText = "ROUND LOSS";
+      resText.className = "fw-bold text-loss";
+      // Logic: Explain WHY you lost
+      resDetails.innerHTML = `<strong>${cCard.name}</strong> beat <strong>${pCard.name}</strong> because it has <strong>${cCard[stat]}</strong> ${stat}, but ${pCard.name} only has ${pCard[stat]}.`;
+      cpuHand.push(cCard, pCard);
+    } 
+    else {
+      resText.innerText = "DRAW";
+      resText.className = "fw-bold text-draw";
+      resDetails.innerHTML = `Both <strong>${pCard.name}</strong> and <strong>${cCard.name}</strong> have <strong>${pCard[stat]}</strong> ${stat}. <br><small>Cards returned to the bottom of the deck.</small>`;
+      playerHand.push(pCard); cpuHand.push(cCard);
+    }
+
+    // Auto-close the result box after 3 seconds (slightly longer to allow for reading)
+    setTimeout(() => {
+      overlay.classList.remove('show');
+      setTimeout(() => {
+        overlay.classList.add('hidden');
+        updateUI();
+      }, 300);
+    }, 3500);
+}
+
+  function showEnd(txt) {
+  // If the user wins, trigger the main app's confetti
+  if (txt.includes("CHAMPION")) {
+    // We try to find the confetti function in the parent window
+    if (window.parent && typeof window.parent.triggerConfetti === 'function') {
+        window.parent.triggerConfetti();
+    } else {
+        // This helps for debugging if it still won't fire
+        console.log("Found parent but couldn't find triggerConfetti function.");
+    }
+  }
+
+  document.querySelector('.game-container').innerHTML = `
+    <div class="text-center mt-5">
+      <h2 class="fw-bold">${txt}</h2>
+      <button class="btn btn-primary mt-4 px-5" onclick="location.reload()">Play Again</button>
+    </div>`;
+}
+</script>
+</body>
 </html>
