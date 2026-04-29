@@ -7,26 +7,112 @@
 const BUCKET_INTERVALS = { 1: 0, 2: 2, 3: 4, 4: 5 };
 
 function doGet(e) {
-  // If the URL has ?mode=trumps, load the game sandbox
-  if (e.parameter.mode === 'trumps') {
-    return HtmlService.createTemplateFromFile('TulUI')
-      .evaluate()
-      .setTitle('Tul Top Trumps - Academy')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
-  }
-
-  // Otherwise, load the standard Index (Quiz/Dashboard)
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
-    .setTitle('TKD Theory Academy')
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    .setTitle('TKD Academy')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+// Helper to include sub-files into Index.html
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
 /**
- * Helper to include files in HTML (Standard practice)
+ * GET MATCHING DATA: Only rows with data in Column N.
+ * Returns: qId, matchingTerm, correctAnswer.
  */
+function getMatchingData(userBelt) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("Questions");
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 19).getValues(); // Up to Col S (19)
+
+  return data
+    .filter(r => r[17] === userBelt && r[13] !== "") // Col R (Belt), Col N (Matching Check)
+    .map(r => ({
+      qId: r[0],
+      matchingTerm: r[18], // Column S
+      correctAnswer: r[11] // Column L
+    }))
+    .sort(() => 0.5 - Math.random());
+}
+
+/**
+ * GET TRUE/FALSE DATA: Only rows with data in Column T.
+ * Excludes "N" in Column Q for Practice/Test logic if applied.
+ */
+function getTFData(userBelt) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("Questions");
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 20).getValues(); // Up to Col T (20)
+
+  return data
+    .filter(r => r[17] === userBelt && r[19] !== "") // Col R (Belt), Col T (TF Check)
+    .map(r => {
+      const isLying = Math.random() > 0.5;
+      return {
+        qId: r[0],
+        simplifiedDef: r[19], // Column T
+        correctAnswer: r[11], // Column L
+        isCorrect: !isLying,
+        displayDef: isLying ? "DECOY_PLACEHOLDER" : r[11] 
+      };
+    })
+    .sort(() => 0.5 - Math.random());
+}
+
+/**
+ * GET TUL TRUMPS DATA: Only pulls from the Tuls sheet[cite: 1].
+ */
+function getTulTrumpsData(activeUser) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("Tuls");
+  if (!sheet) return { error: "Tuls sheet not found" };
+  
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const rows = data.slice(1);
+  
+  // Logic to split hands for Jacob vs CPU
+  const shuffled = rows.sort(() => 0.5 - Math.random());
+  return {
+    playerHand: shuffled.slice(0, 5),
+    cpuHand: shuffled.slice(5, 10)
+  };
+}
+
+/**
+ * STANDARD QUIZ DATA: Practice (10) or Test (Full)[cite: 1].
+ * Logic: Exclude Column Q = "N"[cite: 1].
+ */
+function getQuizData(activeUser, mode) {
+  const userGrade = getUserGrade(activeUser);
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("Questions");
+  const data = sheet.getDataRange().getValues().slice(1);
+
+  const filtered = data.filter(r => r[17] === userGrade && r[16] !== "N"); // Col Q check[cite: 1]
+  
+  const formatted = filtered.map(r => ({
+    qId: r[0],
+    question: r[1],
+    options: [r[11], r[12], r[13], r[14]].sort(() => 0.5 - Math.random()),
+    answer: r[11]
+  }));
+
+  return mode === 'practice' ? formatted.sort(() => 0.5 - Math.random()).slice(0, 10) : formatted;
+}
+
 function include(filename) {
   return HtmlService.createHtmlOutputFromFile(filename).getContent();
+}
+
+function doGet(e) {
+  return HtmlService.createTemplateFromFile('Index').evaluate()
+    .setTitle('TKD Master')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 function loginUser(username, password) {
