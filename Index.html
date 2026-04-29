@@ -119,8 +119,30 @@
   }
 
   function handleLogin() {
-    // ... Existing Login Logic ...
-  }
+  const u = document.getElementById('user-input').value;
+  const p = document.getElementById('pass-input').value;
+  if(!u || !p) return;
+  
+  document.getElementById('loading-overlay').classList.remove('hidden');
+  
+  google.script.run
+    .withSuccessHandler(res => {
+      document.getElementById('loading-overlay').classList.add('hidden');
+      if(res.success) {
+        activeUser = res.username;
+        document.getElementById('user-welcome').innerText = res.displayName;
+        document.getElementById('navbar').classList.remove('hidden');
+        switchView('modes');
+      } else {
+        alert(res.message);
+      }
+    })
+    .withFailureHandler(err => {
+      document.getElementById('loading-overlay').classList.add('hidden');
+      alert("System Error: " + err.message);
+    })
+    .loginUser(u, p); // Calls the function in Code.gs
+}
 
   /**
    * START APP: Now surgically fetches only what is needed[cite: 1].
