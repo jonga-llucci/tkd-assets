@@ -98,7 +98,7 @@
 </div>
 
 <div id="view-trumps" class="view-container">
-  <!-- The game content will be injected here -->
+  <div id="trumps-game-content"></div>
 </div>
 
 <div id="view-quiz" class="view-container">
@@ -196,6 +196,7 @@
       toggleLoad(false);
       if(res.success) {
         activeUser = res.username; 
+        isQuizActive = false;
         document.getElementById('user-welcome').innerText = res.displayName;
         document.getElementById('user-streak').innerHTML = `<i class="bi bi-fire"></i> ${res.streak} Day Streak`;
         document.getElementById('navbar').classList.remove('hidden');
@@ -212,6 +213,35 @@
     document.querySelectorAll('#view-quiz [id^="ui-"]').forEach(el => el.classList.add('hidden'));
     document.getElementById('timer-display').classList.add('hidden');
     document.getElementById('next-btn').classList.add('hidden');
+    document.getElementById('navbar').classList.remove('hidden');
+      
+      google.script.run.withSuccessHandler(html => {
+            // 1. Inject the HTML into the dedicated container[cite: 9]
+            const container = document.getElementById('view-tuls');
+            container.innerHTML = html;
+            
+            // 2. Show the view
+            document.querySelectorAll('.view-container').forEach(v => {
+                v.classList.remove('active-view');
+                v.style.display = 'none';
+            });
+            container.style.display = 'block';
+            setTimeout(() => container.classList.add('active-view'), 10);
+            
+            // 3. MANUAL TRIGGER: Now that the HTML is in the DOM, 
+            // call the function to get the game data
+            if (typeof initTulTrumps === "function") {
+                initTulTrumps();
+            } else {
+                // Fallback if the script isn't global yet
+                setTimeout(() => { if(window.initTulTrumps) window.initTulTrumps(); }, 100);
+            }
+            
+            toggleLoad(false);
+        }).getTulTrumpsHTML();
+        return;
+    }
+
     clearInterval(timerInterval);
     toggleLoad(true);
 
@@ -396,7 +426,40 @@
   function updateTimerUI() { const m = Math.floor(timeLeft / 60), s = timeLeft % 60; document.getElementById('timer-display').innerText = `${m}:${s < 10 ? '0' : ''}${s}`; }
 
   function switchView(id) {
-    if (isQuizActive && id !== 'quiz') { 
+    
+    if (isQuizActive && !['quiz', 'tuls', 'modes', 'login'].includes(id)) { 
+        const m = bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmModal'));
+        document.getElementById('confirm-end-btn').onclick = () => { 
+            m.hide(); 
+            isQuizActive = false; 
+            // Clear the game container so it's fresh for next time[cite: 9]
+            document.getElementById('view-tuls').innerHTML = ''; 
+            switchView(id); 
+        };
+        m.show(); 
+        return; 
+    }
+
+    document.querySelectorAll('.view-container').forEach(v => { 
+        v.classList.remove('active-view'); 
+        v.style.display = 'none'; 
+    });
+
+    const t = document.getElementById('view-' + id);
+    if(t) { 
+        t.style.display = 'block'; 
+        setTimeout(() => t.classList.add('active-view'), 10); 
+    }
+
+    // Update Nav Bar Highlight[cite: 13]
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const activeNav = document.getElementById('nav-' + id);
+    if(activeNav) activeNav.classList.add('active');
+    else if(['results', 'game-center', 'quiz', 'tuls'].includes(id)) {
+        document.getElementById('nav-modes').classList.add('active');
+    }
+    
+   /** if (isQuizActive && id !== 'quiz' && id !== 'tuls') { 
         const m = bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmModal'));
         document.getElementById('confirm-end-btn').onclick = () => { m.hide(); endQuiz(); };
         m.show(); return; 
@@ -404,12 +467,17 @@
     document.querySelectorAll('.view-container').forEach(v => { v.classList.remove('active-view'); v.style.display = 'none'; });
     const t = document.getElementById('view-' + id);
     if(t) { t.style.display = 'block'; setTimeout(() => t.classList.add('active-view'), 10); }
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    const activeNav = document.getElementById('nav-' + id);
-    if(activeNav) activeNav.classList.add('active');
-    else if(id === 'results' || id === 'game-center') document.getElementById('nav-modes').classList.add('active');
-  }
+    */
 
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    if (['modes', 'game-center', 'tuls', 'quiz'].includes(id)) {
+      document.getElementById('nav-modes').classList.add('active');
+    } else if (document.getElementById('nav-' + id)) {
+      document.getElementById('nav-' + id).classList.add('active');
+    }
+}
+
+  
   function nextQuestion() { (currentIndex < quizData.length - 1) ? (currentIndex++, showQuestion()) : endQuiz(); }
   function handleLogout() { isQuizActive = false; switchView('login'); }
   function saveGrade() { google.script.run.saveGrade(activeUser, document.getElementById('grade-selector').value); }

@@ -221,3 +221,50 @@ function updatePass(u, p) {
     }
   }
 }
+
+function getTulTrumpsData(username) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const tulSheet = ss.getSheetByName("Tuls");
+  const userSheet = ss.getSheetByName("Users");
+  
+  const userData = userSheet.getDataRange().getValues();
+  let userGrade = 1;
+  const cleanUser = username ? username.toString().trim() : "";
+
+  for (let i = 1; i < userData.length; i++) {
+    if (userData[i][0] && userData[i][0].toString().trim() === cleanUser) { 
+      userGrade = parseInt(userData[i][2]) || 1; 
+      break; 
+    }
+  }
+
+  const tulData = tulSheet.getDataRange().getValues();
+  // Filter: Col A (Name) must exist AND Col F (index 5) must be <= userGrade
+  const deck = tulData.slice(1)
+    .filter(row => row[0] && parseInt(row[5]) <= userGrade)
+    .map(row => ({
+      name: row[0],
+      movements: parseInt(row[1]) || 0,
+      stances: parseInt(row[2]) || 0,
+      readyStance: row[3],
+      difficulty: parseInt(row[4]) || 0,
+      meaning: row[6],
+      img: row[7] || "https://via.placeholder.com/150"
+    }));
+
+  if (deck.length < 2) {
+    return { error: "Unlock more Tuls! You need at least 2 Tuls at your grade to play." };
+  }
+
+  const shuffled = deck.sort(() => Math.random() - 0.5);
+  const mid = Math.ceil(shuffled.length / 2);
+  
+  return {
+    playerHand: shuffled.slice(0, mid),
+    cpuHand: shuffled.slice(mid)
+  };
+}
+
+function getTulTrumpsHTML() {
+  return HtmlService.createHtmlOutputFromFile('TulUI').getContent();
+}

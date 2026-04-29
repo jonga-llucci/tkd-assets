@@ -56,11 +56,7 @@
   <div class="d-flex justify-content-between header-count">
     <span>Your Cards: <span id="p-count" class="text-primary">0</span></span>
     <span>CPU Cards: <span id="c-count" class="text-danger">0</span></span>
-    <div class="d-flex justify-content-between p-2">
-      <button class="btn btn-sm btn-outline-secondary" onclick="window.parent.switchView('game-center')">
-        <i class="bi bi-arrow-left"></i> Exit Game
-      </button>
-</div>
+    
   </div>
 
   <div id="active-card" class="trump-card">
@@ -100,14 +96,7 @@
   let playerHand = [], cpuHand = [];
   let isProcessing = false;
 
-  window.onload = () => {
-    let user = "Guest";
-    try {
-        user = window.parent.activeUser || "Guest";
-    } catch(e) {
-        console.log("Running in isolated mode");
-    }
-
+    function initTulTrumps() {
     google.script.run.withSuccessHandler(data => {
       if(data.error) { 
         document.getElementById('status').innerHTML = `<span class="text-warning text-center">${data.error}</span>`; 
@@ -116,8 +105,21 @@
       playerHand = data.playerHand;
       cpuHand = data.cpuHand;
       updateUI();
-    }).getTulTrumpsData(user);
-  };
+    }).getTulTrumpsData(activeUser);
+  }
+
+  window.onload = () => {
+    // Directly use activeUser from the main app context[cite: 13]
+    google.script.run.withSuccessHandler(data => {
+        if(data.error) { 
+            document.getElementById('status').innerHTML = `<span>${data.error}</span>`; 
+            return; 
+        }
+        playerHand = data.playerHand;
+        cpuHand = data.cpuHand;
+        updateUI();
+    }).getTulTrumpsData(activeUser); 
+};
 
   function updateUI() {
     if (playerHand.length === 0) { showEnd("CPU WINS! Try again?"); return; }
