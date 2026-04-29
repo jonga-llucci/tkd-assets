@@ -215,7 +215,8 @@
     document.getElementById('next-btn').classList.add('hidden');
     document.getElementById('navbar').classList.remove('hidden');
       
-      google.script.run.withSuccessHandler(html => {
+      if (mode === 'game_trumps') {
+        google.script.run.withSuccessHandler(html => {
             // 1. Inject the HTML into the dedicated container[cite: 9]
             const container = document.getElementById('view-tuls');
             container.innerHTML = html;
@@ -426,51 +427,35 @@
   function updateTimerUI() { const m = Math.floor(timeLeft / 60), s = timeLeft % 60; document.getElementById('timer-display').innerText = `${m}:${s < 10 ? '0' : ''}${s}`; }
 
   function switchView(id) {
-    
-    if (isQuizActive && !['quiz', 'tuls', 'modes', 'login'].includes(id)) { 
+    // 1. If we are at Login or just logged in, don't show "End Session"
+    if (isQuizActive && !['quiz', 'trumps', 'modes', 'login'].includes(id)) { 
         const m = bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmModal'));
         document.getElementById('confirm-end-btn').onclick = () => { 
             m.hide(); 
             isQuizActive = false; 
-            // Clear the game container so it's fresh for next time[cite: 9]
-            document.getElementById('view-tuls').innerHTML = ''; 
+            document.getElementById('view-trumps').innerHTML = ''; 
             switchView(id); 
         };
         m.show(); 
         return; 
     }
 
+    // 2. Hide all views
     document.querySelectorAll('.view-container').forEach(v => { 
         v.classList.remove('active-view'); 
         v.style.display = 'none'; 
     });
 
+    // 3. Show target view
     const t = document.getElementById('view-' + id);
     if(t) { 
         t.style.display = 'block'; 
         setTimeout(() => t.classList.add('active-view'), 10); 
     }
 
-    // Update Nav Bar Highlight[cite: 13]
+    // 4. Update Nav Bar Highlight
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    const activeNav = document.getElementById('nav-' + id);
-    if(activeNav) activeNav.classList.add('active');
-    else if(['results', 'game-center', 'quiz', 'tuls'].includes(id)) {
-        document.getElementById('nav-modes').classList.add('active');
-    }
-    
-   /** if (isQuizActive && id !== 'quiz' && id !== 'tuls') { 
-        const m = bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmModal'));
-        document.getElementById('confirm-end-btn').onclick = () => { m.hide(); endQuiz(); };
-        m.show(); return; 
-    }
-    document.querySelectorAll('.view-container').forEach(v => { v.classList.remove('active-view'); v.style.display = 'none'; });
-    const t = document.getElementById('view-' + id);
-    if(t) { t.style.display = 'block'; setTimeout(() => t.classList.add('active-view'), 10); }
-    */
-
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    if (['modes', 'game-center', 'tuls', 'quiz'].includes(id)) {
+    if (['modes', 'game-center', 'trumps', 'quiz'].includes(id)) {
       document.getElementById('nav-modes').classList.add('active');
     } else if (document.getElementById('nav-' + id)) {
       document.getElementById('nav-' + id).classList.add('active');
