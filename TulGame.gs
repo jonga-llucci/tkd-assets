@@ -1,7 +1,7 @@
 function getTulTrumpsData(username) {
   // FOR TESTING: If username is missing, default to your username
   if (!username || username === "Guest") {
-    username = "YourActualUsername"; // Replace with your username from the sheet
+    username = "Jon"; // Replace with your username from the sheet
   }
   
   const ss = SpreadsheetApp.getActiveSpreadsheet();
