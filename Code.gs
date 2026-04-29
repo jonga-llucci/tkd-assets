@@ -7,17 +7,26 @@
 const BUCKET_INTERVALS = { 1: 0, 2: 2, 3: 4, 4: 5 };
 
 function doGet(e) {
-  // If you visit .../exec?mode=trumps, it loads ONLY the new game
+  // If the URL has ?mode=trumps, load the game sandbox
   if (e.parameter.mode === 'trumps') {
     return HtmlService.createTemplateFromFile('TulUI')
       .evaluate()
-      .setTitle('Tul Top Trumps - Dev Mode');
+      .setTitle('Tul Top Trumps - Academy')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
   }
 
-  // Otherwise, load the normal app
+  // Otherwise, load the standard Index (Quiz/Dashboard)
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
-    .setTitle('TKD Theory Practice Quiz');
+    .setTitle('TKD Theory Academy')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+/**
+ * Helper to include files in HTML (Standard practice)
+ */
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
 function loginUser(username, password) {

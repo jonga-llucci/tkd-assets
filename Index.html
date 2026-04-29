@@ -92,6 +92,8 @@
         <div class="game-grid">
             <div class="game-card" onclick="startApp('game_match')"><i class="bi bi-grid-3x3-gap"></i><strong>Match Pairs</strong></div>
             <div class="game-card" onclick="startApp('game_swipe')"><i class="bi bi-check-circle"></i><strong>True or False</strong></div>
+            <div class="game-card" onclick="startApp('game_trumps')"><i class="bi bi-check-circle"></i><strong>Tul Trumps</strong></div>
+</div>
         </div>
         <button class="btn btn-light w-100 mt-4 rounded-pill" onclick="switchView('modes')">Back Home</button>
     </div>
@@ -219,6 +221,7 @@
           switchView('quiz');
           if (mode === 'game_match') setupMatch();
           else if (mode === 'game_swipe') setupSwipe();
+          else if (mode === 'game_trumps') setupSwipe();
       }).getGameData(activeUser, mode); 
     } else {
       google.script.run.withSuccessHandler(data => {
@@ -329,6 +332,12 @@
         document.getElementById('swipe-def').innerText = q.correctAnswer;
     }
 }
+function setuptrumps() {
+    // This redirects the current window to the "Trumps Mode"
+    const url = google.script.run.withSuccessHandler(function(url) {
+        window.location.href = url + "?mode=trumps";
+    }).getServiceUrl(); 
+  }
 
 function handleSwipe(userAnswer) {
     const q = quizData[currentIndex];

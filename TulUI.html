@@ -63,6 +63,7 @@
     .text-loss { color: #dc3545; }
     .text-draw { color: #ffc107; }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
 <body>
 
@@ -196,15 +197,14 @@
 }
 
   function showEnd(txt) {
-  // If the user wins, trigger the main app's confetti
-  if (txt.includes("CHAMPION")) {
-    // We try to find the confetti function in the parent window
-    if (window.parent && typeof window.parent.triggerConfetti === 'function') {
-        window.parent.triggerConfetti();
-    } else {
-        // This helps for debugging if it still won't fire
-        console.log("Found parent but couldn't find triggerConfetti function.");
+    if (txt.includes("CHAMPION")) {
+        confetti({
+            particleCount: 150,
+            spread: 70,
+            origin: { y: 0.6 }
+        });
     }
+    // ... rest of showEnd logic
   }
 
   document.querySelector('.game-container').innerHTML = `
