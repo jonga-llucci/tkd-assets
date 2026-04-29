@@ -1,8 +1,7 @@
 /**
- * TKD Theory Quiz - v8.7 (Tul Trumps Baseline)
- * Users Tab Map: A:User | B:Pass | C:Grade | D:LastActive | E:Streak | F:Name
- * Questions Tab Map: A:Quest | ... | O:qId | Q:Exam | R:BeltLevel | S:MatchTerm | T:SimpDef
- * Tuls Tab Map: A:Name | B:Moves | C:Stances | D:Ready | E:Diff | F:BeltLevel | G:Interp | H:Image
+ * TKD Theory Quiz - v8.2 (Corrected)
+ * Users Tab Map: A:User | B:Pass | C:Grade | D:LastActive | E:Streak | F:Name(5)
+ * Questions Tab Map: A:Quest(0) | ... | O:qId(14) | Q:Exam(16) | R:BeltLevel(17)
  */
 
 const BUCKET_INTERVALS = { 1: 0, 2: 2, 3: 4, 4: 5 };
@@ -10,7 +9,8 @@ const BUCKET_INTERVALS = { 1: 0, 2: 2, 3: 4, 4: 5 };
 function doGet() {
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
-    .setTitle('TKD Theory Academy')
+    .setTitle('TKD Theory Practice Quiz')
+    // THIS LINE IS CRITICAL: It tells Google to allow the iframe
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL) 
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
 }
@@ -20,59 +20,39 @@ function loginUser(username, password) {
   const userSheet = ss.getSheetByName("Users");
   const userData = userSheet.getDataRange().getValues();
   const now = new Date();
+  
   const cleanU = username ? username.toString().trim().toLowerCase() : "";
   const cleanP = password ? password.toString().trim() : "";
 
   for (let i = 1; i < userData.length; i++) {
-    if (userData[i][0] && userData[i][0].toString().trim().toLowerCase() === cleanU && userData[i][1].toString() === cleanP) {
+    if (!userData[i][0]) continue;
+    
+    if (userData[i][0].toString().trim().toLowerCase() === cleanU && 
+        userData[i][1].toString() === cleanP) {
+      
       let streak = parseInt(userData[i][4]) || 0;
       let lastActiveDate = userData[i][3] ? new Date(userData[i][3]) : null;
-      if (lastActiveDate && lastActiveDate.toDateString() !== now.toDateString()) {
-        const yesterday = new Date(); yesterday.setDate(now.getDate() - 1);
-        streak = (lastActiveDate.toDateString() === yesterday.toDateString()) ? streak + 1 : 1;
+      let lastActiveStr = lastActiveDate ? lastActiveDate.toDateString() : "";
+      let todayStr = now.toDateString();
+      
+      if (lastActiveStr !== todayStr) {
+        const yesterday = new Date();
+        yesterday.setDate(now.getDate() - 1);
+        streak = (lastActiveStr === yesterday.toDateString()) ? streak + 1 : 1;
         userSheet.getRange(i + 1, 4, 1, 2).setValues([[now, streak]]);
       }
+
       return { 
-        success: true, username: userData[i][0].toString().trim(),
+        success: true, 
+        username: userData[i][0].toString().trim(),
         displayName: userData[i][5] ? userData[i][5].toString() : userData[i][0].toString(),
-        gradeValue: parseInt(userData[i][2]) || 1, streak: streak 
+        gradeValue: parseInt(userData[i][2]) || 1, 
+        streak: streak 
       };
     }
   }
   return { success: false, message: "Invalid credentials" };
 }
-
-function getTulTrumpsData(username) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const userGrade = getUserGrade(username);
-  const tulSheet = ss.getSheetByName("Tuls");
-  if (!tulSheet) return { success: false, message: "Tuls sheet not found" };
-  
-  const data = tulSheet.getDataRange().getValues().slice(1);
-  const availableTuls = data.filter(row => parseInt(row[5]) <= userGrade && row[0]).map(row => ({
-    name: row[0],
-    movements: parseInt(row[1]) || 0,
-    stances: parseInt(row[2]) || 0,
-    difficulty: parseInt(row[4]) || 1,
-    img: row[7] || "https://placehold.co/200x150?text=No+Image"
-  }));
-
-  if (availableTuls.length < 6) return { success: false, message: "Unlock more Tuls to play!" };
-  const shuffled = availableTuls.sort(() => 0.5 - Math.random());
-  return { success: true, playerHand: shuffled.slice(0, 5), cpuHand: shuffled.slice(5, 10) };
-}
-
-function getUserGrade(username) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const userData = ss.getSheetByName("Users").getDataRange().getValues();
-  const cleanU = username.toString().trim().toLowerCase();
-  for (let i = 1; i < userData.length; i++) {
-    if (userData[i][0] && userData[i][0].toString().trim().toLowerCase() === cleanU) return parseInt(userData[i][2]) || 1;
-  }
-  return 1;
-}
-
-// ... (Rest of existing getQuizData, updateQuestionScore, getGameData, saveGrade, updatePass from previous baseline)
 
 function getQuizData(username, mode) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -236,49 +216,3 @@ function updatePass(u, p) {
     }
   }
 }
-
-/**
- * Fetches Tul data and prepares hands for Player and CPU
- * Tab "Tuls": A:Name, B:Movements, C:Stances, D:ReadyStance, E:Difficulty, F:BeltLevel, G:Interpretation, H:Image
- */
-function getTulTrumpsData(username) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const userGrade = getUserGrade(username); // Reuses your existing grade logic
-  const tulSheet = ss.getSheetByName("Tuls");
-  
-  if (!tulSheet) return { success: false, message: "Tuls sheet not found" };
-  
-  const data = tulSheet.getDataRange().getValues().slice(1);
-  
-  // Filter by Belt Level (Column F - Index 5)
-  const availableTuls = data.filter(row => parseInt(row[5]) <= userGrade).map(row => ({
-    name: row[0],
-    movements: parseInt(row[1]) || 0,
-    stances: parseInt(row[2]) || 0,
-    difficulty: parseInt(row[4]) || 1,
-    interpretation: row[6],
-    img: row[7] || "https://placehold.co/200x150?text=No+Image"
-  }));
-
-  if (availableTuls.length < 4) return { success: false, message: "Not enough Tuls unlocked for your grade." };
-
-  // Shuffle and deal 5 cards each
-  const shuffled = availableTuls.sort(() => 0.5 - Math.random());
-  return {
-    success: true,
-    playerHand: shuffled.slice(0, 5),
-    cpuHand: shuffled.slice(5, 10)
-  };
-}
-
-// Helper to ensure grade access for games
-function getUserGrade(username) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const userData = ss.getSheetByName("Users").getDataRange().getValues();
-  const cleanU = username.toString().trim().toLowerCase();
-  for (let i = 1; i < userData.length; i++) {
-    if (userData[i][0].toString().trim().toLowerCase() === cleanU) return parseInt(userData[i][2]) || 1;
-  }
-  return 1;
-}
-
