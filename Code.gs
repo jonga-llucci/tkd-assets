@@ -7,22 +7,6 @@
 const BUCKET_INTERVALS = { 1: 0, 2: 2, 3: 4, 4: 5 };
 
 
-
-  function doGet(e) {
-  // Check if the URL has ?page=trumps
-  if (e.parameter.page === 'trumps') {
-    return HtmlService.createTemplateFromFile('TulUI')
-      .evaluate()
-      .setTitle('Tul Trumps Test')
-      .addMetaTag('viewport', 'width=device-width, initial-scale=1');
-  }
-
-  // Otherwise, load your standard Index.html
-  return HtmlService.createTemplateFromFile('Index')
-    .evaluate()
-    .setTitle('TKD Theory Academy');
-  }
-/**
 function doGet() {
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
@@ -30,7 +14,11 @@ function doGet() {
     // THIS LINE IS CRITICAL: It tells Google to allow the iframe
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL) 
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
-}*/
+}
+
+function getTrumpsHTML() {
+  return HtmlService.createHtmlOutputFromFile('TulUI').getContent();
+}
 
 function loginUser(username, password) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
