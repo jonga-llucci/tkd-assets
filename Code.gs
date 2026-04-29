@@ -265,6 +265,44 @@ function getTulTrumpsData(username) {
   };
 }
 
+function getUserTulDeck(username) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName("Tuls"); 
+    if (!sheet) throw new Error("Sheet 'Tuls' not found.");
+    
+    const data = sheet.getDataRange().getValues();
+    const headers = data.shift();
+    
+    // Helper to find column index by name
+    const find = (name) => {
+      const idx = headers.indexOf(name);
+      if (idx === -1) throw new Error("Missing column: " + name);
+      return idx;
+    };
+
+    const iName = find("Tul Name");
+    const iMoves = find("Movements");
+    const iStances = find("Stances");
+    const iDiff = find("Difficulty");
+    const iReady = find("Ready Stance");
+    const iInterp = find("Interpretation"); // New field
+    const iImg = find("Image URL");
+
+    return data.filter(row => row[iName]).map(row => ({
+      name: row[iName],
+      moveCount: row[iMoves],
+      stances: row[iStances],
+      difficulty: row[iDiff],
+      readyPost: row[iReady] || "None",
+      interpretation: row[iInterp] || "No interpretation provided.",
+      img: row[iImg]
+    }));
+  } catch (e) {
+    return { error: e.message };
+  }
+}
+
 function getTulTrumpsHTML() {
   return HtmlService.createHtmlOutputFromFile('TulUI').getContent();
 }
