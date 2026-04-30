@@ -53,12 +53,12 @@
   <div id="active-card" class="trump-card">
     <img id="tul-img" class="tul-img" src="https://via.placeholder.com/150?text=Loading...">
     <h2 id="tul-name" class="fw-bold mb-1">---</h2>
-    <div id="tul-ready" class="badge bg-primary mb-3">Ready: ---</div>
+    <div id="tul-card-ready" class="badge bg-primary mb-3">Ready: ---</div>
     
     <div class="stat-list">
       <div class="stat-row" onclick="playTurn('movements')">
         <span><i class="bi bi-activity me-2"></i> Movements</span>
-        <strong id="val-move">0</strong>
+        <strong id="val-movements">0</strong>
       </div>
       <div class="stat-row" onclick="playTurn('stances')">
         <span><i class="bi bi-person-walking me-2"></i> Stances</span>
@@ -66,11 +66,11 @@
       </div>
       <div class="stat-row" onclick="playTurn('difficulty')">
         <span><i class="bi bi-star-fill me-2"></i> Difficulty</span>
-        <strong id="val-diff">0</strong>
+        <strong id="val-difficulty">0</strong>
       </div>
     </div>
     
-    <p class="meaning-text" id="tul-meaning"></p>
+    <p class="meaning-text" id="tul-card-meaning"></p>
   </div>
 
   <div id="status" class="mt-3 text-center"></div>
@@ -129,10 +129,10 @@
     const cur = playerHand[0];
     document.getElementById('tul-name').innerText = cur.name;
     document.getElementById('tul-img').src = cur.img || "https://via.placeholder.com/150?text=No+Image";
-    document.getElementById('tul-ready').innerText = "Ready: " + (cur.readyStance || "---");
-    document.getElementById('val-move').innerText = cur.movements || 0;
+    document.getElementById('tul-card-ready').innerText = "Ready: " + (cur.readyStance || "---");
+    document.getElementById('val-movements').innerText = cur.movements || 0;
     document.getElementById('val-stances').innerText = cur.stances || 0;
-    document.getElementById('val-diff').innerText = cur.difficulty || 0;
+    document.getElementById('val-difficulty').innerText = cur.difficulty || 0;
     document.getElementById('tul-meaning').innerText = cur.meaning || "";
     
     document.getElementById('p-count').innerText = playerHand.length;

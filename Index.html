@@ -92,7 +92,7 @@
         <div class="game-grid">
             <div class="game-card" onclick="startApp('game_match')"><i class="bi bi-grid-3x3-gap"></i><strong>Match Pairs</strong></div>
             <div class="game-card" onclick="startApp('game_swipe')"><i class="bi bi-check-circle"></i><strong>True or False</strong></div>
-            <div class="game-card" onclick="startApp('game_tuls')"><i class="bi bi-collection"></i><strong>Tul Trumps</strong></div>
+            <div class="game-card" onclick="startApp('game_tuls')"><i class="bi bi-stack"></i><strong>Tul Trumps</strong></div>
         </div>
     </div>
 </div>
@@ -105,7 +105,7 @@
         </div>
         
         <div class="card shadow-sm mb-4">
-            <img id="tul-card-img" src="" class="card-img-top p-3" style="max-height: 200px; object-fit: contain;">
+            <img id="tul-card-img" src="" class="card-img-top p-3" style="max-height: 100%; object-fit: contain;">
             <div class="card-body">
                 <h3 id="tul-card-name" class="fw-bold">---</h3>
                 <span id="tul-card-ready" class="badge bg-primary mb-2">---</span>
@@ -113,7 +113,7 @@
                 
                 <ul class="list-group list-group-flush text-start">
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <span><i class="bi bi-activity me-2"></i>Movements</span>
+                        <span><i class="bi bi-arrows-move me-2"></i>Movements</span>
                         <span id="val-movements" class="fw-bold">0</span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -121,13 +121,12 @@
                         <span id="val-stances" class="fw-bold">0</span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <span><i class="bi bi-star me-2"></i>Difficulty</span>
+                        <span><i class="bi bi-reception-4 me-2"></i>Difficulty</span>
                         <span id="val-difficulty" class="fw-bold">0</span>
                     </li>
                 </ul>
             </div>
         </div>
-        <button class="btn btn-outline-secondary w-100" onclick="switchView('game-center')">Exit Game</button>
     </div>
 </div>
 
@@ -321,6 +320,8 @@
       }).getQuizData(activeUser, (mode === 'test' ? 'test' : 'practice'));
     }
   }
+
+  
 
   function updateGameUI() {
     console.log("Updating Game UI...");
