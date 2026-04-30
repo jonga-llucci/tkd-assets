@@ -1,224 +1,166 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-  <style>
-    /* FIX: Changed background to Light Grey so text is readable */
-    body { background: #f8f9fa; color: #333; font-family: 'Segoe UI', sans-serif; overflow-x: hidden; }
-    
-    /* Ensure the container takes up full height and allows vertical scrolling if needed */
-    .game-container { max-width: 450px; margin: auto; padding: 20px; min-height: 100vh; display: flex; flex-direction: column; }
-    
-    .trump-card { 
-      background: white; color: #222; border-radius: 20px; padding: 15px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.1); position: relative;
-      flex-grow: 1; /* Allows the card to take up remaining vertical space */
-    }
-    .tul-img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; margin-bottom: 15px; background: #eee; }
-    
-    .stat-row { 
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 12px 15px; margin: 8px 0; background: white;
-      border: 2px solid #f0f0f0; border-radius: 12px; cursor: pointer; transition: 0.2s;
-    }
-    .stat-row:hover { border-color: #0d6efd; background: #e7f1ff; transform: scale(1.02); }
-    .stat-row strong { font-size: 1.2rem; color: #0d6efd; }
-
-    /* FIX: Removed fixed height and line-clamping so full meaning is displayed */
-    .meaning-text { font-size: 0.85rem; color: #666; line-height: 1.4; margin-top: 15px; }
-    
-    .status-msg { min-height: 60px; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-top: 15px; }
-    .header-count { small text-uppercase fw-bold text-muted; padding: 0 10px; margin-bottom: 15px; }
-
-    .result-overlay {
-    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.6); display: flex; align-items: center;
-    justify-content: center; z-index: 1000; transition: 0.3s;
-    }
-    .result-box {
-        background: white; padding: 30px; border-radius: 20px;
-        text-align: center; transform: scale(0.8); transition: 0.3s;
-        width: 80%; max-width: 300px;
-    }
-    .result-overlay.show .result-box { transform: scale(1); }
-    .hidden { display: none !important; }
-
-    /* Colors for the result text */
-    .text-win { color: #198754; }
-    .text-loss { color: #dc3545; }
-    .text-draw { color: #ffc107; }
-  </style>
-</head>
-<body>
-
-<div class="container-fluid p-3 text-center">
-  <div class="d-flex justify-content-around mb-3">
-    <div class="small fw-bold">Your Deck: <span id="p-count" class="text-primary">0</span></div>
-    <div class="small fw-bold">CPU Deck: <span id="c-count" class="text-danger">0</span></div>
-  </div>
-
-  <div id="player-card-container" class="mx-auto" style="max-width: 400px;">
-    <!-- Loading State -->
-    <div class="card shadow-sm border-0 rounded-4 p-5 text-center">
-      <div class="spinner-border text-primary mx-auto mb-3" role="status"></div>
-      <p class="text-muted">Mastering your deck...</p>
-    </div>
-  </div>
-
-  <div id="game-feedback" class="mt-3" style="min-height: 40px;"></div>
-</div>
-
 <style>
-  .trump-card { border: 2px solid #dee2e6; transition: all 0.3s ease; }
-  .stat-row { 
-    cursor: pointer; 
-    transition: all 0.2s; 
-    border: 1px solid #f0f0f0 !important;
-    border-radius: 10px;
-    margin-bottom: 8px;
-    background: #fff;
-  }
-  .stat-row:hover { 
-    background-color: #e7f1ff; 
-    border-color: #0d6efd !important;
-    transform: scale(1.02);
-  }
-  .interpretation-box {
-    font-size: 0.85rem;
-    line-height: 1.4;
-    background: #f8f9fa;
-    border-radius: 8px;
-    max-height: 100px;
-    overflow-y: auto;
-  }
-  .result-msg { font-weight: 800; font-size: 1.2rem; text-transform: uppercase; }
+  /* Keep all your .trump-card and .stat-row styles here */
+  .game-container-inner { padding: 10px; }
 </style>
 
+<div class="game-container-inner">
+  <div class="d-flex justify-content-between mb-2">
+    <span>Your Cards: <span id="p-count" class="text-primary">0</span></span>
+    <span>CPU Cards: <span id="c-count" class="text-danger">0</span></span>
+  </div>
+  
+  <div id="active-card" class="trump-card">
+    <img id="tul-img" class="tul-img" src="">
+    <h2 id="tul-name" class="fw-bold mb-1">---</h2>
+    <div id="tul-ready" class="badge bg-primary mb-3">Ready: ---</div>
+    
+    <div class="stat-list">
+      <div class="stat-row" onclick="playTurn('movements')">
+        <span><i class="bi bi-activity me-2"></i> Movements</span>
+        <strong id="val-move">0</strong>
+      </div>
+      <div class="stat-row" onclick="playTurn('stances')">
+        <span><i class="bi bi-person-walking me-2"></i> Stances</span>
+        <strong id="val-stances">0</strong>
+      </div>
+      <div class="stat-row" onclick="playTurn('difficulty')">
+        <span><i class="bi bi-star-fill me-2"></i> Difficulty</span>
+        <strong id="val-diff">0</strong>
+      </div>
+    </div>
+    
+    <p class="meaning-text" id="tul-meaning"></p>
+  </div>
+
+  <div id="status" class="status-msg"></div>
+
+  <div id="result-overlay" class="result-overlay hidden">
+    <div id="result-box" class="result-box">
+        <h2 id="result-text">WIN!</h2>
+        <p id="result-details"></p>
+    </div>
+  </div>
+</div>
+
 <script>
+  // Replace window.onload with a direct call
+  (function initTrumps() {
+    const user = activeUser || "Guest"; // Directly uses activeUser from Index.html
+    google.script.run.withSuccessHandler(data => {
+      if(data.error) { 
+        document.getElementById('status').innerText = data.error; 
+        return; 
+      }
+      playerHand = data.playerHand;
+      cpuHand = data.cpuHand;
+      updateUI();
+    }).getTulTrumpsData(user);
+  })();
+
   let playerHand = [], cpuHand = [];
   let isProcessing = false;
-  let gameUser = "";
 
-  function initTulTrumps(username) {
-    console.log("Initializing Game for:", username);
-    gameUser = username;
-    loadDeck();
-  }
-
-  function loadDeck() {
-    google.script.run
-      .withSuccessHandler(data => {
-        if (data.error) {
-          renderError(data.error);
-          return;
-        }
-        if (!data || data.length < 2) {
-          renderError("Insufficient cards in 'Tuls' sheet. Need at least 2.");
-          return;
-        }
-        
-        // Shuffle and Deal
-        const shuffled = data.sort(() => Math.random() - 0.5);
-        const mid = Math.ceil(shuffled.length / 2);
-        playerHand = shuffled.slice(0, mid);
-        cpuHand = shuffled.slice(mid);
-        updateDisplay();
-      })
-      .withFailureHandler(err => {
-        renderError("Connection Failed: " + err.message);
-      })
-      .getUserTulDeck(gameUser);
-  }
-
-  function renderError(msg) {
-    document.getElementById('player-card-container').innerHTML = `
-      <div class="alert alert-danger shadow-sm">
-        <i class="bi bi-exclamation-triangle-fill"></i><br>
-        <strong>Load Error</strong><br>${msg}
-        <button class="btn btn-sm btn-outline-danger d-block mx-auto mt-3" onclick="loadDeck()">Retry Connection</button>
-      </div>`;
-  }
-
-  function updateDisplay() {
-    const card = playerHand[0];
-    const container = document.getElementById('player-card-container');
-    document.getElementById('p-count').innerText = playerHand.length;
-    document.getElementById('c-count').innerText = cpuHand.length;
-
-    if (!card) {
-      checkGameOver();
-      return;
+  window.onload = () => {
+    let user = "Guest";
+    try {
+        user = window.parent.activeUser || "Guest";
+    } catch(e) {
+        console.log("Running in isolated mode");
     }
 
-    container.innerHTML = `
-      <div class="card shadow-lg border-0 rounded-4 p-3 trump-card">
-        <div class="text-end mb-2">
-          <span class="badge rounded-pill bg-dark">Ready: ${card.readyPost}</span>
-        </div>
-        
-        <img src="${card.img || ''}" class="img-fluid rounded-3 mb-3" style="height: 160px; object-fit: cover;" onerror="this.src='https://placehold.co/400x200?text=No+Image'">
-        
-        <h3 class="fw-bold text-primary mb-1">${card.name}</h3>
-        
-        <div class="interpretation-box p-2 mb-3 text-muted border">
-          <strong>Interpretation:</strong> ${card.interpretation || 'No data available.'}
-        </div>
+    google.script.run.withSuccessHandler(data => {
+      if(data.error) { 
+        document.getElementById('status').innerHTML = `<span class="text-warning text-center">${data.error}</span>`; 
+        return; 
+      }
+      playerHand = data.playerHand;
+      cpuHand = data.cpuHand;
+      updateUI();
+    }).getTulTrumpsData(user);
+  };
 
-        <div class="stat-row d-flex justify-content-between align-items-center p-3 shadow-sm" onclick="playTurn('moveCount')">
-          <span><i class="bi bi-hash me-2 text-primary"></i> Movements</span>
-          <strong class="fs-5">${card.moveCount}</strong>
-        </div>
-        
-        <div class="stat-row d-flex justify-content-between align-items-center p-3 shadow-sm" onclick="playTurn('stances')">
-          <span><i class="bi bi-person-standing me-2 text-success"></i> Stances</span>
-          <strong class="fs-5">${card.stances}</strong>
-        </div>
-        
-        <div class="stat-row d-flex justify-content-between align-items-center p-3 shadow-sm" onclick="playTurn('difficulty')">
-          <span><i class="bi bi-star-fill me-2 text-warning"></i> Difficulty</span>
-          <strong class="fs-5">${card.difficulty}</strong>
-        </div>
-        
-        <p class="text-center mt-2 small text-muted">Tap a stat to challenge the CPU</p>
-      </div>
-    `;
+  function updateUI() {
+    if (playerHand.length === 0) { showEnd("CPU WINS! Try again?"); return; }
+    if (cpuHand.length === 0) { showEnd("YOU ARE THE CHAMPION!"); return; }
+
+    const cur = playerHand[0];
+    document.getElementById('tul-name').innerText = cur.name;
+    document.getElementById('tul-img').src = cur.img;
+    document.getElementById('tul-ready').innerText = "Ready: " + cur.readyStance;
+    document.getElementById('val-move').innerText = cur.movements;
+    document.getElementById('val-stances').innerText = cur.stances;
+    document.getElementById('val-diff').innerText = cur.difficulty;
+    document.getElementById('tul-meaning').innerText = cur.meaning;
+    
+    document.getElementById('p-count').innerText = playerHand.length;
+    document.getElementById('c-count').innerText = cpuHand.length;
+    isProcessing = false;
   }
 
   function playTurn(stat) {
-    if (isProcessing || playerHand.length === 0 || cpuHand.length === 0) return;
+    if (isProcessing) return;
     isProcessing = true;
 
-    const pCard = playerHand[0];
-    const cCard = cpuHand[0];
-    const pVal = parseInt(pCard[stat]) || 0;
-    const cVal = parseInt(cCard[stat]) || 0;
-
-    const feedback = document.getElementById('game-feedback');
+    const pCard = playerHand.shift();
+    const cCard = cpuHand.shift();
     
-    if (pVal >= cVal) {
-      feedback.innerHTML = `<div class="result-msg text-success animate__animated animate__tada">You Win! ${pVal} vs ${cVal}</div>`;
-      playerHand.push(playerHand.shift(), cpuHand.shift());
-    } else {
-      feedback.innerHTML = `<div class="result-msg text-danger animate__animated animate__shakeX">CPU Wins! ${pVal} vs ${cVal}</div>`;
-      cpuHand.push(cpuHand.shift(), playerHand.shift());
+    const overlay = document.getElementById('result-overlay');
+    const resText = document.getElementById('result-text');
+    const resDetails = document.getElementById('result-details');
+
+    // Make the stat name look nice (e.g., "movements" -> "Movements")
+    const statLabel = stat.charAt(0).toUpperCase() + stat.slice(1);
+
+    overlay.classList.remove('hidden');
+    setTimeout(() => overlay.classList.add('show'), 10);
+
+    if (pCard[stat] > cCard[stat]) {
+      resText.innerText = "ROUND WIN!";
+      resText.className = "fw-bold text-win";
+      // Logic: Explain WHY you won
+      resDetails.innerHTML = `<strong>${pCard.name}</strong> beat <strong>${cCard.name}</strong> because it has <strong>${pCard[stat]}</strong> ${stat}, while ${cCard.name} only has ${cCard[stat]}.`;
+      playerHand.push(pCard, cCard);
+    } 
+    else if (pCard[stat] < cCard[stat]) {
+      resText.innerText = "ROUND LOSS";
+      resText.className = "fw-bold text-loss";
+      // Logic: Explain WHY you lost
+      resDetails.innerHTML = `<strong>${cCard.name}</strong> beat <strong>${pCard.name}</strong> because it has <strong>${cCard[stat]}</strong> ${stat}, but ${pCard.name} only has ${pCard[stat]}.`;
+      cpuHand.push(cCard, pCard);
+    } 
+    else {
+      resText.innerText = "DRAW";
+      resText.className = "fw-bold text-draw";
+      resDetails.innerHTML = `Both <strong>${pCard.name}</strong> and <strong>${cCard.name}</strong> have <strong>${pCard[stat]}</strong> ${stat}. <br><small>Cards returned to the bottom of the deck.</small>`;
+      playerHand.push(pCard); cpuHand.push(cCard);
     }
 
+    // Auto-close the result box after 3 seconds (slightly longer to allow for reading)
     setTimeout(() => {
-      feedback.innerHTML = '';
-      isProcessing = false;
-      updateDisplay();
-      checkGameOver();
-    }, 1800);
+      overlay.classList.remove('show');
+      setTimeout(() => {
+        overlay.classList.add('hidden');
+        updateUI();
+      }, 300);
+    }, 3500);
   }
 
-  function checkGameOver() {
-    if (playerHand.length === 0 || cpuHand.length === 0) {
-      const win = playerHand.length > 0;
-      alert(win ? "Congratulations! You won the entire deck!" : "CPU has defeated you this time.");
-      if(typeof switchView === "function") switchView('modes');
+  function showEnd(txt) {
+  // If the user wins, trigger the main app's confetti
+  if (txt.includes("CHAMPION")) {
+    // We try to find the confetti function in the parent window
+    if (window.parent && typeof window.parent.triggerConfetti === 'function') {
+        window.parent.triggerConfetti();
+    } else {
+        // This helps for debugging if it still won't fire
+        console.log("Found parent but couldn't find triggerConfetti function.");
     }
+  }
+
+  document.querySelector('.game-container').innerHTML = `
+    <div class="text-center mt-5">
+      <h2 class="fw-bold">${txt}</h2>
+      <button class="btn btn-primary mt-4 px-5" onclick="location.reload()">Play Again</button>
+    </div>`;
   }
 </script>
-</body>
-</html>

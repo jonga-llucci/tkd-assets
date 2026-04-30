@@ -1,5 +1,8 @@
 function getTulTrumpsData(username) {
-  if (!username) return { error: "No user session found." };
+  // FOR TESTING: If username is missing, default to your username
+  if (!username || username === "Guest") {
+    username = "Jon"; // Replace with your username from the sheet
+  }
   
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const tulSheet = ss.getSheetByName("Tuls");
