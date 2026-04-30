@@ -25,10 +25,18 @@ function getTrumpsHTML() {
   return HtmlService.createHtmlOutputFromFile('TulUI').getContent();
 }
 
-/** 
- * Ensure getTulTrumpsData(username) remains at the bottom of Code.gs
- * as it handles the spreadsheet logic for the cards.[cite: 16]
- */
+function getTulTrumpsData(username) {
+  try {
+    // Your logic to pull card data from your spreadsheet
+    // This should return an object with playerHand and cpuHand arrays
+    return {
+      playerHand: [ /* card objects here */ ],
+      cpuHand: [ /* card objects here */ ]
+    };
+  } catch (e) {
+    return { error: e.message };
+  }
+}
 
 function loginUser(username, password) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();

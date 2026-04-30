@@ -97,43 +97,37 @@
     </div>
 </div>
 
-<!-- The actual Tul Trumps Game View -->
-<div id="view-game-trumps" class="view-container">
-    <div class="d-flex justify-content-between mb-2 fw-bold">
-        <div class="text-primary">Your Cards: <span id="player-card-count">0</span></div>
-        <div class="text-danger">CPU Cards: <span id="cpu-card-count">0</span></div>
-    </div>
-
-    <div class="quiz-card text-center shadow-lg">
-        <img id="tul-card-img" src="https://placehold.co/300x200?text=Loading..." class="img-fluid rounded mb-3" style="max-height: 200px;">
-        <h3 id="tul-card-name" class="fw-bold">---</h3>
-        <span id="tul-card-ready" class="badge bg-primary mb-3">Ready: ---</span>
-
-        <!-- Stats Rows -->
-        <div class="list-group">
-            <div class="list-group-item d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-activity"></i> Movements</span>
-                <span id="val-movements" class="fw-bold">0</span>
-            </div>
-            <div class="list-group-item d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-person-walking"></i> Stances</span>
-                <span id="val-stances" class="fw-bold">0</span>
-            </div>
-            <div class="list-group-item d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-star"></i> Difficulty</span>
-                <span id="val-difficulty" class="fw-bold">0</span>
-            </div>
-            <div class="list-group-item d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-star"></i> Ready Stance</span>
-                <span id="tul-card-ready" class="badge bg-primary mb-3">0</span>
-            </div>
-            <div class="list-group-item d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-star"></i> Interpretation</span>
-                <span id="tul-card-meaning" class="text-muted small mt-2">0</span>
-            </div>
+<div id="view-trumps" class="view-container">
+    <div class="quiz-card text-center">
+        <div class="d-flex justify-content-between mb-3 fw-bold">
+            <span class="text-primary">Your Cards: <span id="player-card-count">0</span></span>
+            <span class="text-danger">CPU Cards: <span id="cpu-card-count">0</span></span>
         </div>
         
-        <button class="btn btn-outline-secondary mt-3" onclick="switchView('game-center')">Back to Menu</button>
+        <div class="card shadow-sm mb-4">
+            <img id="tul-card-img" src="" class="card-img-top p-3" style="max-height: 200px; object-fit: contain;">
+            <div class="card-body">
+                <h3 id="tul-card-name" class="fw-bold">---</h3>
+                <span id="tul-card-ready" class="badge bg-primary mb-2">---</span>
+                <p id="tul-card-meaning" class="small text-muted"></p>
+                
+                <ul class="list-group list-group-flush text-start">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-activity me-2"></i>Movements</span>
+                        <span id="val-movements" class="fw-bold">0</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-person-walking me-2"></i>Stances</span>
+                        <span id="val-stances" class="fw-bold">0</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-star me-2"></i>Difficulty</span>
+                        <span id="val-difficulty" class="fw-bold">0</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <button class="btn btn-outline-secondary w-100" onclick="switchView('game-center')">Exit Game</button>
     </div>
 </div>
 
@@ -249,105 +243,122 @@
   }
 
   function initTulTrumps() {
+    console.log("Initializing Tul Trumps for user:", activeUser);
     toggleLoad(true);
-    // activeUser was set during login, now we use it to get the right deck
-    google.script.run.withSuccessHandler(data => {
-      toggleLoad(false);
-      if (data.error) {
-        alert(data.error);
-        return;
-      }
-      // These must match the variables in your Tul Trumps game logic
-      playerHand = data.playerHand;
-      cpuHand = data.cpuHand;
-      updateGameUI(); // This function updates the '0' values and cards
-    }).getTulTrumpsData(activeUser);
+    
+    google.script.run
+      .withSuccessHandler(data => {
+        toggleLoad(false);
+        console.log("Tul Trumps Data Received:", data); // LOGGING DATA
+        
+        if (!data || data.error) {
+          console.error("Game Data Error:", data ? data.error : "No data received");
+          alert("Failed to load game data: " + (data ? data.error : "Unknown error"));
+          return;
+        }
+        
+        playerHand = data.playerHand;
+        cpuHand = data.cpuHand;
+        
+        console.log("Hands initialized. Player:", playerHand?.length, "CPU:", cpuHand?.length);
+        updateGameUI(); 
+      })
+      .withFailureHandler(err => {
+        toggleLoad(false);
+        console.error("Server-side call failed:", err);
+        alert("Server error: " + err.message);
+      })
+      .getTulTrumpsData(activeUser);
   }
-
-  function startApp(type) {
-    if (type === 'game_tuls') {
-        switchView('game-trumps'); // Switch to the new container we just made
-        initTulTrumps();           // Fetch the cards from TulGame.gs
-    } else {
-        // Handle Match Pairs or Swipe here later
-        alert("Coming soon!");
-    }
-  }
-
-function updateGameUI() {
-  console.log("Updating UI with playerHand:", playerHand); // Check the console for this!
-
-  // Update counts
-  if (document.getElementById('player-card-count')) {
-    document.getElementById('player-card-count').innerText = playerHand.length;
-  }
-  if (document.getElementById('cpu-card-count')) {
-    document.getElementById('cpu-card-count').innerText = cpuHand.length;
-  }
-
-  const card = playerHand[0];
-  if (!card) {
-    console.warn("No cards found for this user grade.");
-    return;
-  }
-
-  // Helper to set text only if element exists
-  const setEl = (id, val) => {
-    const el = document.getElementById(id);
-    if (el) el.innerText = val;
-  };
-
-  setEl('tul-card-name', card.name);
-  setEl('tul-card-ready', "Ready: " + card.readyStance);
-  setEl('tul-card-meaning', card.meaning); // This is your Interpretation
-  setEl('val-movements', card.movements);
-  setEl('val-stances', card.stances);
-  setEl('val-difficulty', card.difficulty);
-
-  const img = document.getElementById('tul-card-img');
-  if (img) img.src = card.img;
-}
 
   function startApp(mode) {
-    if (mode === 'game_tuls') {
-        toggleLoad(true);
-        google.script.run.withSuccessHandler(html => {
-            toggleLoad(false);
-            document.getElementById('view-trumps').innerHTML = html;
-            switchView('trumps');
-        }).getTrumpsHTML();
-        return;
+  console.log("Starting App Mode:", mode);
+  
+  if (mode === 'game_tuls') {
+    // No server call for HTML needed anymore
+    switchView('trumps'); 
+    initTulTrumps(); 
+    return;
     }
-    // ... rest of your existing startApp logic for quiz/match/swipe
 
-    isQuizActive = true; currentMode = mode; questionsAnswered = 0; score = 0; currentIndex = 0; missedQuestions = []; setsCleared = 0;
+    // Standard Quiz/Game Initialization
+    isQuizActive = true; 
+    currentMode = mode; 
+    questionsAnswered = 0; 
+    score = 0; 
+    currentIndex = 0; 
+    missedQuestions = []; 
+    setsCleared = 0;
+    
     document.querySelectorAll('#view-quiz [id^="ui-"]').forEach(el => el.classList.add('hidden'));
-    document.getElementById('timer-display').classList.add('hidden');
-    document.getElementById('next-btn').classList.add('hidden');
-    clearInterval(timerInterval);
+    document.getElementById('timer-display')?.classList.add('hidden');
+    document.getElementById('next-btn')?.classList.add('hidden');
+    
+    if (timerInterval) clearInterval(timerInterval);
     toggleLoad(true);
 
     const isGame = mode.startsWith('game_');
     if (isGame) {
-      // Pass 'mode' as the second argument so the server knows which column to filter
       google.script.run.withSuccessHandler(data => {
-          toggleLoad(false); quizData = data;
+          toggleLoad(false); 
+          quizData = data;
           switchView('quiz');
           if (mode === 'game_match') setupMatch();
           else if (mode === 'game_swipe') setupSwipe();
       }).getGameData(activeUser, mode); 
     } else {
       google.script.run.withSuccessHandler(data => {
-          toggleLoad(false); quizData = data;
+          toggleLoad(false); 
+          quizData = data;
           if(mode === 'test') { 
-            timeLeft = 3600; document.getElementById('timer-display').classList.remove('hidden'); 
-            updateTimerUI(); timerInterval = setInterval(() => { timeLeft--; updateTimerUI(); if(timeLeft<=0) endQuiz(); }, 1000); 
+            timeLeft = 3600; 
+            document.getElementById('timer-display')?.classList.remove('hidden'); 
+            updateTimerUI(); 
+            timerInterval = setInterval(() => { timeLeft--; updateTimerUI(); if(timeLeft<=0) endQuiz(); }, 1000); 
           }
           switchView('quiz');
           showQuestion();
       }).getQuizData(activeUser, (mode === 'test' ? 'test' : 'practice'));
     }
   }
+
+  function updateGameUI() {
+    console.log("Updating Game UI...");
+    if (!playerHand || playerHand.length === 0) {
+      console.warn("No cards in player hand to display");
+      return;
+    }
+    
+    const card = playerHand[0];
+    console.log("Current active card:", card.name);
+
+    // Helper to find elements even if IDs have slight variations
+    const setEl = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.innerText = val;
+        console.log(`Updated ${id} with ${val}`);
+      } else {
+        console.error(`CRITICAL: Element ID "${id}" is missing from your HTML.`);
+      }
+    };
+
+    // Update these IDs to match exactly what is in your Trumps HTML template
+    setEl('player-card-count', playerHand.length);
+    setEl('cpu-card-count', cpuHand.length);
+    setEl('tul-card-name', card.name);
+    setEl('tul-card-ready', "Ready: " + (card.readyStance || "---"));
+    setEl('tul-card-meaning', card.meaning || ""); 
+    setEl('val-movements', card.movements || 0);
+    setEl('val-stances', card.stances || 0);
+    setEl('val-difficulty', card.difficulty || 0);
+
+    const img = document.getElementById('tul-card-img');
+    if (img) {
+      img.src = card.img || "https://via.placeholder.com/150?text=No+Image";
+    }
+}
+
 
   function showQuestion() {
     document.getElementById('progress-bar').style.width = ((currentIndex / quizData.length) * 100) + "%";
@@ -498,27 +509,55 @@ function handleSwipe(userAnswer) {
 
   function updateTimerUI() { const m = Math.floor(timeLeft / 60), s = timeLeft % 60; document.getElementById('timer-display').innerText = `${m}:${s < 10 ? '0' : ''}${s}`; }
 
-  function switchView(id) {
+function switchView(id) {
     if (isQuizActive && id !== 'quiz') { 
         const m = bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmModal'));
         document.getElementById('confirm-end-btn').onclick = () => { m.hide(); endQuiz(); };
-        m.show(); return; 
+        m.show(); 
+        return; 
     }
-    document.querySelectorAll('.view-container').forEach(v => { v.classList.remove('active-view'); v.style.display = 'none'; });
+
+    // Hide all views
+    document.querySelectorAll('.view-container').forEach(v => { 
+        v.classList.remove('active-view'); 
+        v.style.display = 'none'; 
+    });
+
+    // Show target view
     const t = document.getElementById('view-' + id);
-    if(t) { t.style.display = 'block'; setTimeout(() => t.classList.add('active-view'), 10); }
+    if(t) { 
+        t.style.display = 'block'; 
+        setTimeout(() => t.classList.add('active-view'), 10); 
+    }
+    
+    // Update navigation highlighting
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     const activeNav = document.getElementById('nav-' + id);
-    if(activeNav) activeNav.classList.add('active');
-    else if(id === 'results' || id === 'game-center' || id === 'game-trumps') {
-    document.getElementById('nav-modes').classList.add('active');
+    
+    if(activeNav) {
+        activeNav.classList.add('active');
+    } else if(id === 'results' || id === 'game-center' || id === 'trumps') {
+        const homeNav = document.getElementById('nav-modes');
+        if(homeNav) homeNav.classList.add('active');
+    }
 }
-  }
 
-  function nextQuestion() { (currentIndex < quizData.length - 1) ? (currentIndex++, showQuestion()) : endQuiz(); }
-  function handleLogout() { isQuizActive = false; switchView('login'); }
-  function saveGrade() { google.script.run.saveGrade(activeUser, document.getElementById('grade-selector').value); }
-  function updatePass() { google.script.run.updatePass(activeUser, document.getElementById('new-pass').value); }
+function nextQuestion() { 
+  (currentIndex < quizData.length - 1) ? (currentIndex++, showQuestion()) : endQuiz(); 
+}
+
+function handleLogout() { 
+  isQuizActive = false; 
+  switchView('login'); 
+}
+
+function saveGrade() { 
+  google.script.run.saveGrade(activeUser, document.getElementById('grade-selector').value); 
+}
+
+function updatePass() { 
+  google.script.run.updatePass(activeUser, document.getElementById('new-pass').value); 
+}
 </script>
 </body>
 </html>
