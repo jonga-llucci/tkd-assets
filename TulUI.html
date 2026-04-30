@@ -1,16 +1,57 @@
 <style>
-  /* Keep all your .trump-card and .stat-row styles here */
-  .game-container-inner { padding: 10px; }
+  /* Core Card Styling */
+  .trump-card { 
+    background: white; 
+    border-radius: 15px; 
+    padding: 20px; 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+    text-align: center;
+    margin-top: 10px;
+  }
+  .tul-img { 
+    width: 100%; 
+    max-height: 180px; 
+    object-fit: contain; 
+    border-radius: 10px; 
+    margin-bottom: 15px; 
+    background: #f8f9fa;
+  }
+  .stat-list { margin-top: 15px; }
+  .stat-row { 
+    display: flex; 
+    justify-content: space-between; 
+    padding: 12px; 
+    background: #f8f9fa; 
+    margin-bottom: 8px; 
+    border-radius: 8px; 
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  .stat-row:hover { background: #e9ecef; transform: scale(1.02); }
+  .meaning-text { font-size: 0.85rem; color: #666; font-style: italic; margin-top: 15px; }
+  
+  /* Overlay Styling */
+  .result-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.8); display: flex; align-items: center;
+    justify-content: center; z-index: 2000; opacity: 0; visibility: hidden;
+    transition: all 0.3s ease;
+  }
+  .result-overlay.show { opacity: 1; visibility: visible; }
+  .result-box { background: white; padding: 30px; border-radius: 20px; text-align: center; max-width: 80%; }
+  .text-win { color: #198754; }
+  .text-loss { color: #dc3545; }
+  .hidden { display: none !important; }
 </style>
 
 <div class="game-container-inner">
-  <div class="d-flex justify-content-between mb-2">
+  <div class="d-flex justify-content-between mb-2 fw-bold">
     <span>Your Cards: <span id="p-count" class="text-primary">0</span></span>
     <span>CPU Cards: <span id="c-count" class="text-danger">0</span></span>
   </div>
   
   <div id="active-card" class="trump-card">
-    <img id="tul-img" class="tul-img" src="">
+    <img id="tul-img" class="tul-img" src="https://via.placeholder.com/150?text=Loading...">
     <h2 id="tul-name" class="fw-bold mb-1">---</h2>
     <div id="tul-ready" class="badge bg-primary mb-3">Ready: ---</div>
     
@@ -32,73 +73,79 @@
     <p class="meaning-text" id="tul-meaning"></p>
   </div>
 
-  <div id="status" class="status-msg"></div>
+  <div id="status" class="mt-3 text-center"></div>
 
   <div id="result-overlay" class="result-overlay hidden">
     <div id="result-box" class="result-box">
-        <h2 id="result-text">WIN!</h2>
-        <p id="result-details"></p>
+        <h2 id="result-text" class="fw-bold"></h2>
+        <p id="result-details" class="mt-3"></p>
     </div>
   </div>
 </div>
 
 <script>
-  // Replace window.onload with a direct call
-  (function initTrumps() {
-    const user = activeUser || "Guest"; // Directly uses activeUser from Index.html
-    google.script.run.withSuccessHandler(data => {
-      if(data.error) { 
-        document.getElementById('status').innerText = data.error; 
-        return; 
-      }
-      playerHand = data.playerHand;
-      cpuHand = data.cpuHand;
-      updateUI();
-    }).getTulTrumpsData(user);
-  })();
-
   let playerHand = [], cpuHand = [];
   let isProcessing = false;
 
-  window.onload = () => {
-    let user = "Guest";
-    try {
-        user = window.parent.activeUser || "Guest";
-    } catch(e) {
-        console.log("Running in isolated mode");
-    }
+  // Wait for the DOM and GAS environment to be ready
+  function startSequence() {
+    console.log("TulUI Loaded. Waiting 500ms to fetch data...");
+    setTimeout(initTrumps, 500); 
+  }
 
-    google.script.run.withSuccessHandler(data => {
-      if(data.error) { 
-        document.getElementById('status').innerHTML = `<span class="text-warning text-center">${data.error}</span>`; 
-        return; 
-      }
-      playerHand = data.playerHand;
-      cpuHand = data.cpuHand;
-      updateUI();
-    }).getTulTrumpsData(user);
-  };
+  function initTrumps() {
+    const user = (window.parent && window.parent.activeUser) || window.activeUser || "Guest";
+    
+    // Visual cue that loading is happening
+    document.getElementById('status').innerHTML = '<span class="badge bg-info">Loading Deck...</span>';
+
+    google.script.run
+      .withSuccessHandler(data => {
+        console.log("Data received from server:", data);
+        document.getElementById('status').innerHTML = ""; // Clear loading
+        
+        if(!data || data.error) { 
+          document.getElementById('status').innerHTML = `<div class="alert alert-warning small">${data ? data.error : 'No data returned'}</div>`;
+          return; 
+        }
+        
+        playerHand = data.playerHand;
+        cpuHand = data.cpuHand;
+        updateUI();
+      })
+      .withFailureHandler(err => {
+        console.error("GAS Server Error:", err);
+        document.getElementById('status').innerHTML = `<div class="alert alert-danger small">Connection Error: ${err.message}</div>`;
+      })
+      .getTulTrumpsData(user);
+  }
 
   function updateUI() {
-    if (playerHand.length === 0) { showEnd("CPU WINS! Try again?"); return; }
-    if (cpuHand.length === 0) { showEnd("YOU ARE THE CHAMPION!"); return; }
+    if (!playerHand || playerHand.length === 0) {
+      document.getElementById('active-card').innerHTML = `<div class="p-4"><h5>Deck is empty</h5><p class="small">Check Tuls sheet filter logic.</p></div>`;
+      return;
+    }
 
     const cur = playerHand[0];
     document.getElementById('tul-name').innerText = cur.name;
-    document.getElementById('tul-img').src = cur.img;
-    document.getElementById('tul-ready').innerText = "Ready: " + cur.readyStance;
-    document.getElementById('val-move').innerText = cur.movements;
-    document.getElementById('val-stances').innerText = cur.stances;
-    document.getElementById('val-diff').innerText = cur.difficulty;
-    document.getElementById('tul-meaning').innerText = cur.meaning;
+    document.getElementById('tul-img').src = cur.img || "https://via.placeholder.com/150?text=No+Image";
+    document.getElementById('tul-ready').innerText = "Ready: " + (cur.readyStance || "---");
+    document.getElementById('val-move').innerText = cur.movements || 0;
+    document.getElementById('val-stances').innerText = cur.stances || 0;
+    document.getElementById('val-diff').innerText = cur.difficulty || 0;
+    document.getElementById('tul-meaning').innerText = cur.meaning || "";
     
     document.getElementById('p-count').innerText = playerHand.length;
     document.getElementById('c-count').innerText = cpuHand.length;
     isProcessing = false;
   }
 
+  // Trigger the sequence
+  startSequence();
+
+
   function playTurn(stat) {
-    if (isProcessing) return;
+    if (isProcessing || playerHand.length === 0 || cpuHand.length === 0) return;
     isProcessing = true;
 
     const pCard = playerHand.shift();
@@ -108,59 +155,45 @@
     const resText = document.getElementById('result-text');
     const resDetails = document.getElementById('result-details');
 
-    // Make the stat name look nice (e.g., "movements" -> "Movements")
-    const statLabel = stat.charAt(0).toUpperCase() + stat.slice(1);
-
     overlay.classList.remove('hidden');
     setTimeout(() => overlay.classList.add('show'), 10);
 
     if (pCard[stat] > cCard[stat]) {
       resText.innerText = "ROUND WIN!";
       resText.className = "fw-bold text-win";
-      // Logic: Explain WHY you won
-      resDetails.innerHTML = `<strong>${pCard.name}</strong> beat <strong>${cCard.name}</strong> because it has <strong>${pCard[stat]}</strong> ${stat}, while ${cCard.name} only has ${cCard[stat]}.`;
+      resDetails.innerHTML = `<strong>${pCard.name}</strong> (${pCard[stat]}) beat <strong>${cCard.name}</strong> (${cCard[stat]}).`;
       playerHand.push(pCard, cCard);
     } 
     else if (pCard[stat] < cCard[stat]) {
       resText.innerText = "ROUND LOSS";
       resText.className = "fw-bold text-loss";
-      // Logic: Explain WHY you lost
-      resDetails.innerHTML = `<strong>${cCard.name}</strong> beat <strong>${pCard.name}</strong> because it has <strong>${cCard[stat]}</strong> ${stat}, but ${pCard.name} only has ${pCard[stat]}.`;
+      resDetails.innerHTML = `<strong>${cCard.name}</strong> (${cCard[stat]}) beat <strong>${pCard.name}</strong> (${pCard[stat]}).`;
       cpuHand.push(cCard, pCard);
     } 
     else {
       resText.innerText = "DRAW";
-      resText.className = "fw-bold text-draw";
-      resDetails.innerHTML = `Both <strong>${pCard.name}</strong> and <strong>${cCard.name}</strong> have <strong>${pCard[stat]}</strong> ${stat}. <br><small>Cards returned to the bottom of the deck.</small>`;
+      resText.className = "fw-bold text-dark";
+      resDetails.innerHTML = `Both cards had <strong>${pCard[stat]}</strong>. Returning to deck.`;
       playerHand.push(pCard); cpuHand.push(cCard);
     }
 
-    // Auto-close the result box after 3 seconds (slightly longer to allow for reading)
     setTimeout(() => {
       overlay.classList.remove('show');
       setTimeout(() => {
         overlay.classList.add('hidden');
         updateUI();
       }, 300);
-    }, 3500);
+    }, 2500);
   }
 
   function showEnd(txt) {
-  // If the user wins, trigger the main app's confetti
-  if (txt.includes("CHAMPION")) {
-    // We try to find the confetti function in the parent window
-    if (window.parent && typeof window.parent.triggerConfetti === 'function') {
-        window.parent.triggerConfetti();
-    } else {
-        // This helps for debugging if it still won't fire
-        console.log("Found parent but couldn't find triggerConfetti function.");
+    if (txt.includes("CHAMPION") && typeof triggerConfetti === 'function') {
+        triggerConfetti();
     }
-  }
-
-  document.querySelector('.game-container').innerHTML = `
-    <div class="text-center mt-5">
-      <h2 class="fw-bold">${txt}</h2>
-      <button class="btn btn-primary mt-4 px-5" onclick="location.reload()">Play Again</button>
-    </div>`;
+    document.getElementById('active-card').innerHTML = `
+      <div class="text-center py-5">
+        <h2 class="fw-bold">${txt}</h2>
+        <button class="btn btn-primary mt-4 px-5 rounded-pill" onclick="switchView('modes')">Finish</button>
+      </div>`;
   }
 </script>
