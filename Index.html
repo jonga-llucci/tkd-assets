@@ -97,6 +97,46 @@
     </div>
 </div>
 
+<!-- The actual Tul Trumps Game View -->
+<div id="view-game-trumps" class="view-container">
+    <div class="d-flex justify-content-between mb-2 fw-bold">
+        <div class="text-primary">Your Cards: <span id="player-card-count">0</span></div>
+        <div class="text-danger">CPU Cards: <span id="cpu-card-count">0</span></div>
+    </div>
+
+    <div class="quiz-card text-center shadow-lg">
+        <img id="tul-card-img" src="https://placehold.co/300x200?text=Loading..." class="img-fluid rounded mb-3" style="max-height: 200px;">
+        <h3 id="tul-card-name" class="fw-bold">---</h3>
+        <span id="tul-card-ready" class="badge bg-primary mb-3">Ready: ---</span>
+
+        <!-- Stats Rows -->
+        <div class="list-group">
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-activity"></i> Movements</span>
+                <span id="val-movements" class="fw-bold">0</span>
+            </div>
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-person-walking"></i> Stances</span>
+                <span id="val-stances" class="fw-bold">0</span>
+            </div>
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-star"></i> Difficulty</span>
+                <span id="val-difficulty" class="fw-bold">0</span>
+            </div>
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-star"></i> Ready Stance</span>
+                <span id="tul-card-ready" class="badge bg-primary mb-3">0</span>
+            </div>
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-star"></i> Interpretation</span>
+                <span id="tul-card-meaning" class="text-muted small mt-2">0</span>
+            </div>
+        </div>
+        
+        <button class="btn btn-outline-secondary mt-3" onclick="switchView('game-center')">Back to Menu</button>
+    </div>
+</div>
+
 <div id="view-quiz" class="view-container">
   <div class="progress-wrapper"><div id="progress-bar"></div></div>
   <div class="quiz-card">
@@ -177,9 +217,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-  // Ensure this is at the very top of your <script> in Index.html
-  let activeUser = ""; 
-
+ 
   let quizData = [], currentIndex = 0, score = 0, activeUser = "", timerInterval = null, timeLeft = 0, isQuizActive = false, currentMode = "", questionsAnswered = 0, missedQuestions = [];
   let matchSelected = { qId: null, aId: null, qEl: null, aEl: null }, matchesFound = 0, setsCleared = 0, swipeCorrect = false;
 
@@ -209,6 +247,66 @@
       }
     }).loginUser(u, p);
   }
+
+  function initTulTrumps() {
+    toggleLoad(true);
+    // activeUser was set during login, now we use it to get the right deck
+    google.script.run.withSuccessHandler(data => {
+      toggleLoad(false);
+      if (data.error) {
+        alert(data.error);
+        return;
+      }
+      // These must match the variables in your Tul Trumps game logic
+      playerHand = data.playerHand;
+      cpuHand = data.cpuHand;
+      updateGameUI(); // This function updates the '0' values and cards
+    }).getTulTrumpsData(activeUser);
+  }
+
+  function startApp(type) {
+    if (type === 'game_tuls') {
+        switchView('game-trumps'); // Switch to the new container we just made
+        initTulTrumps();           // Fetch the cards from TulGame.gs
+    } else {
+        // Handle Match Pairs or Swipe here later
+        alert("Coming soon!");
+    }
+  }
+
+function updateGameUI() {
+  console.log("Updating UI with playerHand:", playerHand); // Check the console for this!
+
+  // Update counts
+  if (document.getElementById('player-card-count')) {
+    document.getElementById('player-card-count').innerText = playerHand.length;
+  }
+  if (document.getElementById('cpu-card-count')) {
+    document.getElementById('cpu-card-count').innerText = cpuHand.length;
+  }
+
+  const card = playerHand[0];
+  if (!card) {
+    console.warn("No cards found for this user grade.");
+    return;
+  }
+
+  // Helper to set text only if element exists
+  const setEl = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.innerText = val;
+  };
+
+  setEl('tul-card-name', card.name);
+  setEl('tul-card-ready', "Ready: " + card.readyStance);
+  setEl('tul-card-meaning', card.meaning); // This is your Interpretation
+  setEl('val-movements', card.movements);
+  setEl('val-stances', card.stances);
+  setEl('val-difficulty', card.difficulty);
+
+  const img = document.getElementById('tul-card-img');
+  if (img) img.src = card.img;
+}
 
   function startApp(mode) {
     if (mode === 'game_tuls') {
@@ -412,7 +510,9 @@ function handleSwipe(userAnswer) {
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     const activeNav = document.getElementById('nav-' + id);
     if(activeNav) activeNav.classList.add('active');
-    else if(id === 'results' || id === 'game-center') document.getElementById('nav-modes').classList.add('active');
+    else if(id === 'results' || id === 'game-center' || id === 'game-trumps') {
+    document.getElementById('nav-modes').classList.add('active');
+}
   }
 
   function nextQuestion() { (currentIndex < quizData.length - 1) ? (currentIndex++, showQuestion()) : endQuiz(); }
