@@ -31,7 +31,20 @@
     .nav-item.active { color: var(--tkd-blue); font-weight: bold; }
     
     .hidden { display: none !important; }
-    #loading-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(255,255,255,0.9); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    
+    #loading-overlay { 
+    position: fixed; 
+    top:0; 
+    left:0; 
+    width:100%; 
+    height:100%; 
+    background: rgba(255,255,255,0.9); 
+    z-index: 9999; 
+    display: none; /* Changed from flex to none by default */
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: center; 
+}
     .copyright-text { text-align: center; font-size: 0.65rem; color: #bbb; padding: 4px; background: #fff; }
 
     .result-overlay {
@@ -88,7 +101,7 @@
 </head>
 <body>
 
-<div id="loading-overlay" class="hidden">
+<div id="loading-overlay">
     <div class="spinner-border text-primary mb-3"></div>
     <div id="loading-msg" class="fw-bold text-primary small px-4 text-center"></div>
 </div>
@@ -250,8 +263,7 @@
     <hr>
     <p class="mb-1">Club:</p>
     <p class="fw-bold">TSX Martial Arts, Bingley</p>
-    <div class="copyright-text mt-5">(C) J Gallucci 2026</div>
-  </div>
+    </div>
 </div>
 
 <div class="footer-container hidden" id="navbar">
@@ -439,88 +451,53 @@ function manualNextRound() {
 }
 
 function checkGameOver() {
-    const overlay = document.getElementById('result-overlay');
-    const resText = document.getElementById('result-text');
-    const resDetails = document.getElementById('result-details');
-    
-    // Clear the "Next round starting..." badge for the final screen
-    const badge = overlay.querySelector('.badge');
-    if (badge) badge.classList.add('hidden');
-
     if (playerHand.length === 0 || cpuHand.length === 0) {
+        const resText = document.getElementById('result-text');
+        const resDetails = document.getElementById('result-details');
+        const overlay = document.getElementById('result-overlay');
         const isWin = cpuHand.length === 0;
-        
-        if (isWin) {
-            if (typeof triggerConfetti === "function") triggerConfetti();
-            resText.innerText = "VICTORY!";
-            resText.className = "fw-bold text-win display-5";
-            resDetails.innerHTML = `
-                <p>Amazing! You have captured all the patterns.</p>
-                <div class="d-grid gap-2 mt-4">
-                    <button class="btn btn-primary btn-lg rounded-pill" onclick="location.reload()">Play Again</button>
-                    <button class="btn btn-outline-secondary rounded-pill" onclick="switchView('modes')">Return Home</button>
-                </div>
-            `;
-        } else {
-            resText.innerText = "GAME OVER";
-            resText.className = "fw-bold text-loss display-5";
-            resDetails.innerHTML = `
-                <p>${isWin ? 'Amazing! You captured all patterns.' : 'The CPU took your deck.'}</p>
-                <div class="d-grid gap-2 mt-4">
-                    <button class="btn btn-primary btn-lg rounded-pill" onclick="restartGame()">Try Again</button>
-                    <button class="btn btn-outline-secondary rounded-pill" onclick="goHome()">Return Home</button>
-                </div>
-              `;
-          
+
+        // Allow navigation functions to work by resetting the state gate
+        isQuizActive = false; 
+
+        if (isWin) { 
+            triggerConfetti(); 
+            resText.innerText = "VICTORY!"; 
+            resText.className = "fw-bold text-win display-5"; 
+        } else { 
+            resText.innerText = "GAME OVER"; 
+            resText.className = "fw-bold text-loss display-5"; 
         }
 
-        // Lock the overlay so it doesn't disappear automatically
-        overlay.classList.remove('hidden', 'hide');
-        overlay.classList.add('show');
-        
-        // Prevent the timeout from playTurn from clearing this screen
-        isProcessing = true; 
-        return true; 
+        resDetails.innerHTML = `
+          <p>${isWin ? 'Amazing! You have captured all the patterns.' : 'The CPU took your deck.'}</p>
+          <div class="d-grid gap-2 mt-4">
+              <button class="btn btn-primary btn-lg rounded-pill" onclick="restartGame()">Play Again</button>
+              <button class="btn btn-outline-secondary rounded-pill" onclick="goHome()">Return Home</button>
+          </div>`;
+          
+        overlay.classList.remove('hidden');
+        return true;
     }
     return false;
 }
 
 function restartGame() {
-    // 1. Hide the overlay
-    const overlay = document.getElementById('result-overlay');
-    if (overlay) {
-        overlay.classList.remove('show');
-        overlay.classList.add('hidden');
-    }
-
-    // 2. Reset game flags
-    isProcessing = false;
-
-    // 3. Re-initialize the cards (This shuffles and deals fresh)
-    if (typeof initTrumps === "function") {
-        initTrumps(); 
-    } else {
-        // Fallback: If you don't have a dedicated init function, 
-        // manual reload is the safest way to reset all variables.
-        location.reload(); 
-    }
-}
+      document.getElementById('result-overlay').classList.add('hidden');
+      isProcessing = false;
+      playerHand = [];
+      cpuHand = [];
+      initTulTrumps(); // Re-shuffles and starts over
+  }
 
 function goHome() {
-    // 1. Reset game state so it's fresh for next time
-    isProcessing = false;
-    
-    // 2. Hide overlay
-    const overlay = document.getElementById('result-overlay');
-    if (overlay) {
-        overlay.classList.add('hidden');
-    }
-
-    // 3. Switch back to the main menu view
-    if (typeof switchView === "function") {
-        switchView('modes'); 
-    }
-}
+      document.getElementById('result-overlay').classList.add('hidden');
+      isProcessing = false;
+      isQuizActive = false;
+      playerHand = [];
+      cpuHand = [];
+      switchView('modes');
+  }
 
   function toggleLoad(show, customMsg) {
   const loader = document.getElementById('loading-overlay');
@@ -836,19 +813,43 @@ function handleSwipe(userAnswer) {
   }
 
   function endQuiz() {
-    clearInterval(timerInterval); isQuizActive = false;
-    document.querySelectorAll('.view-container').forEach(v => { v.classList.remove('active-view'); v.style.display = 'none'; });
+    clearInterval(timerInterval); // Stop any active timers
+    isQuizActive = false; // Reset the quiz state flag
+
+    // If the user exits without answering anything, just go home
+    if (questionsAnswered === 0) {
+        switchView('modes');
+        return;
+    }
+
+    // Otherwise, prepare the results view
+    document.querySelectorAll('.view-container').forEach(v => { 
+        v.classList.remove('active-view'); 
+        v.style.display = 'none'; 
+    });
+
     const resTarget = document.getElementById('view-results');
-    const p = Math.round((score/(questionsAnswered||1))*100);
-    if(p >= 75) triggerConfetti();
+    const p = Math.round((score / questionsAnswered) * 100); // Calculate percentage
+    
+    if (p >= 75) triggerConfetti(); // Celebrate good scores
+
     document.getElementById('res-title').innerText = p >= 75 ? "GREAT JOB!" : "KEEP PRACTISING!";
     document.getElementById('res-percent').innerText = p + "%";
     document.getElementById('res-score').innerText = `${score}/${questionsAnswered} Correct`;
-    const rList = document.getElementById('review-list'); rList.innerHTML = '';
-    if(missedQuestions.length) {
-        missedQuestions.forEach(m => rList.innerHTML += `<div class="mb-2 p-2 bg-light border-start border-danger"><b>${m.q}</b><br><span class="text-success">${m.a}</span></div>`);
-    } else rList.innerHTML = '<div class="text-success p-2">Perfect! No mistakes to review.</div>';
-    resTarget.style.display = 'block'; setTimeout(() => resTarget.classList.add('active-view'), 10);
+
+    // Handle the mistakes review list
+    const rList = document.getElementById('review-list');
+    rList.innerHTML = '';
+    if (missedQuestions.length) {
+        missedQuestions.forEach(m => {
+            rList.innerHTML += `<div class="mb-2 p-2 bg-light border-start border-danger"><b>${m.q}</b><br><span class="text-success">${m.a}</span></div>`;
+        });
+    } else {
+        rList.innerHTML = '<div class="text-success p-2">Perfect! No mistakes to review.</div>';
+    }
+
+    resTarget.style.display = 'block';
+    setTimeout(() => resTarget.classList.add('active-view'), 10);
   }
 
   function updateTimerUI() { const m = Math.floor(timeLeft / 60), s = timeLeft % 60; document.getElementById('timer-display').innerText = `${m}:${s < 10 ? '0' : ''}${s}`; }
@@ -899,8 +900,62 @@ function saveGrade() {
   google.script.run.saveGrade(activeUser, document.getElementById('grade-selector').value); 
 }
 
-function updatePass() { 
-  google.script.run.updatePass(activeUser, document.getElementById('new-pass').value); 
+function updatePass() {
+    const newPass = document.getElementById('new-pass').value;
+    const resText = document.getElementById('result-text');
+    const resDetails = document.getElementById('result-details');
+    const overlay = document.getElementById('result-overlay');
+    
+    // Validation: 5+ chars, Upper, Lower, Num, Special
+    const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*]).{5,}$/;
+
+    if (!regex.test(newPass)) {
+        resText.innerText = "WEAK PASSWORD";
+        resText.className = "fw-bold text-danger";
+        resDetails.innerHTML = `
+            <p class="mb-4">Must be 5+ characters with Uppercase, Lowercase, Number, and Special Characters (!@#$%^&*)</p>
+            <div class="d-grid">
+                <button class="btn btn-primary rounded-pill" onclick="closeWarning()">Try Again</button>
+            </div>
+        `;
+        overlay.classList.remove('hidden');
+        return;
+    }
+
+    toggleLoad(true, "Securing account...");
+    
+    google.script.run
+        .withSuccessHandler(res => {
+            toggleLoad(false);
+            // Use the overlay for success confirmation
+            resText.innerText = "UPDATED!";
+            resText.className = "fw-bold text-success";
+            resDetails.innerHTML = `
+                <p class="mb-4">Your new password has been saved successfully.</p>
+                <div class="d-grid">
+                    <button class="btn btn-primary rounded-pill" onclick="closeWarning()">Great</button>
+                </div>
+            `;
+            document.getElementById('new-pass').value = ''; 
+            overlay.classList.remove('hidden');
+        })
+        .withFailureHandler(err => {
+            toggleLoad(false);
+            resText.innerText = "SERVER ERROR";
+            resText.className = "fw-bold text-danger";
+            resDetails.innerHTML = `<p>${err}</p><button class="btn btn-primary rounded-pill" onclick="closeWarning()">Close</button>`;
+            overlay.classList.remove('hidden');
+        })
+        .updatePass(activeUser, newPass);
+}
+
+/**
+ * Reusing your existing close logic
+ */
+function closeWarning() {
+    const overlay = document.getElementById('result-overlay');
+    if (overlay) overlay.classList.add('hidden');
+    isProcessing = false;
 }
 </script>
 </body>
