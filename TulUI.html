@@ -8,6 +8,43 @@
     text-align: center;
     margin-top: 10px;
   }
+
+  /* Fixed List Item Buttons */
+  .list-group-item {
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    user-select: none !important;
+    position: relative;
+    z-index: 10;
+    background-color: #ffffff !important;
+  }
+
+  /* Hover State - This MUST work now */
+  .list-group-item:hover {
+    background-color: #f0f7ff !important; /* Light blue tint */
+    color: #0d6efd !important;
+  }
+
+  /* Pressed State */
+  .list-group-item:active {
+    background-color: #e9ecef !important;
+    transform: scale(0.98);
+  }
+
+  /* Removes the sticky "shaded" look after clicking */
+.list-group-item-action:focus {
+    background-color: #fff !important; /* Reset to white */
+    color: inherit !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+/* Keeps the hover effect working normally */
+.list-group-item-action:hover {
+    background-color: #f8f9fa !important;
+    color: #0d6efd !important;
+}
+
   .tul-img { 
     width: 100%; 
     max-height: 180px; 
@@ -16,18 +53,7 @@
     margin-bottom: 15px; 
     background: #f8f9fa;
   }
-  .stat-list { margin-top: 15px; }
-  .stat-row { 
-    display: flex; 
-    justify-content: space-between; 
-    padding: 12px; 
-    background: #f8f9fa; 
-    margin-bottom: 8px; 
-    border-radius: 8px; 
-    cursor: pointer;
-    transition: transform 0.1s;
-  }
-  .stat-row:hover { background: #e9ecef; transform: scale(1.02); }
+
   .meaning-text { font-size: 0.85rem; color: #666; font-style: italic; margin-top: 15px; }
   
   /* Overlay Styling */
@@ -41,13 +67,14 @@
   .result-box { background: white; padding: 30px; border-radius: 20px; text-align: center; max-width: 80%; }
   .text-win { color: #198754; }
   .text-loss { color: #dc3545; }
+  .text-draw { color: #6c757d; }
   .hidden { display: none !important; }
 </style>
 
 <div class="game-container-inner">
   <div class="d-flex justify-content-between mb-2 fw-bold">
-    <span>Your Cards: <span id="p-count" class="text-primary">0</span></span>
-    <span>CPU Cards: <span id="c-count" class="text-danger">0</span></span>
+    <span>Your Cards: <span id="player-card-count" class="text-primary">0</span></span>
+    <span>CPU Cards: <span id="cpu-card-count" class="text-danger">0</span></span>
   </div>
   
   <div id="active-card" class="trump-card">
@@ -75,13 +102,6 @@
 
   <div id="status" class="mt-3 text-center"></div>
 
-  <div id="result-overlay" class="result-overlay hidden">
-    <div id="result-box" class="result-box">
-        <h2 id="result-text" class="fw-bold"></h2>
-        <p id="result-details" class="mt-3"></p>
-    </div>
-  </div>
-</div>
 
 <script>
   let playerHand = [], cpuHand = [];
@@ -135,8 +155,8 @@
     document.getElementById('val-difficulty').innerText = cur.difficulty || 0;
     document.getElementById('tul-meaning').innerText = cur.meaning || "";
     
-    document.getElementById('p-count').innerText = playerHand.length;
-    document.getElementById('c-count').innerText = cpuHand.length;
+    document.getElementById('player-card-count').innerText = playerHand.length;
+    document.getElementById('cpu-card-count').innerText = cpuHand.length;
     isProcessing = false;
   }
 
