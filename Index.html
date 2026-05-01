@@ -296,11 +296,9 @@ function showUniversalWarning(targetView, mode) {
     const resDetails = document.getElementById('result-details');
     const overlay = document.getElementById('result-overlay');
 
+    // Ensure no lingering game timers interfere with the warning
+    if (roundTimeout) clearInterval(roundTimeout);
     isProcessing = true; // Lock the game interactions
-
-    // Remove the "Next round" badge if it exists
-    const badge = overlay.querySelector('.badge');
-    if (badge) badge.classList.add('hidden');
 
     resText.innerText = "QUIT SESSION?";
     resText.className = "fw-bold text-dark";
@@ -354,19 +352,14 @@ function confirmExit(targetView, mode) {
     }
 }
 
-function playTurn(stat) {
-    // Immediately un-shade the button to prevent it staying gray
-    if (document.activeElement && typeof document.activeElement.blur === 'function') {
-        document.activeElement.blur();
-    }
+let roundTimeout = null; // To track the auto-advance timer
 
+function playTurn(stat) {
     if (isProcessing || playerHand.length === 0 || cpuHand.length === 0) return;
     isProcessing = true;
 
     const pCard = playerHand[0];
     const cCard = cpuHand[0];
-    
-    // Get values as numbers for comparison
     const pVal = parseInt(pCard[stat]) || 0;
     const cVal = parseInt(cCard[stat]) || 0;
 
@@ -374,77 +367,75 @@ function playTurn(stat) {
     const resText = document.getElementById('result-text');
     const resDetails = document.getElementById('result-details');
 
-    let resultMessage = "";
     let statusText = "";
     let textColorClass = "";
+    let resultMessage = "";
 
-    // 1. Determine Win/Loss/Draw and set variables
     if (pVal > cVal) {
         statusText = "ROUND WON!";
         textColorClass = "fw-bold text-win";
-        resultMessage = `Your ${pCard.name} has ${pVal} ${stat}, whereas CPU's ${cCard.name} has ${cVal}.`;
-        
-        // Move cards to player's hand
+        resultMessage = `Your ${pCard.name} (${pVal}) beat ${cCard.name} (${cVal}).`;
         playerHand.push(playerHand.shift(), cpuHand.shift());
     } else if (cVal > pVal) {
         statusText = "ROUND LOST";
         textColorClass = "fw-bold text-loss";
-        resultMessage = `CPU's ${cCard.name} has ${cVal} ${stat}, beating your ${pCard.name} with ${pVal}.`;
-        
-        // Move cards to CPU's hand
+        resultMessage = `CPU's ${cCard.name} (${cVal}) beat your ${pCard.name} (${pVal}).`;
         cpuHand.push(cpuHand.shift(), playerHand.shift());
     } else {
         statusText = "DRAW";
         textColorClass = "fw-bold text-draw";
-        resultMessage = `Both patterns have ${pVal} ${stat}. Cards returned to deck.`;
-        
-        // Put cards back at bottom
+        resultMessage = `Both patterns have ${pVal} ${stat}.`;
         playerHand.push(playerHand.shift());
         cpuHand.push(cpuHand.shift());
     }
 
-    // 2. Update UI with the results
-    if (resText) {
-        resText.innerText = statusText;
-        resText.className = textColorClass;
-    }
+    resText.innerText = statusText;
+    resText.className = textColorClass;
+
+    // UI with "Next Round" button and countdown
+    resDetails.innerHTML = `
+        <p class="mb-4">${resultMessage}</p>
+        <div class="d-grid">
+            <button id="next-round-btn" class="btn btn-primary btn-lg rounded-pill py-3" onclick="manualNextRound()">
+                Next Round (3s)
+            </button>
+        </div>
+    `;
+
+    overlay.classList.remove('hidden');
     
-    if (resDetails) {
-        resDetails.innerText = resultMessage;
-    }
-
-    // 3. Trigger the Animation
-    if (overlay) {
-        overlay.classList.remove('hidden', 'hide');
-        overlay.classList.add('show');
-    }
-
-    // 4. Pause for 3 seconds, then reset
-    setTimeout(() => {
-        if (overlay) {
-            overlay.classList.remove('show');
-            overlay.classList.add('hide');
-            setTimeout(() => overlay.classList.add('hidden'), 300);
-        }
-
-      setTimeout(() => {
-        const gameOver = checkGameOver();
+    // Start the 3-second timer
+    let count = 3;
+    roundTimeout = setInterval(() => {
+        count--;
+        const btn = document.getElementById('next-round-btn');
+        if (btn) btn.innerText = `Next Round (${count}s)`;
         
-        if (!gameOver) {
-            if (overlay) {
-                overlay.classList.remove('show');
-                overlay.classList.add('hidden');
+        if (count <= 0) {
+            manualNextRound();
+        }
+    }, 1000);
+}
+
+function manualNextRound() {
+    clearInterval(roundTimeout);
+    const overlay = document.getElementById('result-overlay');
+    
+    if (playerHand.length > 0) {
+        const nextImg = new Image();
+        nextImg.onload = () => {
+            overlay.classList.add('hidden');
+            if (!checkGameOver()) {
+                isProcessing = false;
+                updateGameUI();
             }
-            isProcessing = false; // MUST reset this so the next click works
-            updateGameUI();
-        }
-        // If gameOver is true, we keep isProcessing = true 
-        // to "lock" the game while they look at the final screen.
-    }, 3000);
-        
+        };
+        // Use Variable here
+        nextImg.src = playerHand[0].img || TUL_PLACEHOLDER;
+    } else {
+        overlay.classList.add('hidden');
         checkGameOver();
-        updateGameUI(); // isProcessing is reset to false here
-    }, 3000);
+    }
 }
 
 function checkGameOver() {
@@ -556,35 +547,42 @@ function goHome() {
     }).loginUser(u, p);
   }
 
-  function initTulTrumps() {
+function initTulTrumps() {
     isQuizActive = true;
-    console.log("Initializing Tul Trumps for user:", activeUser);
+    const loadingMsg = document.getElementById('loading-msg');
+    if (loadingMsg) loadingMsg.innerText = "Shuffling the deck...";
     toggleLoad(true);
     
     google.script.run
       .withSuccessHandler(data => {
-        toggleLoad(false);
-        console.log("Tul Trumps Data Received:", data); // LOGGING DATA
-        
         if (!data || data.error) {
-          console.error("Game Data Error:", data ? data.error : "No data received");
-          alert("Failed to load game data: " + (data ? data.error : "Unknown error"));
-          return;
+            toggleLoad(false);
+            alert("Error: " + data.error);
+            return;
         }
         
         playerHand = data.playerHand;
         cpuHand = data.cpuHand;
         
-        console.log("Hands initialized. Player:", playerHand?.length, "CPU:", cpuHand?.length);
-        updateGameUI(); 
-      })
-      .withFailureHandler(err => {
-        toggleLoad(false);
-        console.error("Server-side call failed:", err);
-        alert("Server error: " + err.message);
+        if (playerHand.length > 0) {
+            const imgLoader = new Image();
+            imgLoader.onload = () => {
+                toggleLoad(false);
+                updateGameUI();
+            };
+            imgLoader.onerror = () => {
+                toggleLoad(false);
+                updateGameUI();
+            };
+            // Use Variable here
+            imgLoader.src = playerHand[0].img || TUL_PLACEHOLDER;
+        } else {
+            toggleLoad(false);
+            updateGameUI();
+        }
       })
       .getTulTrumpsData(activeUser);
-  }
+}
 
   function startApp(mode) {
   console.log("Starting App Mode:", mode);
@@ -640,12 +638,31 @@ function goHome() {
   
 
   function updateGameUI() {
-    console.log("Updating Game UI...");
     if (!playerHand || playerHand.length === 0) {
-      console.warn("No cards in player hand to display");
-      isProcessing = false; // Reset here too so the user isn't locked if they lose
-      return;
+        isProcessing = false;
+        return;
     }
+    
+    const card = playerHand[0];
+    const imgEl = document.getElementById('tul-card-img');
+    
+    // Update text data
+    document.getElementById('player-card-count').innerText = playerHand.length;
+    document.getElementById('cpu-card-count').innerText = cpuHand.length;
+    document.getElementById('tul-card-name').innerText = card.name;
+    document.getElementById('tul-card-ready').innerText = "Ready: " + (card.readyStance || "---");
+    document.getElementById('tul-card-meaning').innerText = card.meaning || ""; 
+    document.getElementById('val-movements').innerText = card.movements || 0;
+    document.getElementById('val-stances').innerText = card.stances || 0;
+    document.getElementById('val-difficulty').innerText = card.difficulty || 0;
+
+    // Use Variable here
+    if (imgEl) {
+        imgEl.src = card.img || TUL_PLACEHOLDER;
+    }
+    
+    isProcessing = false; 
+  }
     
     const card = playerHand[0];
     console.log("Current active card:", card.name);
