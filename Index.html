@@ -442,7 +442,7 @@ function manualNextRound() {
             }
         };
         // Use Variable here
-        nextImg.src = playerHand[0].img || TUL_PLACEHOLDER;
+        nextImg.src = playerHand[0].img || "";
     } else {
         overlay.classList.add('hidden');
         checkGameOver();
@@ -549,7 +549,7 @@ function goHome() {
     }).loginUser(u, p);
   }
 
-function initTulTrumps() {
+/**function initTulTrumps() {
     isQuizActive = true;
     
     toggleLoad(true, "Shuffling the deck...");
@@ -584,65 +584,68 @@ function initTulTrumps() {
         }
       })
       .getTulTrumpsData(activeUser);
-}
+}*/
 
   function startApp(mode) {
-  console.log("Starting App Mode:", mode);
-  
-  // 1. Determine which view container we need
-  let targetView = 'view-quiz'; // Default for practice/test/swipe/match
-  if (mode === 'game_tuls') targetView = 'view-trumps';
+    console.log("Starting App Mode:", mode);
+    
+    // 1. Determine the correct View ID based on the mode
+    let targetView = 'view-quiz'; 
+    if (mode === 'game_tuls') targetView = 'view-trumps';
 
-  // 2. Use our consistent handleNavigation to go there
-  // This ensures isQuizActive logic and icon updates run correctly
-  handleNavigation(targetView); 
+    // 2. Reset global game state variables
+    isQuizActive = true; 
+    currentMode = mode; 
+    questionsAnswered = 0; 
+    score = 0; 
+    currentIndex = 0; 
+    missedQuestions = []; 
+    setsCleared = 0;
 
-  if (mode === 'game_tuls') {
-    initTulTrumps(); 
-    return;
-  }
-
-  // 3. Rest of your standard initialization logic
-  isQuizActive = true; 
-  currentMode = mode; 
-  questionsAnswered = 0; 
-  score = 0; 
-  currentIndex = 0; 
-  missedQuestions = []; 
-  setsCleared = 0;
-  
-  // Ensure we hide previous UI sub-elements
+    // 3. Clear existing timers and UI elements from previous sessions
+    if (timerInterval) clearInterval(timerInterval);
     document.querySelectorAll('#view-quiz [id^="ui-"]').forEach(el => el.classList.add('hidden'));
     document.getElementById('timer-display')?.classList.add('hidden');
     document.getElementById('next-btn')?.classList.add('hidden');
-    
-    if (timerInterval) clearInterval(timerInterval);
-    toggleLoad(true);
 
-    const isGame = mode.startsWith('game_');
-    if (isGame) {
-      google.script.run.withSuccessHandler(data => {
-          toggleLoad(false); 
-          quizData = data;
-          switchView('quiz');
-          if (mode === 'game_match') setupMatch();
-          else if (mode === 'game_swipe') setupSwipe();
-      }).getGameData(activeUser, mode); 
-    } else {
-      google.script.run.withSuccessHandler(data => {
-          toggleLoad(false); 
-          quizData = data;
-          if(mode === 'test') { 
-            timeLeft = 3600; 
-            document.getElementById('timer-display')?.classList.remove('hidden'); 
-            updateTimerUI(); 
-            timerInterval = setInterval(() => { timeLeft--; updateTimerUI(); if(timeLeft<=0) endQuiz(); }, 1000); 
-          }
-          switchView('quiz');
-          showQuestion();
-      }).getQuizData(activeUser, (mode === 'test' ? 'test' : 'practice'));
+    // 4. Handle Tul Trumps separately (it has its own data fetcher)
+    if (mode === 'game_tuls') {
+        switchView('view-trumps');
+        initTulTrumps(); 
+        return;
     }
-  }
+
+    // 5. Handle Standard Quizzes and Interactive Games[cite: 6]
+    toggleLoad(true);
+    const isGame = mode.startsWith('game_');
+
+    if (isGame) {
+        google.script.run.withSuccessHandler(data => {
+            toggleLoad(false); 
+            quizData = data;
+            switchView('view-quiz'); // Fixed: Changed from 'quiz' to 'view-quiz'[cite: 6]
+            if (mode === 'game_match') setupMatch();
+            else if (mode === 'game_swipe') setupSwipe();
+        }).getGameData(activeUser, mode); 
+    } else {
+        google.script.run.withSuccessHandler(data => {
+            toggleLoad(false); 
+            quizData = data;
+            if (mode === 'test') { 
+                timeLeft = 3600; 
+                document.getElementById('timer-display')?.classList.remove('hidden'); 
+                updateTimerUI(); 
+                timerInterval = setInterval(() => { 
+                    timeLeft--; 
+                    updateTimerUI(); 
+                    if (timeLeft <= 0) endQuiz(); 
+                }, 1000); 
+            }
+            switchView('view-quiz'); // Fixed: Changed from 'quiz' to 'view-quiz'[cite: 6]
+            showQuestion();
+        }).getQuizData(activeUser, (mode === 'test' ? 'test' : 'practice'));
+    }
+}
 
   
 
@@ -843,31 +846,36 @@ function handleSwipe(userAnswer) {
     clearInterval(timerInterval); // Stop any active timers
     isQuizActive = false; // Reset the quiz state flag
 
-    // If the user exits without answering anything, just go home
+    // 1. If no questions were answered, just go home
     if (questionsAnswered === 0) {
-        switchView('view-modes');
+        switchView('view-modes');[cite: 6]
         return;
     }
 
-    // Otherwise, prepare the results view
-    document.querySelectorAll('.view-container').forEach(v => { 
-        v.classList.remove('active-view'); 
-        v.style.display = 'none'; 
+    // 2. Clear all views to prevent overlapping
+    const views = ['view-login', 'view-modes', 'view-game-center', 'view-trumps', 'view-quiz', 'view-results', 'view-account', 'view-about'];
+    views.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.classList.add('hidden');
+            el.classList.remove('active-view');
+        }
     });
 
+    // 3. Prepare the results data
     const resTarget = document.getElementById('view-results');
-    const p = Math.round((score / questionsAnswered) * 100); // Calculate percentage
+    const p = Math.round((score / questionsAnswered) * 100); 
     
-    if (p >= 75) triggerConfetti(); // Celebrate good scores
+    if (p >= 75) triggerConfetti(); // Celebrate success!
 
-    document.getElementById('res-title').innerText = p >= 75 ? "GREAT JOB!" : "KEEP PRACTISING!";
-    document.getElementById('res-percent').innerText = p + "%";
-    document.getElementById('res-score').innerText = `${score}/${questionsAnswered} Correct`;
+    document.getElementById('res-title').innerText = p >= 75 ? "GREAT JOB!" : "KEEP PRACTISING!";[cite: 6]
+    document.getElementById('res-percent').innerText = p + "%";[cite: 6]
+    document.getElementById('res-score').innerText = `${score}/${questionsAnswered} Correct`;[cite: 6]
 
-    // Handle the mistakes review list
+    // 4. Handle the mistakes review list[cite: 6]
     const rList = document.getElementById('review-list');
     rList.innerHTML = '';
-    if (missedQuestions.length) {
+    if (missedQuestions.length > 0) {
         missedQuestions.forEach(m => {
             rList.innerHTML += `<div class="mb-2 p-2 bg-light border-start border-danger"><b>${m.q}</b><br><span class="text-success">${m.a}</span></div>`;
         });
@@ -875,9 +883,13 @@ function handleSwipe(userAnswer) {
         rList.innerHTML = '<div class="text-success p-2">Perfect! No mistakes to review.</div>';
     }
 
-    resTarget.style.display = 'block';
-    setTimeout(() => resTarget.classList.add('active-view'), 10);
-  }
+    // 5. Explicitly show the results view[cite: 6]
+    if (resTarget) {
+        resTarget.classList.remove('hidden');
+        resTarget.style.display = 'block'; // Force display if hidden class is stubborn
+        setTimeout(() => resTarget.classList.add('active-view'), 10);
+    }
+}
 
   function updateTimerUI() { const m = Math.floor(timeLeft / 60), s = timeLeft % 60; document.getElementById('timer-display').innerText = `${m}:${s < 10 ? '0' : ''}${s}`; }
 
@@ -931,7 +943,9 @@ function nextQuestion() {
 
 function handleLogout() { 
   isQuizActive = false; 
-  switchView('login'); 
+  activeUser = ""; // Clear user state
+  document.getElementById('navbar').classList.add('hidden'); // Hide nav on logout
+  switchView('view-login'); // CORRECT: Matches your HTML ID
 }
 
 function saveGrade() { 
