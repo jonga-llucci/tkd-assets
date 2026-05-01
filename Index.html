@@ -135,7 +135,7 @@
       <div><h3 class="mb-0">Hi, <span id="user-welcome"></span></h3><small id="user-streak" class="text-primary fw-bold"></small></div>
       <i class="bi bi-person-circle fs-1 text-primary"></i>
     </div>
-    <button class="btn btn-warning w-100 mb-3 p-3 text-start border-0 shadow-sm" onclick="switchView('game-center')">
+    <button class="btn btn-warning w-100 mb-3 p-3 text-start border-0 shadow-sm" onclick="handleNavigation('game-center')">
       <div class="d-flex align-items-center"><i class="bi bi-controller me-3 fs-3"></i><div><strong>Game Center</strong><br><small>Interactive Challenges</small></div></div>
     </button>
     <button class="btn btn-primary w-100 mb-3 p-3 text-start shadow-sm" onclick="startApp('practice')">
@@ -160,31 +160,35 @@
 
 <div id="view-trumps" class="view-container">
     <div class="quiz-card text-center">
-        <div class="d-flex justify-content-between mb-3 fw-bold">
-            <span class="text-primary">Your Cards: <span id="player-card-count">0</span></span>
-            <span class="text-danger">CPU Cards: <span id="cpu-card-count">0</span> <small id="cpu-card-name" class="ms-1 opacity-75"></small></span>
-        </div>
-        
-        <div class="card shadow-sm mb-4">
-            <img id="tul-card-img" src="" class="card-img-top p-3" style="max-height: 100%; object-fit: contain;">
-            <div class="card-body">
-                <h3 id="tul-card-name" class="fw-bold">---</h3>
-                <span id="tul-card-ready" class="badge bg-primary mb-2">---</span>
-                <p id="tul-card-meaning" class="small text-muted"></p>
-                
-                <div class="list-group list-group-flush text-start shadow-sm rounded-3">
-                    <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3" onclick="playTurn('movements')">
-                        <span><i class="bi bi-arrows-move me-2 text-primary"></i>Movements</span>
-                        <span id="val-movements" class="fw-bold fs-5">0</span>
-                    </button>
-                    <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3" onclick="playTurn('stances')">
-                        <span><i class="bi bi-person-walking me-2 text-primary"></i>Stances</span>
-                        <span id="val-stances" class="fw-bold fs-5">0</span>
-                    </button>
-                    <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3" onclick="playTurn('difficulty')">
-                        <span><i class="bi bi-bar-chart me-2 text-primary"></i>Difficulty</span>
-                        <span id="val-difficulty" class="fw-bold fs-5">0</span>
-                    </button>
+        <!-- ADD THIS WRAPPER -->
+        <div id="trumps-content-wrapper" style="transition: opacity 0.3s ease;">
+            <div class="d-flex justify-content-between mb-3 fw-bold">
+                <span class="text-primary">Your Cards: <span id="player-card-count">0</span></span>
+                <span class="text-danger">CPU Cards: <span id="cpu-card-count">0</span> <small id="cpu-card-name" class="ms-1 opacity-75"></small></span>
+            </div>
+            
+            <div class="card shadow-sm mb-4">
+                <img id="tul-card-img" src="" class="card-img-top p-3" style="max-height: 100%; object-fit: contain;">
+                <div class="card-body">
+                    <h3 id="tul-card-name" class="fw-bold">---</h3>
+                    <span id="tul-card-ready" class="badge bg-primary mb-2">---</span>
+                    <p id="tul-card-meaning" class="small text-muted"></p>
+                    
+                    <div class="list-group list-group-flush text-start shadow-sm rounded-3">
+                        <!-- Ensure IDs match playTurn calls -->
+                        <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3" onclick="playTurn('movements')">
+                            <span><i class="bi bi-arrows-move me-2 text-primary"></i>Movements</span>
+                            <span id="val-movements" class="fw-bold fs-5">0</span>
+                        </button>
+                        <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3" onclick="playTurn('stances')">
+                            <span><i class="bi bi-person-walking me-2 text-primary"></i>Stances</span>
+                            <span id="val-stances" class="fw-bold fs-5">0</span>
+                        </button>
+                        <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3" onclick="playTurn('difficulty')">
+                            <span><i class="bi bi-bar-chart me-2 text-primary"></i>Difficulty</span>
+                            <span id="val-difficulty" class="fw-bold fs-5">0</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -230,7 +234,7 @@
       <h6 class="fw-bold">Mistakes Review:</h6>
       <div id="review-list" style="max-height: 200px; overflow-y: auto;" class="small"></div>
     </div>
-    <button class="btn btn-primary w-100 p-3 rounded-pill" onclick="switchView('modes')">Finish Session</button>
+    <button class="btn btn-primary w-100 p-3 rounded-pill" onclick="handleNavigation('modes')">Finish Session</button>
   </div>
 </div>
 
@@ -556,6 +560,7 @@ function initTulTrumps() {
     google.script.run
       .withSuccessHandler(data => {
         if (!data || data.error) {
+            isQuizActive = false;
             toggleLoad(false);
             alert("Error: " + data.error);
             return;
@@ -589,7 +594,7 @@ function initTulTrumps() {
   
   if (mode === 'game_tuls') {
     // No server call for HTML needed anymore
-    switchView('trumps'); 
+    handleNavigation('trumps'); 
     initTulTrumps(); 
     return;
     }
@@ -644,25 +649,24 @@ function initTulTrumps() {
 function updateGameUI() {
     if (!playerHand || playerHand.length === 0) { 
         isProcessing = false; 
+        toggleLoad(false);
         return; 
     }
     
     const wrapper = document.getElementById('trumps-content-wrapper');
-    wrapper.style.opacity = "0";
-
     const card = playerHand[0];
     const cpuCard = cpuHand[0];
     const imgEl = document.getElementById('tul-card-img');
 
-    // Update Card Counts
+    if (wrapper) wrapper.style.opacity = "0";
+
+    // Update Card Counts and Stats
     document.getElementById('player-card-count').innerText = playerHand.length;
     document.getElementById('cpu-card-count').innerText = cpuHand.length;
     
-    // Knowledge Test: CPU current card name
     const cpuNameEl = document.getElementById('cpu-card-name');
-    if (cpuCard) cpuNameEl.innerText = `(${cpuCard.name})`;
+    if (cpuCard && cpuNameEl) cpuNameEl.innerText = `(${cpuCard.name})`;
 
-    // Populate Stats (Trusting server-side defaults)
     document.getElementById('tul-card-name').innerText = card.name;
     document.getElementById('tul-card-ready').innerText = "Ready: " + card.readyStance;
     document.getElementById('tul-card-meaning').innerText = card.meaning; 
@@ -670,17 +674,21 @@ function updateGameUI() {
     document.getElementById('val-stances').innerText = card.stances;
     document.getElementById('val-difficulty').innerText = card.difficulty;
 
-    // Direct image assignment - DRY compliance achieved
+    // Ensure loader turns off even if image is broken
     imgEl.onload = function() {
+        if (wrapper) wrapper.style.opacity = "1";
         toggleLoad(false);
-        wrapper.style.opacity = "1";
+        isProcessing = false;
+    };
+    imgEl.onerror = function() {
+        toggleLoad(false);
         isProcessing = false;
     };
     imgEl.src = card.img; 
 }
 
 function initTulTrumps() {
-    toggleLoad(true, "Shuffling Tuls...");
+    toggleLoad(true, "Shuffling deck...");
     // This calls the single consolidated function in TulGame.gs
     google.script.run
         .withSuccessHandler(data => {
