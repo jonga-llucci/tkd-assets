@@ -254,7 +254,7 @@
         <h3 class="mb-4">Account Profile</h3>
         <div class="mb-4"><label class="small fw-bold text-muted">CURRENT GRADE</label><select id="grade-selector" class="form-select p-3" onchange="saveGrade()"></select></div>
         <div class="mb-4"><label class="small fw-bold text-muted">PASSWORD</label><input type="password" id="new-pass" class="form-control p-3 mb-2" placeholder="New Password"><button class="btn btn-primary w-100 p-3" onclick="updatePass()">Update Password</button></div>
-        <button class="btn btn-outline-danger w-100 p-3" onclick="handleNavigation()">Log Out</button>
+        <button class="btn btn-outline-danger w-100 p-3" onclick="handleLogout()">Log Out</button>
     </div>
 </div>
 
@@ -615,7 +615,7 @@ function goHome() {
         return;
     }
 
-    // 5. Handle Standard Quizzes and Interactive Games[cite: 6]
+    // 5. Handle Standard Quizzes and Interactive Games
     toggleLoad(true);
     const isGame = mode.startsWith('game_');
 
@@ -623,7 +623,7 @@ function goHome() {
         google.script.run.withSuccessHandler(data => {
             toggleLoad(false); 
             quizData = data;
-            switchView('view-quiz'); // Fixed: Changed from 'quiz' to 'view-quiz'[cite: 6]
+            switchView('view-quiz'); // Fixed: Changed from 'quiz' to 'view-quiz'
             if (mode === 'game_match') setupMatch();
             else if (mode === 'game_swipe') setupSwipe();
         }).getGameData(activeUser, mode); 
@@ -641,7 +641,7 @@ function goHome() {
                     if (timeLeft <= 0) endQuiz(); 
                 }, 1000); 
             }
-            switchView('view-quiz'); // Fixed: Changed from 'quiz' to 'view-quiz'[cite: 6]
+            switchView('view-quiz'); // Fixed: Changed from 'quiz' to 'view-quiz'
             showQuestion();
         }).getQuizData(activeUser, (mode === 'test' ? 'test' : 'practice'));
     }
@@ -848,7 +848,7 @@ function handleSwipe(userAnswer) {
 
     // 1. If no questions were answered, just go home
     if (questionsAnswered === 0) {
-        switchView('view-modes');[cite: 6]
+        switchView('view-modes');
         return;
     }
 
@@ -868,11 +868,11 @@ function handleSwipe(userAnswer) {
     
     if (p >= 75) triggerConfetti(); // Celebrate success!
 
-    document.getElementById('res-title').innerText = p >= 75 ? "GREAT JOB!" : "KEEP PRACTISING!";[cite: 6]
-    document.getElementById('res-percent').innerText = p + "%";[cite: 6]
-    document.getElementById('res-score').innerText = `${score}/${questionsAnswered} Correct`;[cite: 6]
+    document.getElementById('res-title').innerText = p >= 75 ? "GREAT JOB!" : "KEEP PRACTISING!";
+    document.getElementById('res-percent').innerText = p + "%";
+    document.getElementById('res-score').innerText = `${score}/${questionsAnswered} Correct`;
 
-    // 4. Handle the mistakes review list[cite: 6]
+    // 4. Handle the mistakes review list
     const rList = document.getElementById('review-list');
     rList.innerHTML = '';
     if (missedQuestions.length > 0) {
@@ -883,7 +883,7 @@ function handleSwipe(userAnswer) {
         rList.innerHTML = '<div class="text-success p-2">Perfect! No mistakes to review.</div>';
     }
 
-    // 5. Explicitly show the results view[cite: 6]
+    // 5. Explicitly show the results view
     if (resTarget) {
         resTarget.classList.remove('hidden');
         resTarget.style.display = 'block'; // Force display if hidden class is stubborn
@@ -942,10 +942,10 @@ function nextQuestion() {
 }
 
 function handleLogout() { 
-  isQuizActive = false; 
-  activeUser = ""; // Clear user state
-  document.getElementById('navbar').classList.add('hidden'); // Hide nav on logout
-  switchView('view-login'); // CORRECT: Matches your HTML ID
+  isQuizActive = false; // Prevents the 'Stay & Play' warning from appearing
+  activeUser = ""; 
+  document.getElementById('navbar').classList.add('hidden'); 
+  switchView('view-login'); 
 }
 
 function saveGrade() { 
