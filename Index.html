@@ -287,7 +287,7 @@
 <script>
 
   let playerHand = [], cpuHand = []; 
-  let isProcessing = false;
+  //let isProcessing = false;
 
   let quizData = [], currentIndex = 0, score = 0, activeUser = "", timerInterval = null, timeLeft = 0, isQuizActive = false, currentMode = "", questionsAnswered = 0, missedQuestions = [];
   let matchSelected = { qId: null, aId: null, qEl: null, aEl: null }, matchesFound = 0, setsCleared = 0, swipeCorrect = false;
@@ -364,124 +364,6 @@ function confirmExit(targetView, mode) {
             switchView(targetView);
         }
     }
-}
-
-let roundTimeout = null; // To track the auto-advance timer
-
-function playTurn(stat) {
-    if (isProcessing || playerHand.length === 0 || cpuHand.length === 0) return;
-    isProcessing = true;
-
-    const pCard = playerHand[0];
-    const cCard = cpuHand[0];
-    const pVal = parseInt(pCard[stat]) || 0;
-    const cVal = parseInt(cCard[stat]) || 0;
-
-    const overlay = document.getElementById('result-overlay');
-    const resText = document.getElementById('result-text');
-    const resDetails = document.getElementById('result-details');
-
-    let statusText = "";
-    let textColorClass = "";
-    let resultMessage = "";
-
-    if (pVal > cVal) {
-        statusText = "ROUND WON!";
-        textColorClass = "fw-bold text-win";
-        resultMessage = `Your ${pCard.name} (${pVal}) beat ${cCard.name} (${cVal}).`;
-        playerHand.push(playerHand.shift(), cpuHand.shift());
-    } else if (cVal > pVal) {
-        statusText = "ROUND LOST";
-        textColorClass = "fw-bold text-loss";
-        resultMessage = `CPU's ${cCard.name} (${cVal}) beat your ${pCard.name} (${pVal}).`;
-        cpuHand.push(cpuHand.shift(), playerHand.shift());
-    } else {
-        statusText = "DRAW";
-        textColorClass = "fw-bold text-draw";
-        resultMessage = `Both patterns have ${pVal} ${stat}.`;
-        playerHand.push(playerHand.shift());
-        cpuHand.push(cpuHand.shift());
-    }
-
-    resText.innerText = statusText;
-    resText.className = textColorClass;
-
-    // UI with "Next Round" button and countdown
-    resDetails.innerHTML = `
-        <p class="mb-4">${resultMessage}</p>
-        <div class="d-grid">
-            <button id="next-round-btn" class="btn btn-primary btn-lg rounded-pill py-3" onclick="manualNextRound()">
-                Next Round (3s)
-            </button>
-        </div>
-    `;
-
-    overlay.classList.remove('hidden');
-    
-    // Start the 3-second timer
-    let count = 3;
-    roundTimeout = setInterval(() => {
-        count--;
-        const btn = document.getElementById('next-round-btn');
-        if (btn) btn.innerText = `Next Round (${count}s)`;
-        
-        if (count <= 0) {
-            manualNextRound();
-        }
-    }, 1000);
-}
-
-function manualNextRound() {
-    clearInterval(roundTimeout);
-    const overlay = document.getElementById('result-overlay');
-    
-    if (playerHand.length > 0) {
-        const nextImg = new Image();
-        nextImg.onload = () => {
-            overlay.classList.add('hidden');
-            if (!checkGameOver()) {
-                isProcessing = false;
-                updateGameUI();
-            }
-        };
-        // Use Variable here
-        nextImg.src = playerHand[0].img || TUL_PLACEHOLDER;
-    } else {
-        overlay.classList.add('hidden');
-        checkGameOver();
-    }
-}
-
-function checkGameOver() {
-    if (playerHand.length === 0 || cpuHand.length === 0) {
-        const resText = document.getElementById('result-text');
-        const resDetails = document.getElementById('result-details');
-        const overlay = document.getElementById('result-overlay');
-        const isWin = cpuHand.length === 0;
-
-        // Allow navigation functions to work by resetting the state gate
-        isQuizActive = false; 
-
-        if (isWin) { 
-            triggerConfetti(); 
-            resText.innerText = "VICTORY!"; 
-            resText.className = "fw-bold text-win display-5"; 
-        } else { 
-            resText.innerText = "GAME OVER"; 
-            resText.className = "fw-bold text-loss display-5"; 
-        }
-
-        resDetails.innerHTML = `
-          <p>${isWin ? 'Amazing! You have captured all the patterns.' : 'The CPU took your deck.'}</p>
-          <div class="d-grid gap-2 mt-4">
-              <button class="btn btn-primary btn-lg rounded-pill" onclick="restartGame()">Play Again</button>
-              <button class="btn btn-outline-secondary rounded-pill" onclick="goHome()">Return Home</button>
-          </div>`;
-          
-        overlay.classList.remove('hidden');
-        return true;
-    }
-    return false;
 }
 
 function restartGame() {
