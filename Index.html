@@ -162,7 +162,7 @@
     <div class="quiz-card text-center">
         <div class="d-flex justify-content-between mb-3 fw-bold">
             <span class="text-primary">Your Cards: <span id="player-card-count">0</span></span>
-            <span class="text-danger">CPU Cards: <span id="cpu-card-count">0</span></span>
+            <span class="text-danger">CPU Cards: <span id="cpu-card-count">0</span> <small id="cpu-card-name" class="ms-1 opacity-75"></small></span>
         </div>
         
         <div class="card shadow-sm mb-4">
@@ -287,8 +287,6 @@
 
   let quizData = [], currentIndex = 0, score = 0, activeUser = "", timerInterval = null, timeLeft = 0, isQuizActive = false, currentMode = "", questionsAnswered = 0, missedQuestions = [];
   let matchSelected = { qId: null, aId: null, qEl: null, aEl: null }, matchesFound = 0, setsCleared = 0, swipeCorrect = false;
-
-  //const loadMsgs = ["Straightening the dobok...", "Sharpening your side kick...", "Reviewing the patterns...", "Warming up for the grading...", "Breathe in and out...","Tying the black belt...", "Learning Korean...", "Focusing your Ki-Hap..."];
 
 function handleNavigation(targetView) {
     // Check if the user is in the middle of Tul Trumps or an Exam
@@ -639,47 +637,64 @@ function initTulTrumps() {
 
   
 
-  function updateGameUI() {
-  const cardContainer = document.querySelector('#view-trumps .card');
-  if (!playerHand || playerHand.length === 0) {
-    isProcessing = false;
-    return;
-  }
-
-  // 1. Keep the container invisible initially
-  if (cardContainer) cardContainer.style.opacity = "0";
-
-  const card = playerHand[0];
-  const imgEl = document.getElementById('tul-card-img');
-
-  // 2. Update text data immediately
-  document.getElementById('player-card-count').innerText = playerHand.length;
-  document.getElementById('cpu-card-count').innerText = cpuHand.length;
-  document.getElementById('tul-card-name').innerText = card.name;
-  document.getElementById('tul-card-ready').innerText = "Ready: " + (card.readyStance || "---");
-  document.getElementById('tul-card-meaning').innerText = card.meaning || ""; 
-  document.getElementById('val-movements').innerText = card.movements || 0;
-  document.getElementById('val-stances').innerText = card.stances || 0;
-  document.getElementById('val-difficulty').innerText = card.difficulty || 0;
-
-  // 3. Handle the image loading
-  if (imgEl) {
-    // Hide the loader and show the card ONLY when the image is ready[cite: 5]
-    imgEl.onload = function() {
-      if (cardContainer) cardContainer.style.opacity = "1";
-      toggleLoad(false); // Close the loading screen now[cite: 7]
-      isProcessing = false;
-    };
+  /**
+ * UI UPDATE LOGIC
+ * Replaces old logic in TulUI.html / Index.html
+ */
+function updateGameUI() {
+    if (!playerHand || playerHand.length === 0) { 
+        isProcessing = false; 
+        return; 
+    }
     
-    imgEl.onerror = function() {
-      if (cardContainer) cardContainer.style.opacity = "1";
-      toggleLoad(false);
-      isProcessing = false;
-    };
+    const wrapper = document.getElementById('trumps-content-wrapper');
+    wrapper.style.opacity = "0";
 
-    imgEl.src = card.img || TUL_PLACEHOLDER;
-  }
-} 
+    const card = playerHand[0];
+    const cpuCard = cpuHand[0];
+    const imgEl = document.getElementById('tul-card-img');
+
+    // Update Card Counts
+    document.getElementById('player-card-count').innerText = playerHand.length;
+    document.getElementById('cpu-card-count').innerText = cpuHand.length;
+    
+    // Knowledge Test: CPU current card name
+    const cpuNameEl = document.getElementById('cpu-card-name');
+    if (cpuCard) cpuNameEl.innerText = `(${cpuCard.name})`;
+
+    // Populate Stats (Trusting server-side defaults)
+    document.getElementById('tul-card-name').innerText = card.name;
+    document.getElementById('tul-card-ready').innerText = "Ready: " + card.readyStance;
+    document.getElementById('tul-card-meaning').innerText = card.meaning; 
+    document.getElementById('val-movements').innerText = card.movements;
+    document.getElementById('val-stances').innerText = card.stances;
+    document.getElementById('val-difficulty').innerText = card.difficulty;
+
+    // Direct image assignment - DRY compliance achieved
+    imgEl.onload = function() {
+        toggleLoad(false);
+        wrapper.style.opacity = "1";
+        isProcessing = false;
+    };
+    imgEl.src = card.img; 
+}
+
+function initTulTrumps() {
+    toggleLoad(true, "Shuffling Tuls...");
+    // This calls the single consolidated function in TulGame.gs
+    google.script.run
+        .withSuccessHandler(data => {
+            if (data.error) {
+                alert(data.error);
+                toggleLoad(false);
+                return;
+            }
+            playerHand = data.playerHand;
+            cpuHand = data.cpuHand;
+            updateGameUI();
+        })
+        .getTulTrumpsData(activeUser);
+}
 
   function showQuestion() {
     document.getElementById('progress-bar').style.width = ((currentIndex / quizData.length) * 100) + "%";

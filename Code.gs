@@ -5,7 +5,7 @@
  */
 
 const BUCKET_INTERVALS = { 1: 0, 2: 2, 3: 4, 4: 5 };
-const TUL_PLACEHOLDER = "https://placehold.co/300x200?text=Pattern+Image";
+//const TUL_PLACEHOLDER = "https://placehold.co/300x200?text=Pattern+Image";
 
 
 
@@ -26,7 +26,8 @@ function getTrumpsHTML() {
   return HtmlService.createHtmlOutputFromFile('TulUI').getContent();
 }
 
-function getTulTrumpsData(username) {
+/**
+ *function getTulTrumpsData(username) {
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const tulSheet = ss.getSheetByName("Tuls");
@@ -35,32 +36,46 @@ function getTulTrumpsData(username) {
     const userData = userSheet.getDataRange().getValues();
     let userGrade = 1;
     
-    // Find user's current grade
-    const cleanUser = username ? username.toString().trim() : "";
+    // 1. Find user's current grade (Column C / Index 2)
+    const cleanUser = username ? username.toString().trim().toLowerCase() : "";
     for (let i = 1; i < userData.length; i++) {
-      if (userData[i][0] && userData[i][0].toString().trim() === cleanUser) { 
+      if (userData[i][0] && userData[i][0].toString().trim().toLowerCase() === cleanUser) { 
         userGrade = parseInt(userData[i][2]) || 1; 
         break; 
       }
     }
 
     const tulData = tulSheet.getDataRange().getValues();
-    // Filter cards: must have a name (Col A) and be within user's grade (Col F/Index 5)
+    
+    /**
+     * 2. Filter and Map Deck
+     * Logic: 
+     * - Must have a name (Col A / Index 0)
+     * - Must have a belt level (Col F / Index 5) <= userGrade
+     *
     const deck = tulData.slice(1)
-      .filter(row => row[0] && parseInt(row[5]) <= userGrade) 
-      .map(row => ({
-        name: row[0],         
-        movements: parseInt(row[1]) || 0, 
-        stances: parseInt(row[2]) || 0,   
-        readyStance: row[3],  
-        difficulty: parseInt(row[4]) || 0, 
-        meaning: row[6],      
-        img: row[7] || "https://placehold.co/300x200?text=Pattern+Image"
-      }));
+  .filter(row => {
+    const tulName = row[0];
+    const tulRequiredGrade = parseInt(row[5]);
+    return tulName && !isNaN(tulRequiredGrade) && tulRequiredGrade <= userGrade;
+  }) 
+  .map(row => ({
+    name: row[0],         
+    movements: parseInt(row[1]) || 0, 
+    stances: parseInt(row[2]) || 0,   
+    readyStance: row[3] || "---",  
+    difficulty: parseInt(row[4]) || 0, 
+    meaning: row[6] || "",      
+    // SINGLE SOURCE OF TRUTH FOR PLACEHOLDERS
+    img: row[7] || "https://placehold.co/300x200?text=No+Image+Available"
+  }));
 
-    if (deck.length < 2) return { error: "Not enough Tuls unlocked for your grade!" };
+    // Minimum requirement check for a playable game
+    if (deck.length < 4) {
+      return { error: "Not enough Tuls unlocked for your grade! (Found: " + deck.length + ")" };
+    }
 
-    // Shuffle and split deck
+    // 3. Shuffle and split deck
     const shuffled = deck.sort(() => Math.random() - 0.5);
     const mid = Math.ceil(shuffled.length / 2);
     
@@ -69,9 +84,11 @@ function getTulTrumpsData(username) {
       cpuHand: shuffled.slice(mid)
     };
   } catch (e) {
-    return { error: e.message };
+    console.error("Tul Trumps Error: " + e.message);
+    return { error: "System Error: " + e.message };
   }
 }
+*/
 
 function loginUser(username, password) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
