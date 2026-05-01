@@ -135,7 +135,7 @@
       <div><h3 class="mb-0">Hi, <span id="user-welcome"></span></h3><small id="user-streak" class="text-primary fw-bold"></small></div>
       <i class="bi bi-person-circle fs-1 text-primary"></i>
     </div>
-    <button class="btn btn-warning w-100 mb-3 p-3 text-start border-0 shadow-sm" onclick="handleNavigation('game-center')">
+    <button class="btn btn-warning w-100 mb-3 p-3 text-start border-0 shadow-sm" onclick="handleNavigation('view-game-center')">
       <div class="d-flex align-items-center"><i class="bi bi-controller me-3 fs-3"></i><div><strong>Game Center</strong><br><small>Interactive Challenges</small></div></div>
     </button>
     <button class="btn btn-primary w-100 mb-3 p-3 text-start shadow-sm" onclick="startApp('practice')">
@@ -234,7 +234,7 @@
       <h6 class="fw-bold">Mistakes Review:</h6>
       <div id="review-list" style="max-height: 200px; overflow-y: auto;" class="small"></div>
     </div>
-    <button class="btn btn-primary w-100 p-3 rounded-pill" onclick="handleNavigation('modes')">Finish Session</button>
+    <button class="btn btn-primary w-100 p-3 rounded-pill" onclick="handleNavigation('view-modes')">Finish Session</button>
   </div>
 </div>
 
@@ -272,9 +272,9 @@
 
 <div class="footer-container hidden" id="navbar">
     <nav class="bottom-nav">
-    <button class="nav-item active" id="nav-modes" onclick="handleNavigation('modes')"><i class="bi bi-house-door"></i>Home</button>
-    <button class="nav-item" id="nav-account" onclick="handleNavigation('account')"><i class="bi bi-person"></i>Account</button>
-    <button class="nav-item" id="nav-about" onclick="handleNavigation('about')"><i class="bi bi-info-circle"></i>About</button>
+    <button class="nav-item active" id="nav-modes" onclick="handleNavigation('view-modes')"><i class="bi bi-house-door"></i>Home</button>
+    <button class="nav-item" id="nav-account" onclick="handleNavigation('view-account')"><i class="bi bi-person"></i>Account</button>
+    <button class="nav-item" id="nav-about" onclick="handleNavigation('view-about')"><i class="bi bi-info-circle"></i>About</button>
   </nav>
   <div class="copyright-text">(C) J Gallucci 2026</div>
 </div>
@@ -287,22 +287,19 @@
 <script>
 
   let playerHand = [], cpuHand = []; 
-  //let isProcessing = false;
+  let isProcessing = false;
 
   let quizData = [], currentIndex = 0, score = 0, activeUser = "", timerInterval = null, timeLeft = 0, isQuizActive = false, currentMode = "", questionsAnswered = 0, missedQuestions = [];
   let matchSelected = { qId: null, aId: null, qEl: null, aEl: null }, matchesFound = 0, setsCleared = 0, swipeCorrect = false;
 
 function handleNavigation(targetView) {
     // Check if the user is in the middle of Tul Trumps or an Exam
-    const isMidGame = (isQuizActive === true);
-
-    if (isMidGame) {
-        // Determine the mode to show the right warning message
-        const mode = (playerHand.length > 0) ? "trumps" : "exam";
-        showUniversalWarning(targetView, mode);
-    } else {
-        switchView(targetView);
-    }
+    if (isQuizActive) {
+    const mode = (playerHand && playerHand.length > 0) ? "trumps" : "exam";
+    showUniversalWarning(targetView, mode); 
+  } else {
+    switchView(targetView);
+  }
 }
 
 function showUniversalWarning(targetView, mode) {
@@ -366,6 +363,124 @@ function confirmExit(targetView, mode) {
     }
 }
 
+let roundTimeout = null; // To track the auto-advance timer
+
+function playTurn(stat) {
+    if (isProcessing || playerHand.length === 0 || cpuHand.length === 0) return;
+    isProcessing = true;
+
+    const pCard = playerHand[0];
+    const cCard = cpuHand[0];
+    const pVal = parseInt(pCard[stat]) || 0;
+    const cVal = parseInt(cCard[stat]) || 0;
+
+    const overlay = document.getElementById('result-overlay');
+    const resText = document.getElementById('result-text');
+    const resDetails = document.getElementById('result-details');
+
+    let statusText = "";
+    let textColorClass = "";
+    let resultMessage = "";
+
+    if (pVal > cVal) {
+        statusText = "ROUND WON!";
+        textColorClass = "fw-bold text-win";
+        resultMessage = `Your ${pCard.name} (${pVal}) beat ${cCard.name} (${cVal}).`;
+        playerHand.push(playerHand.shift(), cpuHand.shift());
+    } else if (cVal > pVal) {
+        statusText = "ROUND LOST";
+        textColorClass = "fw-bold text-loss";
+        resultMessage = `CPU's ${cCard.name} (${cVal}) beat your ${pCard.name} (${pVal}).`;
+        cpuHand.push(cpuHand.shift(), playerHand.shift());
+    } else {
+        statusText = "DRAW";
+        textColorClass = "fw-bold text-draw";
+        resultMessage = `Both patterns have ${pVal} ${stat}.`;
+        playerHand.push(playerHand.shift());
+        cpuHand.push(cpuHand.shift());
+    }
+
+    resText.innerText = statusText;
+    resText.className = textColorClass;
+
+    // UI with "Next Round" button and countdown
+    resDetails.innerHTML = `
+        <p class="mb-4">${resultMessage}</p>
+        <div class="d-grid">
+            <button id="next-round-btn" class="btn btn-primary btn-lg rounded-pill py-3" onclick="manualNextRound()">
+                Next Round (3s)
+            </button>
+        </div>
+    `;
+
+    overlay.classList.remove('hidden');
+    
+    // Start the 3-second timer
+    let count = 3;
+    roundTimeout = setInterval(() => {
+        count--;
+        const btn = document.getElementById('next-round-btn');
+        if (btn) btn.innerText = `Next Round (${count}s)`;
+        
+        if (count <= 0) {
+            manualNextRound();
+        }
+    }, 1000);
+}
+
+function manualNextRound() {
+    clearInterval(roundTimeout);
+    const overlay = document.getElementById('result-overlay');
+    
+    if (playerHand.length > 0) {
+        const nextImg = new Image();
+        nextImg.onload = () => {
+            overlay.classList.add('hidden');
+            if (!checkGameOver()) {
+                isProcessing = false;
+                updateGameUI();
+            }
+        };
+        // Use Variable here
+        nextImg.src = playerHand[0].img || TUL_PLACEHOLDER;
+    } else {
+        overlay.classList.add('hidden');
+        checkGameOver();
+    }
+}
+
+function checkGameOver() {
+    if (playerHand.length === 0 || cpuHand.length === 0) {
+        const resText = document.getElementById('result-text');
+        const resDetails = document.getElementById('result-details');
+        const overlay = document.getElementById('result-overlay');
+        const isWin = cpuHand.length === 0;
+
+        // Allow navigation functions to work by resetting the state gate
+        isQuizActive = false; 
+
+        if (isWin) { 
+            triggerConfetti(); 
+            resText.innerText = "VICTORY!"; 
+            resText.className = "fw-bold text-win display-5"; 
+        } else { 
+            resText.innerText = "GAME OVER"; 
+            resText.className = "fw-bold text-loss display-5"; 
+        }
+
+        resDetails.innerHTML = `
+          <p>${isWin ? 'Amazing! You have captured all the patterns.' : 'The CPU took your deck.'}</p>
+          <div class="d-grid gap-2 mt-4">
+              <button class="btn btn-primary btn-lg rounded-pill" onclick="restartGame()">Play Again</button>
+              <button class="btn btn-outline-secondary rounded-pill" onclick="goHome()">Return Home</button>
+          </div>`;
+          
+        overlay.classList.remove('hidden');
+        return true;
+    }
+    return false;
+}
+
 function restartGame() {
       document.getElementById('result-overlay').classList.add('hidden');
       isProcessing = false;
@@ -380,7 +495,7 @@ function goHome() {
       isQuizActive = false;
       playerHand = [];
       cpuHand = [];
-      switchView('modes');
+      switchView('view-modes');
   }
 
   function toggleLoad(show, customMsg) {
@@ -429,7 +544,7 @@ function goHome() {
         const sel = document.getElementById('grade-selector'); sel.innerHTML = '';
         const gradeMap = { 1:"10th Kup", 2:"9th Kup", 3:"8th Kup", 4:"7th Kup", 5:"6th Kup", 6:"5th Kup", 7:"4th Kup", 8:"3rd Kup", 9:"2nd Kup", 10:"1st Kup", 11:"1st Dan", 12:"2nd Dan" };
         for(let k in gradeMap) sel.innerHTML += `<option value="${k}" ${k==res.gradeValue?'selected':''}>${gradeMap[k]}</option>`;
-        switchView('modes');
+        switchView('view-modes');
       }
     }).loginUser(u, p);
   }
@@ -474,22 +589,29 @@ function initTulTrumps() {
   function startApp(mode) {
   console.log("Starting App Mode:", mode);
   
+  // 1. Determine which view container we need
+  let targetView = 'view-quiz'; // Default for practice/test/swipe/match
+  if (mode === 'game_tuls') targetView = 'view-trumps';
+
+  // 2. Use our consistent handleNavigation to go there
+  // This ensures isQuizActive logic and icon updates run correctly
+  handleNavigation(targetView); 
+
   if (mode === 'game_tuls') {
-    // No server call for HTML needed anymore
-    handleNavigation('trumps'); 
     initTulTrumps(); 
     return;
-    }
+  }
 
-    // Standard Quiz/Game Initialization
-    isQuizActive = true; 
-    currentMode = mode; 
-    questionsAnswered = 0; 
-    score = 0; 
-    currentIndex = 0; 
-    missedQuestions = []; 
-    setsCleared = 0;
-    
+  // 3. Rest of your standard initialization logic
+  isQuizActive = true; 
+  currentMode = mode; 
+  questionsAnswered = 0; 
+  score = 0; 
+  currentIndex = 0; 
+  missedQuestions = []; 
+  setsCleared = 0;
+  
+  // Ensure we hide previous UI sub-elements
     document.querySelectorAll('#view-quiz [id^="ui-"]').forEach(el => el.classList.add('hidden'));
     document.getElementById('timer-display')?.classList.add('hidden');
     document.getElementById('next-btn')?.classList.add('hidden');
@@ -640,7 +762,7 @@ function initTulTrumps() {
                                 document.getElementById('progress-bar').style.width = "100%";
                                 triggerConfetti(); 
                                 // Directly back to home (modes) after confetti delay, skipping results
-                                setTimeout(() => switchView('modes'), 2500); 
+                                setTimeout(() => switchView('view-modes'), 2500); 
                             } else { 
                                 setupMatch(); 
                             }
@@ -723,7 +845,7 @@ function handleSwipe(userAnswer) {
 
     // If the user exits without answering anything, just go home
     if (questionsAnswered === 0) {
-        switchView('modes');
+        switchView('view-modes');
         return;
     }
 
@@ -759,37 +881,48 @@ function handleSwipe(userAnswer) {
 
   function updateTimerUI() { const m = Math.floor(timeLeft / 60), s = timeLeft % 60; document.getElementById('timer-display').innerText = `${m}:${s < 10 ? '0' : ''}${s}`; }
 
-function switchView(id) {
-/** if (isQuizActive && id !== 'quiz') { 
-        const m = bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmModal'));
-        document.getElementById('confirm-end-btn').onclick = () => { m.hide(); endQuiz(); };
-        m.show(); 
-        return; 
+function switchView(targetView) {
+  // Hide all views using the exact IDs in your HTML
+  const views = ['view-login', 'view-modes', 'view-game-center', 'view-trumps', 'view-quiz', 'view-results', 'view-account', 'view-about'];
+  
+  views.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.classList.add('hidden');
+      el.classList.remove('active-view');
     }
-*/
-    // Hide all views
-    document.querySelectorAll('.view-container').forEach(v => { 
-        v.classList.remove('active-view'); 
-        v.style.display = 'none'; 
-    });
+  });
 
-    // Show target view
-    const t = document.getElementById('view-' + id);
-    if(t) { 
-        t.style.display = 'block'; 
-        setTimeout(() => t.classList.add('active-view'), 10); 
-    }
-    
-    // Update navigation highlighting
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    const activeNav = document.getElementById('nav-' + id);
-    
-    if(activeNav) {
-        activeNav.classList.add('active');
-    } else if(id === 'results' || id === 'game-center' || id === 'trumps') {
-        const homeNav = document.getElementById('nav-modes');
-        if(homeNav) homeNav.classList.add('active');
-    }
+  // Show target - targetView now matches the ID perfectly
+  const targetEl = document.getElementById(targetView);
+  if (targetEl) {
+    targetEl.classList.remove('hidden');
+    targetEl.classList.add('active-view');
+  }
+
+  updateNavIcons(targetView);
+}
+
+function updateNavIcons(activeView) {
+  // Maps the View ID directly to the Nav Button ID
+  const navMap = {
+    'view-modes': 'nav-modes',
+    'view-account': 'nav-account',
+    'view-about': 'nav-about'
+  };
+
+  const activeBtnId = navMap[activeView];
+  
+  // Reset all nav items
+  document.querySelectorAll('.nav-item').forEach(btn => {
+    btn.classList.remove('active');
+  });
+
+  // Set the correct one to active
+  const activeBtn = document.getElementById(activeBtnId);
+  if (activeBtn) {
+    activeBtn.classList.add('active');
+  }
 }
 
 function nextQuestion() { 

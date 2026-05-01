@@ -106,7 +106,6 @@
 <script>
   let playerHand = [], cpuHand = [];
   let isProcessing = false;
-  let roundTimeout = null;
 
   // Wait for the DOM and GAS environment to be ready
   function startSequence() {
@@ -165,109 +164,4 @@
   startSequence();
 
 
-  function playTurn(stat) {
-    if (isProcessing || playerHand.length === 0 || cpuHand.length === 0) return;
-    isProcessing = true;
-
-    const pCard = playerHand[0];
-    const cCard = cpuHand[0];
-    const pVal = parseInt(pCard[stat]) || 0;
-    const cVal = parseInt(cCard[stat]) || 0;
-
-    const overlay = document.getElementById('result-overlay');
-    const resText = document.getElementById('result-text');
-    const resDetails = document.getElementById('result-details');
-
-    let statusText = "";
-    let textColorClass = "";
-    let resultMessage = "";
-
-    if (pVal > cVal) {
-        statusText = "ROUND WON!";
-        textColorClass = "text-success";
-        resultMessage = `Your <strong>${pCard.name}</strong> (${pVal}) beat <strong>${cCard.name}</strong> (${cVal}).`;
-        playerHand.push(playerHand.shift(), cpuHand.shift());
-    } else if (cVal > pVal) {
-        statusText = "ROUND LOST";
-        textColorClass = "text-danger";
-        resultMessage = `CPU's <strong>${cCard.name}</strong> (${cVal}) beat <strong>${pCard.name}</strong> (${pVal}).`;
-        cpuHand.push(cpuHand.shift(), playerHand.shift());
-    } else {
-        statusText = "DRAW";
-        textColorClass = "text-warning";
-        resultMessage = `Both cards have <strong>${pVal}</strong>.`;
-        playerHand.push(playerHand.shift());
-        cpuHand.push(cpuHand.shift());
-    }
-
-    resText.innerText = statusText;
-    resText.className = `display-6 fw-bold ${textColorClass}`;
-    resDetails.innerHTML = `
-        <p class="mb-4">${resultMessage}</p>
-        <div class="d-grid">
-            <button id="next-round-btn" class="btn btn-primary btn-lg rounded-pill py-3" onclick="manualNextRound()">
-                Next Round (3s)
-            </button>
-        </div>
-    `;
-
-    overlay.classList.remove('hidden');
-    
-    let count = 3;
-    if (roundTimeout) clearInterval(roundTimeout);
-    roundTimeout = setInterval(() => {
-        count--;
-        const btn = document.getElementById('next-round-btn');
-        if (btn) btn.innerText = `Next Round (${count}s)`;
-        if (count <= 0) manualNextRound();
-    }, 1000);
-}
-
-function manualNextRound() {
-    clearInterval(roundTimeout);
-    const overlay = document.getElementById('result-overlay');
-    
-    if (playerHand.length === 0 || cpuHand.length === 0) {
-        overlay.classList.add('hidden');
-        checkGameOver();
-        return;
-    }
-
-    // Safety: Ensure UI updates and lock is released
-    overlay.classList.add('hidden');
-    isProcessing = false;
-    updateGameUI();
-}
-
-function checkGameOver() {
-    if (playerHand.length === 0 || cpuHand.length === 0) {
-        const resText = document.getElementById('result-text');
-        const resDetails = document.getElementById('result-details');
-        const overlay = document.getElementById('result-overlay');
-        const isWin = cpuHand.length === 0;
-
-        resText.innerText = isWin ? "CHAMPION!" : "GAME OVER";
-        resText.className = isWin ? "text-success display-4 fw-bold" : "text-danger display-4 fw-bold";
-        resDetails.innerHTML = `
-          <p class="lead">${isWin ? 'You captured all the cards!' : 'The CPU won this time.'}</p>
-          <div class="d-grid gap-2 mt-4">
-              <button class="btn btn-primary btn-lg rounded-pill" onclick="restartGame()">Play Again</button>
-              <button class="btn btn-outline-secondary rounded-pill" onclick="goHome()">Home</button>
-          </div>`;
-        overlay.classList.remove('hidden');
-        return true;
-    }
-    return false;
-}
-
-  function showEnd(txt) {
-    if (txt.includes("CHAMPION") && typeof triggerConfetti === 'function') {
-        triggerConfetti();
-    }
-    document.getElementById('active-card').innerHTML = `
-      <div class="text-center py-5">
-        <h2 class="fw-bold">${txt}</h2>
-        <button class="btn btn-primary mt-4 px-5 rounded-pill" onclick="switchView('modes')">Finish</button>
-      </div>`;
-  }
 </script>
