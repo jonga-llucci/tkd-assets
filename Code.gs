@@ -65,73 +65,53 @@ function loginUser(username, password) {
   return { success: false, message: "Invalid credentials" };
 }
 
-function getQuizData(username, mode) {
+/** Helper to get Grade Level without redundant sheet calls */
+function _getUserGrade(username) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const qSheet = ss.getSheetByName("Questions");
-  const pSheet = ss.getSheetByName("UserProgress");
-  const userSheet = ss.getSheetByName("Users");
-  const cleanUser = username ? username.toString().trim() : "";
-  
-  const userData = userSheet.getDataRange().getValues();
-  let userGradeLevel = 1; 
+  const userData = ss.getSheetByName("Users").getDataRange().getValues();
+  const cleanU = username ? username.toString().trim().toLowerCase() : "";
   for (let i = 1; i < userData.length; i++) {
-    if (userData[i][0] && userData[i][0].toString().trim() === cleanUser) {
-      userGradeLevel = parseInt(userData[i][2]) || 1;
-      break;
+    if (userData[i][0] && userData[i][0].toString().trim().toLowerCase() === cleanU) {
+      return parseInt(userData[i][2]) || 1;
     }
   }
+  return 1;
+}
 
-  const qData = qSheet.getDataRange().getValues();
-  const pData = pSheet.getDataRange().getValues() || [];
+function getQuizData(username, mode) {
+  const userGrade = _getUserGrade(username);
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const qData = ss.getSheetByName("Questions").getDataRange().getValues().slice(1);
+  const pData = ss.getSheetByName("UserProgress").getDataRange().getValues() || [];
   
+  // Create Progress Map
   const progressMap = {};
-  pData.forEach(row => {
-    if (row[0] && row[0].toString().trim() === cleanUser) {
-      progressMap[row[1].toString()] = {
-        bucket: parseInt(row[3]) || 1,
-        date: row[4] instanceof Date ? row[4] : new Date(0)
-      };
-    }
+  pData.filter(r => r[0] == username).forEach(r => {
+    progressMap[r[1]] = { bucket: r[3], date: new Date(r[4]) };
   });
 
   const now = new Date();
+  const filtered = qData.filter(row => {
+    const qGrade = parseInt(row[17]) || 1;
+    if (qGrade > userGrade) return false;
+    
+    // Exam Logic: Filter Col Q
+    if (mode === 'test') return row[16] !== "N";
 
-  let filtered = qData.slice(1).filter(row => {
-    if (!row[0] || !row[14]) return false; 
-    const questionBeltLevel = parseInt(row[17]) || 1; 
-    if (questionBeltLevel > userGradeLevel) return false;
-
-    // Strict Exam Filter: Column Q must not be "N"
-    if (row[16] === "N") return false;
-
-    if (mode === 'test') return true; 
-
-    const qId = row[14].toString();
-    const prog = progressMap[qId];
-    if (!prog) return true; 
-
-    const diffDays = (now - prog.date) / (1000 * 60 * 60 * 24);
-    return diffDays >= (BUCKET_INTERVALS[prog.bucket] || 0);
+    // SRS Logic for Practice
+    const prog = progressMap[row[14]];
+    if (!prog) return true;
+    const diff = (now - prog.date) / 86400000;
+    return diff >= (BUCKET_INTERVALS[prog.bucket] || 0);
   });
 
-  if (filtered.length === 0) {
-    filtered = qData.slice(1).filter(row => {
-      const level = parseInt(row[17]) || 1;
-      return row[0] && row[14] && level <= userGradeLevel && row[16] !== "N";
-    });
-  }
-
-  const limit = (mode === 'test') ? 50 : 10;
-
-  return filtered.map(row => {
-    let rawOpts = [row[4], row[5], row[6], row[7]].filter(String);
-    return {
-      question: row[0].toString(),
-      options: rawOpts.sort(() => Math.random() - 0.5).map(s => s.toString().trim()),
-      answer: row[11] ? row[11].toString().trim() : "",
-      qId: row[14].toString()
-    };
-  }).sort(() => Math.random() - 0.5).slice(0, limit);
+  const limit = (mode === 'test') ? 50 : 20; // Per Manifest
+  return filtered.sort(() => 0.5 - Math.random()).slice(0, limit).map(row => ({
+    question: row[0],
+    options: [row[4], row[5], row[6], row[7]].sort(() => 0.5 - Math.random()),
+    answer: row[11],
+    qId: row[14]
+  }));
 }
 
 function updateQuestionScore(username, qId, isCorrect) {

@@ -279,10 +279,6 @@
   <div class="copyright-text">(C) J Gallucci 2026</div>
 </div>
 
-<div id="view-trumps" class="view-container">
-    <!-- The TulUI content will be injected here -->
-</div>
-
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 
@@ -305,12 +301,29 @@ document.addEventListener('touchmove', function(e) {
   let matchSelected = { qId: null, aId: null, qEl: null, aEl: null }, matchesFound = 0, setsCleared = 0, swipeCorrect = false;
 
 function handleNavigation(targetView) {
-    // Check if the user is in the middle of Tul Trumps or an Exam
-    if (isQuizActive) {
-    const mode = (playerHand && playerHand.length > 0) ? "trumps" : "exam";
-    showUniversalWarning(targetView, mode); 
+  if (isQuizActive && questionsAnswered > 0) {
+    showUniversalOverlay('QUIT_SESSION', targetView);
   } else {
+    // If no questions answered, allow silent exit
+    isQuizActive = false;
     switchView(targetView);
+  }
+}
+
+function showUniversalOverlay(type, target) {
+  const overlay = document.getElementById('result-overlay');
+  const resText = document.getElementById('result-text');
+  const resDetails = document.getElementById('result-details');
+
+  if (type === 'QUIT_SESSION') {
+    resText.innerText = "END SESSION?";
+    resDetails.innerHTML = `
+      <p>Would you like to see your grade for questions answered so far?</p>
+      <div class="d-grid gap-2">
+        <button class="btn btn-primary btn-lg rounded-pill" onclick="endQuiz()">Review & Exit</button>
+        <button class="btn btn-outline-secondary rounded-pill" onclick="isQuizActive=false; switchView('${target}'); closeWarning()">Discard & Exit</button>
+      </div>`;
+    overlay.classList.remove('hidden');
   }
 }
 
@@ -752,8 +765,8 @@ function initTulTrumps() {
     
     // Fix: Defined batch and removed duplicate mapping logic
     const batch = quizData.slice(setsCleared * 5, (setsCleared + 1) * 5);
-    const qList = batch.map(x => ({ t: x.matchingTerm, id: x.qId, type: 'q' }));
-    const aList = batch.map(x => ({ t: x.correctAnswer, id: x.qId, type: 'a' }));
+    const qList = batch.map(x => ({ t: x.matchingTerm, id: x.qId, type: 'q' })); // Col S
+    const aList = batch.map(x => ({ t: x.correctAnswer, id: x.qId, type: 'a' })); // Col L
 
     matchesFound = 0; const grid = document.getElementById('match-grid'); grid.innerHTML = '';
     
