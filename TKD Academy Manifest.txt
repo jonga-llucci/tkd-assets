@@ -111,13 +111,17 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 - True / False   - Pairs: Formed with col S and col L.
 - True / False   - Filtering: Cards are filtered by User Grade (Tab: Questions, Col R).
 - True / False   - SRS: Questions should be prioritised using SRS buckets.
-- Daily practise - 20 questions
+- Daily practise - 10 questions
+- Daily practise - Blank answer options should not be shown
 - Daily practise - Filtering: Cards are filtered by User Grade (Tab: Questions, Col R).
+- Daily practise - Filtering: Cards are filtered by whether to be used as exam questions "=Y" (Tab: Questions, Col Q).
 - Daily practise - SRS: Questions should be prioritised using SRS buckets.
 - Mock exam      - Time limit (shown with MM:SS timer) 60 mins
 - Mock exam      - 50 questions
 - Mock exam      - Passing mark => 75%
+- Mock exam      - Blank answer options should not be shown
 - Mock exam      - Filtering: Cards are filtered by User Grade (Tab: Questions, Col R).
+- Mock exam      - Filtering: Cards are filtered by whether to be used as exam questions "=Y" (Tab: Questions, Col Q).
 - Mock exam      - SRS: Not used for exam. Questions should be a random selection.
 
 8. FIXED CONTENT: 'ABOUT' SECTION
