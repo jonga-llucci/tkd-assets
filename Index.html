@@ -279,6 +279,10 @@
   <div class="copyright-text">(C) J Gallucci 2026</div>
 </div>
 
+<div id="view-trumps" class="view-container">
+    <!-- The TulUI content will be injected here -->
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
 
@@ -300,36 +304,13 @@ document.addEventListener('touchmove', function(e) {
   let quizData = [], currentIndex = 0, score = 0, activeUser = "", timerInterval = null, timeLeft = 0, isQuizActive = false, currentMode = "", questionsAnswered = 0, missedQuestions = [];
   let matchSelected = { qId: null, aId: null, qEl: null, aEl: null }, matchesFound = 0, setsCleared = 0, swipeCorrect = false;
 
-
 function handleNavigation(targetView) {
-  const quizView = document.getElementById('view-quiz');
-  const isMidQuiz = quizView.classList.contains('active-view');
-
-  // Manifest Rule: If hitting Home/Nav mid-quiz, force grade and review[cite: 14]
-  if (isMidQuiz && questionsAnswered > 0) {
-    showUniversalOverlay('Exit & Grade?', 'Your current progress will be marked.', () => {
-      processFinalResults(); // This function calls switchView('view-results') internally
-    });
+    // Check if the user is in the middle of Tul Trumps or an Exam
+    if (isQuizActive) {
+    const mode = (playerHand && playerHand.length > 0) ? "trumps" : "exam";
+    showUniversalWarning(targetView, mode); 
   } else {
-    // Direct pass-through to the DOM manipulator
     switchView(targetView);
-  }
-}
-
-function showUniversalOverlay(type, target) {
-  const overlay = document.getElementById('result-overlay');
-  const resText = document.getElementById('result-text');
-  const resDetails = document.getElementById('result-details');
-
-  if (type === 'QUIT_SESSION') {
-    resText.innerText = "END SESSION?";
-    resDetails.innerHTML = `
-      <p>Would you like to see your grade for questions answered so far?</p>
-      <div class="d-grid gap-2">
-        <button class="btn btn-primary btn-lg rounded-pill" onclick="endQuiz()">Review & Exit</button>
-        <button class="btn btn-outline-secondary rounded-pill" onclick="isQuizActive=false; switchView('${target}'); closeWarning()">Discard & Exit</button>
-      </div>`;
-    overlay.classList.remove('hidden');
   }
 }
 
@@ -521,9 +502,13 @@ function restartGame() {
   }
 
 function goHome() {
-  // Pass the target landing page to the gatekeeper[cite: 14]
-  handleNavigation('view-modes'); 
-}
+      document.getElementById('result-overlay').classList.add('hidden');
+      isProcessing = false;
+      isQuizActive = false;
+      playerHand = [];
+      cpuHand = [];
+      switchView('view-modes');
+  }
 
   function toggleLoad(show, customMsg) {
   const loader = document.getElementById('loading-overlay');
@@ -533,7 +518,7 @@ function goHome() {
   // Your specific Taekwondo messages
   const loadMsgs = [
     "Straightening the dobok...", 
-    "Sharpening your footsword...", 
+    "Sharpening your side kick...", 
     "Reviewing the patterns...", 
     "Warming up for the grading...", 
     "Breathe in and out...",
@@ -767,8 +752,8 @@ function initTulTrumps() {
     
     // Fix: Defined batch and removed duplicate mapping logic
     const batch = quizData.slice(setsCleared * 5, (setsCleared + 1) * 5);
-    const qList = batch.map(x => ({ t: x.matchingTerm, id: x.qId, type: 'q' })); // Col S
-    const aList = batch.map(x => ({ t: x.correctAnswer, id: x.qId, type: 'a' })); // Col L
+    const qList = batch.map(x => ({ t: x.matchingTerm, id: x.qId, type: 'q' }));
+    const aList = batch.map(x => ({ t: x.correctAnswer, id: x.qId, type: 'a' }));
 
     matchesFound = 0; const grid = document.getElementById('match-grid'); grid.innerHTML = '';
     
@@ -920,38 +905,26 @@ function handleSwipe(userAnswer) {
 
   function updateTimerUI() { const m = Math.floor(timeLeft / 60), s = timeLeft % 60; document.getElementById('timer-display').innerText = `${m}:${s < 10 ? '0' : ''}${s}`; }
 
-/**
- * THE ONLY PLACE DOM MANIPULATION OCCURS
- */
 function switchView(targetView) {
-  const views = ['view-login', 'view-modes', 'view-game-center', 'view-trumps', 'view-quiz', 'view-results', 'view-account'];
+  // Hide all views using the exact IDs in your HTML
+  const views = ['view-login', 'view-modes', 'view-game-center', 'view-trumps', 'view-quiz', 'view-results', 'view-account', 'view-about'];
   
-  // 1. Toggle View Visibility
   views.forEach(id => {
     const el = document.getElementById(id);
     if (el) {
+      el.classList.add('hidden');
       el.classList.remove('active-view');
-      el.style.display = 'none'; 
     }
   });
 
-  const target = document.getElementById(targetView);
-  if (target) {
-    target.classList.add('active-view');
-    target.style.display = 'block';
+  // Show target - targetView now matches the ID perfectly
+  const targetEl = document.getElementById(targetView);
+  if (targetEl) {
+    targetEl.classList.remove('hidden');
+    targetEl.classList.add('active-view');
   }
 
-  // 2. Explicit Navbar Logic[cite: 14]
-  // Navbar is HIDDEN for Login, Quiz, Trumps, and Results.
-  // Navbar is SHOWN for Modes (Home), Game Center, and Account.
-  const hiddenNavViews = ['view-login', 'view-quiz', 'view-trumps', 'view-results'];
-  const navBar = document.getElementById('navbar');
-  
-  if (hiddenNavViews.includes(targetView)) {
-    navBar.style.display = 'none';
-  } else {
-    navBar.style.display = 'flex'; // Or 'block' depending on your CSS
-  }
+  updateNavIcons(targetView);
 }
 
 function updateNavIcons(activeView) {

@@ -65,67 +65,73 @@ function loginUser(username, password) {
   return { success: false, message: "Invalid credentials" };
 }
 
-/** Helper to get Grade Level without redundant sheet calls */
-function _getUserGrade(username) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const uSheet = ss.getSheetByName("Users");
-  const uData = uSheet.getDataRange().getValues();
-  
-  // Find user row; default to Grade 1 if not found
-  const userRow = uData.find(r => r[0] === username);
-  return userRow ? parseInt(userRow[1]) : 1; 
-}
-
 function getQuizData(username, mode) {
-  const userGrade = _getUserGrade(username);
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const qSheet = ss.getSheetByName("Questions");
-  const qData = qSheet.getDataRange().getValues().slice(1);
   const pSheet = ss.getSheetByName("UserProgress");
-  const pData = pSheet && pSheet.getLastRow() > 1 ? pSheet.getDataRange().getValues() : [];
+  const userSheet = ss.getSheetByName("Users");
+  const cleanUser = username ? username.toString().trim() : "";
   
-  // Map SRS progress for Practice mode
+  const userData = userSheet.getDataRange().getValues();
+  let userGradeLevel = 1; 
+  for (let i = 1; i < userData.length; i++) {
+    if (userData[i][0] && userData[i][0].toString().trim() === cleanUser) {
+      userGradeLevel = parseInt(userData[i][2]) || 1;
+      break;
+    }
+  }
+
+  const qData = qSheet.getDataRange().getValues();
+  const pData = pSheet.getDataRange().getValues() || [];
+  
   const progressMap = {};
-  pData.filter(r => r[0] == username).forEach(r => {
-    progressMap[r[1]] = { bucket: r[3], date: new Date(r[4]) };
+  pData.forEach(row => {
+    if (row[0] && row[0].toString().trim() === cleanUser) {
+      progressMap[row[1].toString()] = {
+        bucket: parseInt(row[3]) || 1,
+        date: row[4] instanceof Date ? row[4] : new Date(0)
+      };
+    }
   });
 
   const now = new Date();
-  const filtered = qData.filter(row => {
-    const qGrade = parseInt(row[17]) || 1; // Column R
-    const isExamAllowed = (row[16] === "Y"); // Column Q
-    
-    // 1. Must be within user's Belt Level
-    if (qGrade > userGrade) return false;
-    
-    // 2. Must be marked for Exams/Practice (Column Q)
-    if (!isExamAllowed) return false;
 
-    // 3. SRS Logic for Daily Practice only
-    if (mode === 'practice') {
-      const prog = progressMap[row[14]]; // Column O (qId)
-      if (!prog) return true; 
-      const diff = (now - prog.date) / 86400000;
-      return diff >= (BUCKET_INTERVALS[prog.bucket] || 0);
-    }
+  let filtered = qData.slice(1).filter(row => {
+    if (!row[0] || !row[14]) return false; 
+    const questionBeltLevel = parseInt(row[17]) || 1; 
+    if (questionBeltLevel > userGradeLevel) return false;
 
-    return true;
+    // Strict Exam Filter: Column Q must not be "N"
+    if (row[16] === "N") return false;
+
+    if (mode === 'test') return true; 
+
+    const qId = row[14].toString();
+    const prog = progressMap[qId];
+    if (!prog) return true; 
+
+    const diffDays = (now - prog.date) / (1000 * 60 * 60 * 24);
+    return diffDays >= (BUCKET_INTERVALS[prog.bucket] || 0);
   });
 
-  const limit = (mode === 'test') ? 50 : 10; //
-  
-  return filtered.sort(() => 0.5 - Math.random()).slice(0, limit).map(row => {
-    // Filter out blank columns to prevent empty UI buttons[cite: 13]
-    const rawOptions = [row[4], row[5], row[6], row[7]]; 
-    const cleanOptions = rawOptions.filter(opt => opt && opt.toString().trim() !== "");
+  if (filtered.length === 0) {
+    filtered = qData.slice(1).filter(row => {
+      const level = parseInt(row[17]) || 1;
+      return row[0] && row[14] && level <= userGradeLevel && row[16] !== "N";
+    });
+  }
 
+  const limit = (mode === 'test') ? 50 : 10;
+
+  return filtered.map(row => {
+    let rawOpts = [row[4], row[5], row[6], row[7]].filter(String);
     return {
-      question: row[0],
-      options: cleanOptions.sort(() => 0.5 - Math.random()),
-      answer: row[11], // Column L
-      qId: row[14]   // Column O
+      question: row[0].toString(),
+      options: rawOpts.sort(() => Math.random() - 0.5).map(s => s.toString().trim()),
+      answer: row[11] ? row[11].toString().trim() : "",
+      qId: row[14].toString()
     };
-  });
+  }).sort(() => Math.random() - 0.5).slice(0, limit);
 }
 
 function updateQuestionScore(username, qId, isCorrect) {
@@ -156,24 +162,43 @@ function updateQuestionScore(username, qId, isCorrect) {
 }
 
 function getGameData(username, gameType) {
-  const userGrade = _getUserGrade(username);
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const qSheet = ss.getSheetByName("Questions");
-  const qData = qSheet.getDataRange().getValues().slice(1);
+  const userSheet = ss.getSheetByName("Users");
+  const userData = userSheet.getDataRange().getValues();
+  
+  let userGrade = 1;
+  for (let i = 1; i < userData.length; i++) {
+    if (userData[i][0] && userData[i][0].toString().trim() === username.toString().trim()) { 
+      userGrade = parseInt(userData[i][2]) || 1; 
+      break; 
+    }
+  }
 
-  // Games can use all questions (including Flashcard-only) 
-  // or you can add (row[16] === "Y") here if you want them strictly restricted.
+  const qData = qSheet.getRange(2, 1, qSheet.getLastRow() - 1, qSheet.getLastColumn()).getValues();
+  
   const filtered = qData.filter(row => {
-    const qGrade = parseInt(row[17]) || 1;
-    return qGrade <= userGrade;
+    const isLevelMatch = (parseInt(row[17]) || 1) <= userGrade;
+    const isNotExcluded = row[16] !== "N";
+    
+    if (gameType === 'game_match') {
+      return isLevelMatch && isNotExcluded && row[18].toString().trim() !== ""; // Column S
+    } else {
+      return isLevelMatch && isNotExcluded && row[19].toString().trim() !== ""; // Column T
+    }
   });
 
-  // Shuffle and return a subset appropriate for games (e.g., 15 items)
-  return filtered.sort(() => 0.5 - Math.random()).slice(0, 15).map(row => {
+  return filtered.sort(() => Math.random() - 0.5).slice(0, 10).map(row => {
+    const possibleDecoys = [row[4], row[5], row[6], row[7]].filter(val => 
+      val && val.toString().trim() !== "" && val.toString().trim() !== row[11].toString().trim()
+    );
+
     return {
-      term: row[0],       // The Question/Term
-      definition: row[11], // The Answer/Definition
-      qId: row[14]
+      matchingTerm: row[18].toString().trim(),  // Column S
+      simplifiedDef: row[19].toString().trim(), // Column T
+      correctAnswer: row[11].toString().trim(), // Column L
+      decoys: possibleDecoys,
+      qId: row[14].toString()
     };
   });
 }
@@ -201,29 +226,4 @@ function updatePass(u, p) {
       return "Updated!"; 
     }
   }
-}
-
-/**
- * EXPLICIT PLACEMENT: At the end of your grading logic.
- */
-function processFinalResults() {
-  const score = calculateScore(); // Your existing logic to sum points
-  const total = questions.length;
-  const percentage = (score / total) * 100;
-
-  // Update the UI elements for the results page
-  document.getElementById('display-score').innerText = percentage.toFixed(0) + '%';
-  document.getElementById('pass-fail-status').innerText = percentage >= 75 ? "PASSED" : "FAILED";
-
-  // Save the data to the spreadsheet[cite: 13, 14]
-  google.script.run
-    .withSuccessHandler(() => {
-      console.log("Progress Saved");
-    })
-    .updateUserProgress(currentUser, percentage);
-
-  // --- THE EXPLICIT CALL ---
-  // This must be the final action to ensure the UI shifts only after 
-  // the variables and elements above are populated.
-  switchView('view-results'); 
 }
