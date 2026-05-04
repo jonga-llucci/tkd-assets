@@ -75,7 +75,7 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 - Session Exit: If 'isQuizActive' is true, Home/Logout must trigger 'showExitWarning'.
 - Session Review: Upon exit, user must receive grade/review for answered questions unless they have not answered any questions
 - Single-Source Data: All quiz and trump data must flow from the Spreadsheet via google.script.run.
-- Code Integrity: Always provide full code files during updates unless requested.
+- Code Integrity: Be explicit when providing code updates. State which lines of code are to be added or replaced by line number.
 - Universal Nav: handleNavigation(targetId) is the sole gatekeeper.
 - Intercept: If isQuizActive == true, triggers showUniversalOverlay('QUIT_SESSION').
 - Pop-up System: Uses a single #result-overlay for:
