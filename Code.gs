@@ -202,3 +202,28 @@ function updatePass(u, p) {
     }
   }
 }
+
+/**
+ * EXPLICIT PLACEMENT: At the end of your grading logic.
+ */
+function processFinalResults() {
+  const score = calculateScore(); // Your existing logic to sum points
+  const total = questions.length;
+  const percentage = (score / total) * 100;
+
+  // Update the UI elements for the results page
+  document.getElementById('display-score').innerText = percentage.toFixed(0) + '%';
+  document.getElementById('pass-fail-status').innerText = percentage >= 75 ? "PASSED" : "FAILED";
+
+  // Save the data to the spreadsheet[cite: 13, 14]
+  google.script.run
+    .withSuccessHandler(() => {
+      console.log("Progress Saved");
+    })
+    .updateUserProgress(currentUser, percentage);
+
+  // --- THE EXPLICIT CALL ---
+  // This must be the final action to ensure the UI shifts only after 
+  // the variables and elements above are populated.
+  switchView('view-results'); 
+}

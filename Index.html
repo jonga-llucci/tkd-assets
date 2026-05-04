@@ -300,12 +300,18 @@ document.addEventListener('touchmove', function(e) {
   let quizData = [], currentIndex = 0, score = 0, activeUser = "", timerInterval = null, timeLeft = 0, isQuizActive = false, currentMode = "", questionsAnswered = 0, missedQuestions = [];
   let matchSelected = { qId: null, aId: null, qEl: null, aEl: null }, matchesFound = 0, setsCleared = 0, swipeCorrect = false;
 
+
 function handleNavigation(targetView) {
-  if (isQuizActive && questionsAnswered > 0) {
-    showUniversalOverlay('QUIT_SESSION', targetView);
+  const quizView = document.getElementById('view-quiz');
+  const isMidQuiz = quizView.classList.contains('active-view');
+
+  // Manifest Rule: If hitting Home/Nav mid-quiz, force grade and review[cite: 14]
+  if (isMidQuiz && questionsAnswered > 0) {
+    showUniversalOverlay('Exit & Grade?', 'Your current progress will be marked.', () => {
+      processFinalResults(); // This function calls switchView('view-results') internally
+    });
   } else {
-    // If no questions answered, allow silent exit
-    isQuizActive = false;
+    // Direct pass-through to the DOM manipulator
     switchView(targetView);
   }
 }
@@ -515,13 +521,9 @@ function restartGame() {
   }
 
 function goHome() {
-      document.getElementById('result-overlay').classList.add('hidden');
-      isProcessing = false;
-      isQuizActive = false;
-      playerHand = [];
-      cpuHand = [];
-      switchView('view-modes');
-  }
+  // Pass the target landing page to the gatekeeper[cite: 14]
+  handleNavigation('view-modes'); 
+}
 
   function toggleLoad(show, customMsg) {
   const loader = document.getElementById('loading-overlay');
@@ -918,26 +920,38 @@ function handleSwipe(userAnswer) {
 
   function updateTimerUI() { const m = Math.floor(timeLeft / 60), s = timeLeft % 60; document.getElementById('timer-display').innerText = `${m}:${s < 10 ? '0' : ''}${s}`; }
 
+/**
+ * THE ONLY PLACE DOM MANIPULATION OCCURS
+ */
 function switchView(targetView) {
-  // Hide all views using the exact IDs in your HTML
-  const views = ['view-login', 'view-modes', 'view-game-center', 'view-trumps', 'view-quiz', 'view-results', 'view-account', 'view-about'];
+  const views = ['view-login', 'view-modes', 'view-game-center', 'view-trumps', 'view-quiz', 'view-results', 'view-account'];
   
+  // 1. Toggle View Visibility
   views.forEach(id => {
     const el = document.getElementById(id);
     if (el) {
-      el.classList.add('hidden');
       el.classList.remove('active-view');
+      el.style.display = 'none'; 
     }
   });
 
-  // Show target - targetView now matches the ID perfectly
-  const targetEl = document.getElementById(targetView);
-  if (targetEl) {
-    targetEl.classList.remove('hidden');
-    targetEl.classList.add('active-view');
+  const target = document.getElementById(targetView);
+  if (target) {
+    target.classList.add('active-view');
+    target.style.display = 'block';
   }
 
-  updateNavIcons(targetView);
+  // 2. Explicit Navbar Logic[cite: 14]
+  // Navbar is HIDDEN for Login, Quiz, Trumps, and Results.
+  // Navbar is SHOWN for Modes (Home), Game Center, and Account.
+  const hiddenNavViews = ['view-login', 'view-quiz', 'view-trumps', 'view-results'];
+  const navBar = document.getElementById('navbar');
+  
+  if (hiddenNavViews.includes(targetView)) {
+    navBar.style.display = 'none';
+  } else {
+    navBar.style.display = 'flex'; // Or 'block' depending on your CSS
+  }
 }
 
 function updateNavIcons(activeView) {
