@@ -164,21 +164,19 @@ function updateQuestionScore(username, qId, isCorrect) {
 function getGameData(username, gameType) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const qSheet = ss.getSheetByName("Questions");
-  const userSheet = ss.getSheetByName("Users");
-  const userData = userSheet.getDataRange().getValues();
   
   const userGradeLevel = getUserGrade_(username);
 
   const qData = qSheet.getRange(2, 1, qSheet.getLastRow() - 1, qSheet.getLastColumn()).getValues();
   
   const filtered = qData.filter(row => {
-    const isLevelMatch = (parseInt(row[17]) || 1) <= userGrade;
+    const isLevelMatch = (parseInt(row[17]) || 1) <= userGradeLevel;
     const isNotExcluded = row[16] !== "N";
     
     if (gameType === 'game_match') {
-      return isLevelMatch && isNotExcluded && row[18].toString().trim() !== ""; // Column S
+      return isLevelMatch && isNotExcluded && row[18].toString().trim() !== "";
     } else {
-      return isLevelMatch && isNotExcluded && row[19].toString().trim() !== ""; // Column T
+      return isLevelMatch && isNotExcluded && row[19].toString().trim() !== "";
     }
   });
 
@@ -186,11 +184,10 @@ function getGameData(username, gameType) {
     const possibleDecoys = [row[4], row[5], row[6], row[7]].filter(val => 
       val && val.toString().trim() !== "" && val.toString().trim() !== row[11].toString().trim()
     );
-
     return {
-      matchingTerm: row[18].toString().trim(),  // Column S
-      simplifiedDef: row[19].toString().trim(), // Column T
-      correctAnswer: row[11].toString().trim(), // Column L
+      matchingTerm: row[18].toString().trim(),
+      simplifiedDef: row[19].toString().trim(),
+      correctAnswer: row[11].toString().trim(),
       decoys: possibleDecoys,
       qId: row[14].toString()
     };
@@ -240,4 +237,45 @@ function getUserGrade_(username) {
       return parseInt(data[i][2]) || 1;
   }
   return 1;
+}
+
+function getTulTrumpsData(username) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const tulSheet = ss.getSheetByName("Tuls");
+
+    const userGradeLevel = getUserGrade_(username);
+
+    const tulData = tulSheet.getDataRange().getValues();
+    
+    const deck = tulData.slice(1)
+      .filter(row => {
+        const tulName = row[0];
+        const tulRequiredGrade = Number(row[5]);
+        return tulName && !isNaN(tulRequiredGrade) && tulRequiredGrade <= userGradeLevel;
+      }) 
+      .map(row => ({
+        name: row[0],         
+        movements: parseInt(row[1]) || 0, 
+        stances: parseInt(row[2]) || 0,   
+        readyStance: row[3] || "---",  
+        difficulty: parseInt(row[4]) || 0, 
+        meaning: row[6] || "",      
+        img: row[7] || "https://placehold.co/300x200?text=No+Pattern+Image"
+      }));
+
+    if (deck.length < 4) {
+      return { error: "Not enough Tuls unlocked for this grade. (Found: " + deck.length + ")" };
+    }
+
+    const shuffled = deck.sort(() => Math.random() - 0.5);
+    const mid = Math.ceil(shuffled.length / 2);
+    
+    return {
+      playerHand: shuffled.slice(0, mid),
+      cpuHand: shuffled.slice(mid)
+    };
+  } catch (e) {
+    return { error: e.message };
+  }
 }
