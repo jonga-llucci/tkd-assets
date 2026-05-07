@@ -106,19 +106,6 @@
     <div id="loading-msg" class="fw-bold text-primary small px-4 text-center"></div>
 </div>
 
-<div class="modal fade" id="confirmModal" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered mx-auto" style="max-width: 350px;">
-    <div class="modal-content shadow-lg text-center p-4 rounded-4">
-        <h5 class="fw-bold">End Session?</h5>
-        <p class="text-muted small mb-4">See results for the questions answered so far?</p>
-        <div class="d-flex gap-2">
-          <button class="btn btn-light w-50 rounded-pill" data-bs-dismiss="modal">Stay</button>
-          <button class="btn btn-primary w-50 rounded-pill" id="confirm-end-btn">Confirm</button>
-        </div>
-    </div>
-  </div>
-</div>
-
 <div id="view-login" class="view-container active-view">
   <div class="quiz-card text-center shadow-lg">
     <h2 class="fw-bold mb-4">TKD Academy</h2>
@@ -137,7 +124,7 @@
       <i class="bi bi-person-circle fs-1 text-primary"></i>
     </div>
     <button class="btn btn-warning w-100 mb-3 p-3 text-start border-0 shadow-sm" onclick="handleNavigation('view-game-center')">
-      <div class="d-flex align-items-center"><i class="bi bi-controller me-3 fs-3"></i><div><strong>Game Center</strong><br><small>Interactive Challenges</small></div></div>
+      <div class="d-flex align-items-center"><i class="bi bi-controller me-3 fs-3"></i><div><strong>Game Centre</strong><br><small>Interactive Challenges</small></div></div>
     </button>
     <button class="btn btn-primary w-100 mb-3 p-3 text-start shadow-sm" onclick="startApp('practice')">
       <div class="d-flex align-items-center"><i class="bi bi-lightning me-3 fs-3"></i><div><strong>Daily Practice</strong><br><small>10 Questions</small></div></div>
@@ -150,7 +137,7 @@
 
 <div id="view-game-center" class="view-container">
     <div class="quiz-card text-center">
-        <h4 class="fw-bold mb-4">Game Center</h4>
+        <h4 class="fw-bold mb-4">Game Centre</h4>
         <div class="game-grid">
             <div class="game-card" onclick="startApp('game_match')"><i class="bi bi-grid-3x3-gap"></i><strong>Matching Pairs</strong></div>
             <div class="game-card" onclick="startApp('game_swipe')"><i class="bi bi-check-circle"></i><strong>True or False</strong></div>
@@ -161,7 +148,6 @@
 
 <div id="view-trumps" class="view-container">
     <div class="quiz-card text-center">
-        <!-- ADD THIS WRAPPER -->
         <div id="trumps-content-wrapper" style="transition: opacity 0.3s ease;">
             <div class="d-flex justify-content-between mb-3 fw-bold">
                 <span class="text-primary">Your Cards: <span id="player-card-count">0</span></span>
@@ -253,8 +239,8 @@
 <div id="view-account" class="view-container">
     <div class="quiz-card">
         <h3 class="mb-4">Account Profile</h3>
-        <div class="mb-4"><label class="small fw-bold text-muted">CURRENT GRADE</label><select id="grade-selector" class="form-select p-3" onchange="saveGrade()"></select></div>
-        <div class="mb-4"><label class="small fw-bold text-muted">PASSWORD</label><input type="password" id="new-pass" class="form-control p-3 mb-2" placeholder="New Password"><button class="btn btn-primary w-100 p-3" onclick="updatePass()">Update Password</button></div>
+        <div class="mb-4"><label class="small fw-bold text-muted">Grading for (next belt):</label><select id="grade-selector" class="form-select p-3" onchange="saveGrade()"></select></div>
+        <div class="mb-4"><label class="small fw-bold text-muted">Change Password:</label><input type="password" id="new-pass" class="form-control p-3 mb-2" placeholder="New Password"><button class="btn btn-primary w-100 p-3" onclick="updatePass()">Update Password</button></div>
     </div>
 </div>
 
@@ -277,10 +263,6 @@
     <button class="nav-item" id="nav-about" onclick="handleNavigation('view-about')"><i class="bi bi-info-circle"></i>About</button>
   </nav>
   <div class="copyright-text">(C) J Gallucci 2026</div>
-</div>
-
-<div id="view-trumps" class="view-container">
-    <!-- The TulUI content will be injected here -->
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -558,14 +540,13 @@ function goHome() {
     document.getElementById('user-welcome').innerText = res.displayName;
     document.getElementById('user-streak').innerHTML = `<i class="bi bi-fire"></i> ${res.streak} Day Streak`;
     document.getElementById('navbar').classList.remove('hidden');
-    const userGradeValue = res.gradeValue;
     google.script.run.withSuccessHandler(belts => {
       const sel = document.getElementById('grade-selector');
       sel.innerHTML = '';
       belts.forEach(b => {
         sel.innerHTML += `<option value="${b.value}" ${b.value === userGradeValue ? 'selected' : ''}>${b.label}</option>`;
       });
-    }).getBeltOptions();
+    })
     switchView('view-modes');
   } else {
     errEl.innerText = "Incorrect username or password.";
@@ -574,45 +555,7 @@ function goHome() {
 }).loginUser(u, p);
   }
 
-/**function initTulTrumps() {
-    isQuizActive = true;
-    
-    toggleLoad(true, "Shuffling the deck...");
-    
-    google.script.run
-      .withSuccessHandler(data => {
-        if (!data || data.error) {
-            isQuizActive = false;
-            toggleLoad(false);
-            alert("Error: " + data.error);
-            return;
-        }
-        
-        playerHand = data.playerHand;
-        cpuHand = data.cpuHand;
-        
-        if (playerHand.length > 0) {
-            const imgLoader = new Image();
-            imgLoader.onload = () => {
-                toggleLoad(false);
-                updateGameUI();
-            };
-            imgLoader.onerror = () => {
-                toggleLoad(false);
-                updateGameUI();
-            };
-            // Use Variable here
-            imgLoader.src = playerHand[0].img || TUL_PLACEHOLDER;
-        } else {
-            toggleLoad(false);
-            updateGameUI();
-        }
-      })
-      .getTulTrumpsData(activeUser);
-}*/
-
   function startApp(mode) {
-    console.log("Starting App Mode:", mode);
     
     // 1. Determine the correct View ID based on the mode
     let targetView = 'view-quiz'; 
@@ -868,36 +811,21 @@ function handleSwipe(userAnswer) {
   }
 
   function endQuiz() {
-    clearInterval(timerInterval); // Stop any active timers
-    isQuizActive = false; // Reset the quiz state flag
+    clearInterval(timerInterval);
+    isQuizActive = false;
 
-    // 1. If no questions were answered, just go home
     if (questionsAnswered === 0) {
         switchView('view-modes');
         return;
     }
 
-    // 2. Clear all views to prevent overlapping
-    const views = ['view-login', 'view-modes', 'view-game-center', 'view-trumps', 'view-quiz', 'view-results', 'view-account', 'view-about'];
-    views.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-            el.classList.add('hidden');
-            el.classList.remove('active-view');
-        }
-    });
-
-    // 3. Prepare the results data
-    const resTarget = document.getElementById('view-results');
-    const p = Math.round((score / questionsAnswered) * 100); 
-    
-    if (p >= 75) triggerConfetti(); // Celebrate success!
+    const p = Math.round((score / questionsAnswered) * 100);
+    if (p >= 75) triggerConfetti();
 
     document.getElementById('res-title').innerText = p >= 75 ? "GREAT JOB!" : "KEEP PRACTISING!";
     document.getElementById('res-percent').innerText = p + "%";
     document.getElementById('res-score').innerText = `${score}/${questionsAnswered} Correct`;
 
-    // 4. Handle the mistakes review list
     const rList = document.getElementById('review-list');
     rList.innerHTML = '';
     if (missedQuestions.length > 0) {
@@ -908,12 +836,7 @@ function handleSwipe(userAnswer) {
         rList.innerHTML = '<div class="text-success p-2">Perfect! No mistakes to review.</div>';
     }
 
-    // 5. Explicitly show the results view
-    if (resTarget) {
-        resTarget.classList.remove('hidden');
-        resTarget.style.display = 'block'; // Force display if hidden class is stubborn
-        setTimeout(() => resTarget.classList.add('active-view'), 10);
-    }
+    switchView('view-results');
 }
 
   function updateTimerUI() { const m = Math.floor(timeLeft / 60), s = timeLeft % 60; document.getElementById('timer-display').innerText = `${m}:${s < 10 ? '0' : ''}${s}`; }
@@ -1045,6 +968,7 @@ function closeWarning() {
     if (overlay) overlay.classList.add('hidden');
     isProcessing = false;
 }
+
 </script>
 </body>
 </html>

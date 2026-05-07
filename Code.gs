@@ -21,10 +21,6 @@ function doGet() {
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
 }
 
-// THIS IS THE BRIDGE: It returns the TulUI content to the main Index file
-function getTrumpsHTML() {
-  return HtmlService.createHtmlOutputFromFile('TulUI').getContent();
-}
 
 function loginUser(username, password) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -72,14 +68,7 @@ function getQuizData(username, mode) {
   const userSheet = ss.getSheetByName("Users");
   const cleanUser = username ? username.toString().trim() : "";
   
-  const userData = userSheet.getDataRange().getValues();
-  let userGradeLevel = 1; 
-  for (let i = 1; i < userData.length; i++) {
-    if (userData[i][0] && userData[i][0].toString().trim() === cleanUser) {
-      userGradeLevel = parseInt(userData[i][2]) || 1;
-      break;
-    }
-  }
+  const userGradeLevel = getUserGrade_(username);
 
   const qData = qSheet.getDataRange().getValues();
   const pData = pSheet.getDataRange().getValues() || [];
@@ -178,13 +167,7 @@ function getGameData(username, gameType) {
   const userSheet = ss.getSheetByName("Users");
   const userData = userSheet.getDataRange().getValues();
   
-  let userGrade = 1;
-  for (let i = 1; i < userData.length; i++) {
-    if (userData[i][0] && userData[i][0].toString().trim() === username.toString().trim()) { 
-      userGrade = parseInt(userData[i][2]) || 1; 
-      break; 
-    }
-  }
+  const userGradeLevel = getUserGrade_(username);
 
   const qData = qSheet.getRange(2, 1, qSheet.getLastRow() - 1, qSheet.getLastColumn()).getValues();
   
@@ -246,4 +229,15 @@ function getBeltOptions() {
   return data.slice(1)
     .filter(row => row[0] && row[1])
     .map(row => ({ label: row[0].toString().trim(), value: parseInt(row[1]) }));
+}
+
+function getUserGrade_(username) {
+  const data = SpreadsheetApp.getActiveSpreadsheet()
+    .getSheetByName("Users").getDataRange().getValues();
+  const clean = username ? username.toString().trim().toLowerCase() : "";
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] && data[i][0].toString().trim().toLowerCase() === clean)
+      return parseInt(data[i][2]) || 1;
+  }
+  return 1;
 }

@@ -12,8 +12,7 @@ function getTulTrumpsData(username) {
     const tulSheet = ss.getSheetByName("Tuls");
     const userSheet = ss.getSheetByName("Users");
     
-    const userData = userSheet.getDataRange().getValues();
-    let userGrade = 1; // Default
+    const userGradeLevel = getUserGrade_(username);
     
     const cleanUser = username ? username.toString().trim().toLowerCase() : "";
     
