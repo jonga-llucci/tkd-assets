@@ -71,17 +71,22 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 ------------------------------------------------------------
 - DRY Principle: One 'switchView(id)' function controls all UI transitions.
 - Performance must be prioritised by accessing the minimum data required when needed. Do not pre-load data. Users will have frequent short sessions.
+- At the bottom of the container / each screen there should be a navigation bar with icons for "Home" (returns to the home screen), "Account" (Goes to a screen which shows their grade which is selectale in a drop-down, and the ability to change their password) and, "About" (Contains information in section 8). If any of these are selected during game play a confirmation pop-up appears and if the user chooses to "Exit" rather than "Stay & Play" they will be shown their results including incorrect answers to review (unless they have ansered 0 questions).
+- At the end of a game, in the results box show a percentage score as a whole number, a pass is =>75%
 - View Naming: All HTML IDs must follow 'view-[name]' (e.g., view-login, view-results).
 - Session Exit: If 'isQuizActive' is true, Home/Logout must trigger 'showExitWarning'.
 - Session Review: Upon exit, user must receive grade/review for answered questions unless they have not answered any questions
+- The review-list container must have sufficient vertical space (e.g., max-height with overflow-y: auto) to display all incorrect answers without cutting off content.
 - Single-Source Data: All quiz and trump data must flow from the Spreadsheet via google.script.run.
 - Code Integrity: Be explicit when providing code updates. State which lines of code are to be added or replaced by line number.
 - Universal Nav: handleNavigation(targetId) is the sole gatekeeper.
 - Intercept: If isQuizActive == true, triggers showUniversalOverlay('QUIT_SESSION').
+- Menu items must only display the mode name and icon; do not include question count indicators (e.g., /10 or /50) on the selection buttons.
 - Pop-up System: Uses a single #result-overlay for:
     * Exit Warnings (Stay/Exit)
     * Session Results (Grade/Review)
     * Game Over / Victory announcements
+- Do not add citations in code - [cite: X]
 
 6. LOGIC & ALGORITHMS
 ------------------------------------------------------------
@@ -94,7 +99,7 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
   * Bucket 1: 0 days | Bucket 2: 2 days | Bucket 3: 4 days | Bucket 4: 5 days.
   * Filter: (Today >= NextReviewDate) AND (BeltLevel <= UserGrade).
 - Exam Logic:
-  * Filter: (Column Q == "Y") AND (BeltLevel <= UserGrade).[cite: 8]
+  * Filter: (Column Q == "Y") AND (BeltLevel <= UserGrade).
   * Limit: 50 questions.
 
 7. GAME-SPECIFIC LOGIC
@@ -103,50 +108,33 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 - Tul Trumps     - Filtering: Deck is filtered by User Grade (Tab: Tuls, Col F).
 - Tul Trumps     - Game State: Managed in TulUI.html (playerHand, cpuHand).
 - Tul Trumps     - Constraints: isQuizActive is set to TRUE upon game start to prevent accidental exit.
-- Matching Pairs - Only Question rows with values in col S should be used.
+- Matching Pairs - Only Question rows where col P = Y and has values in col S should be used.
 - Matching Pairs - Pairs: Formed with col S and col L.
 - Matching Pairs - Filtering: Cards are filtered by User Grade (Tab: Questions, Col R).
 - Matching Pairs - SRS: Questions should be prioritised using SRS buckets.
-- True / False   - Only Question rows with values in col T should be used.
+- True / False   - Only Question rows where col P = Y and has values in col T should be used.
 - True / False   - Pairs: Formed with col S and col L.
 - True / False   - Filtering: Cards are filtered by User Grade (Tab: Questions, Col R).
 - True / False   - SRS: Questions should be prioritised using SRS buckets.
 - Daily practise - 10 questions
 - Daily practise - Blank answer options should not be shown
 - Daily practise - Filtering: Cards are filtered by User Grade (Tab: Questions, Col R).
-- Daily practise - Filtering: Cards are filtered by whether to be used as exam questions "=Y" (Tab: Questions, Col Q).
+- Daily practise - Filtering: Cards are filtered by whether to be used as exam questions Col Q =='Y' (Tab: Questions, Col Q).
 - Daily practise - SRS: Questions should be prioritised using SRS buckets.
+- Daily practise - Selection highlighting during daily practise should show green for answers correctly selected and red if incorrect.
 - Mock exam      - Time limit (shown with MM:SS timer) 60 mins
 - Mock exam      - 50 questions
 - Mock exam      - Passing mark => 75%
 - Mock exam      - Blank answer options should not be shown
 - Mock exam      - Filtering: Cards are filtered by User Grade (Tab: Questions, Col R).
-- Mock exam      - Filtering: Cards are filtered by whether to be used as exam questions "=Y" (Tab: Questions, Col Q).
+- Mock exam      - Filtering: Cards are filtered by whether to be used as exam questions Col Q =='Y' (Tab: Questions, Col Q).
 - Mock exam      - SRS: Not used for exam. Questions should be a random selection.
+- Mock exam      - SRS: Answers submitted from mock exam should contribute to question SRS bucket.
+- Mock exam      - Selection highlighting during the Mock Exam must be neutral (TKD Blue) and must not indicate if the answer is correct or incorrect until the final review.
 
 8. FIXED CONTENT: 'ABOUT' SECTION
 ------------------------------------------------------------
-- Location: view-about (Accessible from Main Menu).
-- Educational Disclosure: 
-    * "Spaced Repetition (SRS): Uses the Leitner System to optimize memory retention."
-    * "Mock Exams: Follows strict 50-question limits and excludes 'Flashcard Only' items (Col Q)."
-    * "Developer Note: Built for [Club Name] to support the journey to Black Belt."
-
-9. UX STANDARDS
-------------------------------------------------------------
-- Primary Color: TKD Blue (#0d6efd) / TKD Red (#dc3545).
-- Standardized UI: All card-based games must use consistent shadows, radii, and 'TKD Blue' accents.
-- Feedback: Incorrect answers must be listed in the 'review-list' on results screen.[cite: 7]
-- Animation: 0.3s ease-in-out on all view transitions.
-- Maintain loading messages. They must be specific to / make sense for Taekwon-do training.
-- Zero-Footprint Personalization: User data (Grade, Streak) influences logic silently; never use "Because you are [X]..." phrasing in UI.
-- Transition: All views use a 0.3s ease-out translateY animation.
-- Interactions: Buttons must use :active scales (0.98) for haptic-like feedback.
-- Suppression: overscroll-behavior-y: contain must be present on the body to prevent pull-to-refresh loops.
-
-10. FIXED CONTENT: 'ABOUT' SECTION
-------------------------------------------------------------
-- Location: view-about (Accessible from Main Menu).
+- Location: view-about (Accessible from Navigation Bar).
 - Heading
     * "TKD Theory App"
 - Attribution
@@ -157,9 +145,57 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 - Educational Disclosure: 
     * "Spaced Repetition (SRS): Uses the Leitner System to optimize memory retention."
     * "Mock Exams: Follows strict 50-question limits, 60 minute time limit, pass mark 75%"
-    * "Developer Note: Built for [Club Name] to support the journey to Black Belt."
+- Version details
+    *vXX.X
 
-11. ROADMAP / NEXT ITERATIONS (v11.0+)
+9. FIXED CONTENT: 'ACCOUNT' SECTION
+------------------------------------------------------------
+- Location: view-account (Accessible from Navigation Bar).
+- Heading
+    * "Account Settings"
+- Grade
+    * "Grading level (this is your next belt, not current one)"
+    * Drop down box with all selections from Tab: Belts, Col A "Belt"
+    * Change of value updates Tab: Users, Col C "BeltLevel" with corresponding value from Tab: Belts, Col B "BeltLevel" for selection
+- Password
+    * "Change Password"
+    * Text box available to input "New Password" validation requirements, 5 chars, 1 uppercase letter, 1 lower case letter, one number, one special character
+    * Validation check on new passwords should warn a user in a pop up message what the validation rules are
+    * Confirmation should be displayed that a password has successfully been changed
+    * There is no requirement to be able to logout
+
+10. UX STANDARDS
+------------------------------------------------------------
+- Primary Color: TKD Blue (#0d6efd) / TKD Red (#dc3545).
+- Standardized UI: All card-based games must use consistent shadows, radii, and 'TKD Blue' accents.
+- Feedback: Incorrect answers must be listed in the 'review-list' on results screen.
+- In games a progress bar should be shown along the top
+- Bootstrap icons should be used to make the interface user friendly - Flame for streak, controller for game centre, lightening for daily practice, stopwatch for mock grading
+- In "mock exam" a countdown timer set from 60 minutes should be shown in the format MM:SS
+- Animation: 0.3s ease-in-out on all view transitions.
+- Maintain loading messages. They must be specific to / make sense for Taekwon-do training (section 10)
+- Zero-Footprint Personalization: User data (Grade, Streak) influences logic silently; never use "Because you are [X]..." phrasing in UI.
+- Transition: All views use a 0.3s ease-out translateY animation.
+- Interactions: Buttons must use :active scales (0.98) for haptic-like feedback.
+- Suppression: overscroll-behavior-y: contain must be present on the body to prevent pull-to-refresh loops.
+- On completing a game with a passing mark (=>75%), or just completing the matching pairs game, then the confetti celebration should be shown. Confetti must be triggered with a high zIndex (e.g., 10000) to ensure it appears in front of the results card.
+
+11. FIXED CONTENT: 'LOADING' MESSAGES
+------------------------------------------------------------
+- Your specific Taekwondo messages
+  const loadMsgs = [
+    "Straightening the dobok...", 
+    "Sharpening your side kick...", 
+    "Reviewing the patterns...", 
+    "Warming up for the grading...", 
+    "Breathe in and out...",
+    "Tying the black belt...", 
+    "Learning Korean...", 
+    "Focusing your Ki-Hap..."
+- Unless loading TulTrumps "Shuffling deck...";
+
+
+12. ROADMAP / NEXT ITERATIONS (v11.0+)
 ------------------------------------------------------------
 - Dynamic Grade Banner: Top bar colors change based on 'UserGrade'.
 - 5s Timer: Integrated into 'game_swipe' (Board Break) and Infinite Mode.
