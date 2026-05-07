@@ -124,6 +124,7 @@
     <h2 class="fw-bold mb-4">TKD Academy</h2>
     <input type="text" id="user-input" class="form-control mb-3 p-3" placeholder="Username">
     <input type="password" id="pass-input" class="form-control mb-3 p-3" placeholder="Password">
+    <div id="login-error" class="text-danger small mt-1 mb-2" style="display:none; min-height:1.2em;"></div>
     <button class="btn btn-primary w-100 btn-lg" onclick="handleLogin()">Login</button>
     <div class="copyright-text mt-3">(C) J Gallucci 2026</div>
   </div>
@@ -151,7 +152,7 @@
     <div class="quiz-card text-center">
         <h4 class="fw-bold mb-4">Game Center</h4>
         <div class="game-grid">
-            <div class="game-card" onclick="startApp('game_match')"><i class="bi bi-grid-3x3-gap"></i><strong>Match Pairs</strong></div>
+            <div class="game-card" onclick="startApp('game_match')"><i class="bi bi-grid-3x3-gap"></i><strong>Matching Pairs</strong></div>
             <div class="game-card" onclick="startApp('game_swipe')"><i class="bi bi-check-circle"></i><strong>True or False</strong></div>
             <div class="game-card" onclick="startApp('game_tuls')"><i class="bi bi-stack"></i><strong>Tul Trumps</strong></div>
         </div>
@@ -254,7 +255,6 @@
         <h3 class="mb-4">Account Profile</h3>
         <div class="mb-4"><label class="small fw-bold text-muted">CURRENT GRADE</label><select id="grade-selector" class="form-select p-3" onchange="saveGrade()"></select></div>
         <div class="mb-4"><label class="small fw-bold text-muted">PASSWORD</label><input type="password" id="new-pass" class="form-control p-3 mb-2" placeholder="New Password"><button class="btn btn-primary w-100 p-3" onclick="updatePass()">Update Password</button></div>
-        <button class="btn btn-outline-danger w-100 p-3" onclick="handleLogout()">Log Out</button>
     </div>
 </div>
 
@@ -301,15 +301,16 @@ document.addEventListener('touchmove', function(e) {
   let playerHand = [], cpuHand = []; 
   let isProcessing = false;
 
-  let quizData = [], currentIndex = 0, score = 0, activeUser = "", timerInterval = null, timeLeft = 0, isQuizActive = false, currentMode = "", questionsAnswered = 0, missedQuestions = [];
+  let quizData = [], currentIndex = 0, score = 0, activeUser = "", activeUserGrade = 1, timerInterval = null, timeLeft = 0, isQuizActive = false, currentMode = "", questionsAnswered = 0, missedQuestions = [];
+
   let matchSelected = { qId: null, aId: null, qEl: null, aEl: null }, matchesFound = 0, setsCleared = 0, swipeCorrect = false;
 
 function handleNavigation(targetView) {
-    // Check if the user is in the middle of Tul Trumps or an Exam
-    if (isQuizActive) {
+  if (isQuizActive) {
     const mode = (playerHand && playerHand.length > 0) ? "trumps" : "exam";
-    showUniversalWarning(targetView, mode); 
+    showUniversalWarning(targetView, mode);
   } else {
+    if (targetView === 'view-account') loadAccountView();
     switchView(targetView);
   }
 }
@@ -545,20 +546,32 @@ function goHome() {
   function handleLogin() {
     const u = document.getElementById('user-input').value, p = document.getElementById('pass-input').value;
     if(!u || !p) return;
+    document.getElementById('login-error').style.display = 'none';
     toggleLoad(true);
     google.script.run.withSuccessHandler(res => {
-      toggleLoad(false);
-      if(res.success) {
-        activeUser = res.username; 
-        document.getElementById('user-welcome').innerText = res.displayName;
-        document.getElementById('user-streak').innerHTML = `<i class="bi bi-fire"></i> ${res.streak} Day Streak`;
-        document.getElementById('navbar').classList.remove('hidden');
-        const sel = document.getElementById('grade-selector'); sel.innerHTML = '';
-        const gradeMap = { 1:"10th Kup", 2:"9th Kup", 3:"8th Kup", 4:"7th Kup", 5:"6th Kup", 6:"5th Kup", 7:"4th Kup", 8:"3rd Kup", 9:"2nd Kup", 10:"1st Kup", 11:"1st Dan", 12:"2nd Dan" };
-        for(let k in gradeMap) sel.innerHTML += `<option value="${k}" ${k==res.gradeValue?'selected':''}>${gradeMap[k]}</option>`;
-        switchView('view-modes');
-      }
-    }).loginUser(u, p);
+  toggleLoad(false);
+  const errEl = document.getElementById('login-error');
+  if (res.success) {
+    errEl.style.display = 'none';
+    activeUser = res.username;
+    activeUserGrade = res.gradeValue;
+    document.getElementById('user-welcome').innerText = res.displayName;
+    document.getElementById('user-streak').innerHTML = `<i class="bi bi-fire"></i> ${res.streak} Day Streak`;
+    document.getElementById('navbar').classList.remove('hidden');
+    const userGradeValue = res.gradeValue;
+    google.script.run.withSuccessHandler(belts => {
+      const sel = document.getElementById('grade-selector');
+      sel.innerHTML = '';
+      belts.forEach(b => {
+        sel.innerHTML += `<option value="${b.value}" ${b.value === userGradeValue ? 'selected' : ''}>${b.label}</option>`;
+      });
+    }).getBeltOptions();
+    switchView('view-modes');
+  } else {
+    errEl.innerText = "Incorrect username or password.";
+    errEl.style.display = 'block';
+  }
+}).loginUser(u, p);
   }
 
 /**function initTulTrumps() {
@@ -960,8 +973,9 @@ function handleLogout() {
   switchView('view-login'); 
 }
 
-function saveGrade() { 
-  google.script.run.saveGrade(activeUser, document.getElementById('grade-selector').value); 
+function saveGrade() {
+  activeUserGrade = parseInt(document.getElementById('grade-selector').value);
+  google.script.run.saveGrade(activeUser, activeUserGrade);
 }
 
 function updatePass() {
@@ -1011,6 +1025,16 @@ function updatePass() {
             overlay.classList.remove('hidden');
         })
         .updatePass(activeUser, newPass);
+}
+
+function loadAccountView() {
+  google.script.run.withSuccessHandler(belts => {
+    const sel = document.getElementById('grade-selector');
+    sel.innerHTML = '';
+    belts.forEach(b => {
+      sel.innerHTML += `<option value="${b.value}" ${b.value == activeUserGrade ? 'selected' : ''}>${b.label}</option>`;
+    });
+  }).getBeltOptions();
 }
 
 /**

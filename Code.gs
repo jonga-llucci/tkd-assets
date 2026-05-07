@@ -123,6 +123,17 @@ function getQuizData(username, mode) {
 
   const limit = (mode === 'test') ? 50 : 10;
 
+  // Before returning, sort practice questions by SRS priority (bucket ascending, most overdue first)
+  // then shuffle within each priority tier so it doesn't feel mechanical
+  if (mode !== 'test') {
+    filtered.sort((a, b) => {
+      const progA = progressMap[a[14]?.toString()] || { bucket: 1, date: new Date(0) };
+      const progB = progressMap[b[14]?.toString()] || { bucket: 1, date: new Date(0) };
+      if (progA.bucket !== progB.bucket) return progA.bucket - progB.bucket; // Bucket 1 first
+      return (progA.date - progB.date); // Most overdue first within same bucket
+    });
+  }
+
   return filtered.map(row => {
     let rawOpts = [row[4], row[5], row[6], row[7]].filter(String);
     return {
@@ -131,7 +142,7 @@ function getQuizData(username, mode) {
       answer: row[11] ? row[11].toString().trim() : "",
       qId: row[14].toString()
     };
-  }).sort(() => Math.random() - 0.5).slice(0, limit);
+  }).slice(0, limit);
 }
 
 function updateQuestionScore(username, qId, isCorrect) {
@@ -226,4 +237,13 @@ function updatePass(u, p) {
       return "Updated!"; 
     }
   }
+}                          
+
+function getBeltOptions() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("Belts");
+  const data = sheet.getDataRange().getValues();
+  return data.slice(1)
+    .filter(row => row[0] && row[1])
+    .map(row => ({ label: row[0].toString().trim(), value: parseInt(row[1]) }));
 }
