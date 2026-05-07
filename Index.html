@@ -4,356 +4,1023 @@
   <base target="_top">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <style>
     :root { --tkd-blue: #0d6efd; --tkd-red: #dc3545; --tkd-green: #198754; }
-    body { background-color: #f8f9fa; padding-bottom: 100px; font-family: 'Segoe UI', sans-serif; overscroll-behavior-y: contain; }
-    .view-container { max-width: 500px; margin: 15px auto; padding: 15px; display: none; opacity: 0; transform: translateY(20px); transition: 0.3s ease-out; }
-    .active-view { display: block !important; opacity: 1; transform: translateY(0); }
-    .quiz-card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.05); }
-    .option-btn { width: 100%; margin-bottom: 12px; text-align: left; padding: 18px; border-radius: 12px; border: 2px solid #f0f0f0; background: white; transition: 0.2s; }
-    .option-btn.selected-neutral { background-color: #e7f1ff; border-color: var(--tkd-blue); color: #084298; }
-    .option-btn.correct { background-color: #d1e7dd; border-color: var(--tkd-green); color: #0f5132; }
-    .option-btn.wrong { background-color: #f8d7da; border-color: var(--tkd-red); color: #842029; }
-    .option-btn:active { transform: scale(0.98); }
-    #loading-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.95); z-index:10000; display:flex; flex-direction:column; align-items:center; justify-content:center; }
+    body { background-color: #f8f9fa; padding-bottom: 110px; font-family: 'Segoe UI', sans-serif; overflow-x: hidden; overscroll-behavior-y: contain; }
+    .view-container { max-width: 500px; margin: 15px auto; padding: 15px; display: none; opacity: 0; transform: translateY(10px); transition: all 0.3s ease-out; }
+    .active-view { display: block; opacity: 1; transform: translateY(0); }
+    .quiz-card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.05); border: none; min-height: 400px; }
+    
+    .option-btn { width: 100%; margin-bottom: 12px; text-align: left; padding: 18px; border-radius: 12px; border: 2px solid #f0f0f0; background: white; font-weight: 500; }
+    .progress-wrapper { height: 6px; background: #eee; border-radius: 10px; overflow: hidden; margin-bottom: 20px; }
+    #progress-bar { width: 0%; height: 100%; background: var(--tkd-blue); transition: width 0.4s ease; }
+
+    .game-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .game-card { background: #f8f9fa; border: 2px solid #eee; border-radius: 15px; padding: 20px; text-align: center; cursor: pointer; }
+    .game-card i { font-size: 2rem; color: var(--tkd-blue); display: block; margin-bottom: 8px; }
+
+    .match-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .match-btn { padding: 12px; border-radius: 12px; border: 2px solid #eee; background: white; font-size: 0.85rem; min-height: 80px; display: flex; align-items: center; justify-content: center; text-align: center; cursor: pointer; }
+    .match-btn.selected { border-color: var(--tkd-blue); background-color: #e7f1ff; border-width: 3px; }
+    .match-btn.matched { visibility: hidden; pointer-events: none; }
+
     .footer-container { position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000; background: white; border-top: 1px solid #eee; }
-    .bottom-nav { height: 75px; display: flex; align-items: center; justify-content: space-around; }
-    .nav-item { flex: 1; border: none; background: none; color: #aaa; font-size: 0.8rem; display: flex; flex-direction: column; align-items: center; }
+    .bottom-nav { height: 85px; display: flex; align-items: center; justify-content: space-around; padding-bottom: 10px; }
+    .nav-item { flex: 1; border: none; background: none; color: #aaa; font-size: 0.8rem; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .nav-item i { font-size: 1.6rem; margin-bottom: 2px; }
     .nav-item.active { color: var(--tkd-blue); font-weight: bold; }
-    .app-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9000; display:none; align-items:center; justify-content:center; }
-    .overlay-content { background: white; padding: 30px; border-radius: 30px; width: 90%; max-width: 400px; max-height: 85vh; overflow-y: auto; }
-    .review-item { padding: 10px; border-bottom: 1px solid #eee; font-size: 0.85rem; text-align: left; }
+    
     .hidden { display: none !important; }
-    .error-text { color: var(--tkd-red); font-size: 0.85rem; margin-top: 5px; display: none; text-align: left; }
+    
+    #loading-overlay { 
+    position: fixed; 
+    top:0; 
+    left:0; 
+    width:100%; 
+    height:100%; 
+    background: rgba(255,255,255,0.9); 
+    z-index: 9999; 
+    display: none; /* Changed from flex to none by default */
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: center; 
+}
+    .copyright-text { text-align: center; font-size: 0.65rem; color: #bbb; padding: 4px; background: #fff; }
+
+    .result-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center; /* Centers vertically */
+    justify-content: center; /* Centers horizontally */
+    z-index: 9999;
+    transition: opacity 0.3s ease;
+}
+
+/* This creates the actual "Popup" look */
+.result-box {
+    background: white;
+    padding: 40px;
+    border-radius: 20px;
+    text-align: center;
+    max-width: 85%;
+    width: 400px;
+    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.result-box .btn {
+    transition: transform 0.2s ease;
+    font-weight: 600;
+}
+
+.result-box .btn:active {
+    transform: scale(0.95);
+}
+
+.display-5 {
+    font-size: 2.5rem;
+    letter-spacing: -1px;
+}
+
+@keyframes popIn {
+    from { transform: scale(0.8); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.text-win { color: #198754; }
+.text-loss { color: #dc3545; }
+.text-draw { color: #6c757d; }
+
+    @keyframes confetti { 0% { transform: translateY(0) rotate(0); opacity: 1; } 100% { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
+    .confetti { position: fixed; width: 10px; height: 10px; animation: confetti 3s ease-out forwards; z-index: 9999; pointer-events: none; }
   </style>
 </head>
 <body>
 
 <div id="loading-overlay">
     <div class="spinner-border text-primary mb-3"></div>
-    <div id="loading-msg" class="fw-bold text-primary">Straightening the dobok...</div>
+    <div id="loading-msg" class="fw-bold text-primary small px-4 text-center"></div>
 </div>
 
-<!-- VIEW: LOGIN -->
-<div id="view-login" class="view-container active-view">
-  <div class="quiz-card text-center">
-    <h2 class="fw-bold mb-4">TKD Academy</h2>
-    <input type="text" id="user-input" class="form-control mb-3 p-3" placeholder="Username">
-    <div class="mb-3">
-        <input type="password" id="pass-input" class="form-control p-3" placeholder="Password">
-        <div id="login-error" class="error-text"><i class="bi bi-exclamation-circle me-1"></i> Invalid username or password.</div>
+<div class="modal fade" id="confirmModal" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered mx-auto" style="max-width: 350px;">
+    <div class="modal-content shadow-lg text-center p-4 rounded-4">
+        <h5 class="fw-bold">End Session?</h5>
+        <p class="text-muted small mb-4">See results for the questions answered so far?</p>
+        <div class="d-flex gap-2">
+          <button class="btn btn-light w-50 rounded-pill" data-bs-dismiss="modal">Stay</button>
+          <button class="btn btn-primary w-50 rounded-pill" id="confirm-end-btn">Confirm</button>
+        </div>
     </div>
-    <button class="btn btn-primary w-100 btn-lg rounded-pill" onclick="handleLogin()">Login</button>
   </div>
 </div>
 
-<!-- VIEW: HOME -->
+<div id="view-login" class="view-container active-view">
+  <div class="quiz-card text-center shadow-lg">
+    <h2 class="fw-bold mb-4">TKD Academy</h2>
+    <input type="text" id="user-input" class="form-control mb-3 p-3" placeholder="Username">
+    <input type="password" id="pass-input" class="form-control mb-3 p-3" placeholder="Password">
+    <button class="btn btn-primary w-100 btn-lg" onclick="handleLogin()">Login</button>
+    <div class="copyright-text mt-3">(C) J Gallucci 2026</div>
+  </div>
+</div>
+
 <div id="view-modes" class="view-container">
   <div class="quiz-card">
     <div class="d-flex justify-content-between mb-4">
-      <div><h3 class="mb-0">Hi, <span id="user-welcome"></span></h3><small class="text-danger fw-bold"><i class="bi bi-fire"></i> <span id="user-streak"></span> Day Streak</small></div>
+      <div><h3 class="mb-0">Hi, <span id="user-welcome"></span></h3><small id="user-streak" class="text-primary fw-bold"></small></div>
       <i class="bi bi-person-circle fs-1 text-primary"></i>
     </div>
-    <button class="btn btn-warning w-100 mb-3 p-3 text-start d-flex justify-content-between" onclick="switchView('view-game-center')">
-        <span><i class="bi bi-controller me-2"></i><strong>Game Center</strong></span><i class="bi bi-chevron-right"></i>
+    <button class="btn btn-warning w-100 mb-3 p-3 text-start border-0 shadow-sm" onclick="handleNavigation('view-game-center')">
+      <div class="d-flex align-items-center"><i class="bi bi-controller me-3 fs-3"></i><div><strong>Game Center</strong><br><small>Interactive Challenges</small></div></div>
     </button>
-    <button class="btn btn-primary w-100 mb-3 p-3 text-start d-flex justify-content-between" onclick="startApp('practice')">
-        <span><i class="bi bi-lightning-charge-fill me-2"></i><strong>Daily Practice</strong></span><i class="bi bi-chevron-right"></i>
+    <button class="btn btn-primary w-100 mb-3 p-3 text-start shadow-sm" onclick="startApp('practice')">
+      <div class="d-flex align-items-center"><i class="bi bi-lightning me-3 fs-3"></i><div><strong>Daily Practice</strong><br><small>10 Questions</small></div></div>
     </button>
-    <button class="btn btn-outline-danger w-100 p-3 text-start d-flex justify-content-between" onclick="startApp('test')">
-        <span><i class="bi bi-stopwatch-fill me-2"></i><strong>Mock Grading</strong></span><i class="bi bi-chevron-right"></i>
+    <button class="btn btn-outline-danger w-100 p-3 text-start" onclick="startApp('test')">
+      <div class="d-flex align-items-center"><i class="bi bi-stopwatch me-3 fs-3"></i><div><strong>Mock Grading</strong><br><small>Full Test (60m)</small></div></div>
     </button>
   </div>
 </div>
 
-<!-- VIEW: GAME CENTER -->
 <div id="view-game-center" class="view-container">
     <div class="quiz-card text-center">
         <h4 class="fw-bold mb-4">Game Center</h4>
-        <div class="row g-3">
-            <div class="col-6"><div class="p-3 border rounded shadow-sm" onclick="showAppAlert('Matching Pairs', 'Coming soon!')"><i class="bi bi-grid-3x3-gap d-block fs-2 text-primary"></i>Matching</div></div>
-            <div class="col-6"><div class="p-3 border rounded shadow-sm" onclick="showAppAlert('True or False', 'Coming soon!')"><i class="bi bi-check-circle d-block fs-2 text-success"></i>True/False</div></div>
-            <div class="col-12"><div class="p-3 border rounded shadow-sm" onclick="showAppAlert('Tul Trumps', 'Coming soon!')"><i class="bi bi-stack d-block fs-2 text-warning"></i>Tul Trumps</div></div>
+        <div class="game-grid">
+            <div class="game-card" onclick="startApp('game_match')"><i class="bi bi-grid-3x3-gap"></i><strong>Match Pairs</strong></div>
+            <div class="game-card" onclick="startApp('game_swipe')"><i class="bi bi-check-circle"></i><strong>True or False</strong></div>
+            <div class="game-card" onclick="startApp('game_tuls')"><i class="bi bi-stack"></i><strong>Tul Trumps</strong></div>
         </div>
     </div>
 </div>
 
-<!-- VIEW: ACCOUNT -->
-<div id="view-account" class="view-container">
-    <div class="quiz-card">
-        <h4 class="fw-bold mb-4">Account Settings</h4>
-        <div class="mb-3">
-            <label class="small text-muted fw-bold">Grading level (Next Belt)</label>
-            <select id="acc-grade-select" class="form-select p-3 mt-1">
-                <option value="1">10th Kup - White Belt</option>
-                <option value="2">9th Kup - White Belt, Yellow Stripe</option>
-                <option value="3">8th Kup - Yellow Belt</option>
-                <option value="4">7th Kup - Yellow Belt, Green Stripe</option>
-                <option value="5">6th Kup - Green Belt</option>
-                <option value="6">5th Kup - Green Belt, Blue Stripe</option>
-                <option value="7">4th Kup - Blue Belt</option>
-                <option value="8">3rd Kup - Blue Belt, Red Stripe</option>
-                <option value="9">2nd Kup - Red Belt</option>
-                <option value="10">1st Kup - Red Belt, Black Stripe</option>
-                <option value="11">1st Dan Black Belt</option>
-                <option value="12">2nd Dan Black Belt</option>
-                <option value="13">3rd Dan Black Belt</option>
-                <option value="14">4th Dan Black Belt</option>
-            </select>
-        </div>
-        <div class="mb-4">
-            <label class="small text-muted fw-bold">Change Password</label>
-            <input type="password" id="acc-pass-input" class="form-control p-3 mt-1" placeholder="Enter new password">
-            <small class="text-muted" style="font-size: 0.7rem;">5 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char.</small>
-        </div>
-        <button class="btn btn-primary w-100 p-3 rounded-pill" onclick="saveAccountChanges()">Save Changes</button>
-    </div>
-</div>
-
-<!-- VIEW: ABOUT -->
-<div id="view-about" class="view-container">
+<div id="view-trumps" class="view-container">
     <div class="quiz-card text-center">
-        <h2 class="fw-bold text-primary mb-1">TKD Theory App</h2>
-        <p class="text-muted small mb-3">v10.3</p>
-        <hr>
-        <div class="text-start small mb-4">
-            <p class="mb-1 fw-bold">Created by Jonathan for:</p>
-            <p class="mb-0">Jacob Gallucci</p>
-            <p class="mb-0">1st Dan • Age 10</p>
-            <p class="mb-3">Club: TSX Martial Arts, Bingley</p>
+        <!-- ADD THIS WRAPPER -->
+        <div id="trumps-content-wrapper" style="transition: opacity 0.3s ease;">
+            <div class="d-flex justify-content-between mb-3 fw-bold">
+                <span class="text-primary">Your Cards: <span id="player-card-count">0</span></span>
+                <span class="text-danger">CPU Cards: <span id="cpu-card-count">0</span> <small id="cpu-card-name" class="ms-1 opacity-75"></small></span>
+            </div>
             
-            <p class="mb-1 fw-bold text-primary">System Details:</p>
-            <p class="mb-1">• <strong>SRS:</strong> Uses the Leitner System to optimize memory retention.</p>
-            <p class="mb-1">• <strong>Mock Exams:</strong> 50 questions, 60 min limit, 75% pass mark.</p>
+            <div class="card shadow-sm mb-4">
+                <img id="tul-card-img" src="" class="card-img-top p-3" style="max-height: 100%; object-fit: contain;">
+                <div class="card-body">
+                    <h3 id="tul-card-name" class="fw-bold">---</h3>
+                    <span id="tul-card-ready" class="badge bg-primary mb-2">---</span>
+                    <p id="tul-card-meaning" class="small text-muted"></p>
+                    
+                    <div class="list-group list-group-flush text-start shadow-sm rounded-3">
+                        <!-- Ensure IDs match playTurn calls -->
+                        <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3" onclick="playTurn('movements')">
+                            <span><i class="bi bi-arrows-move me-2 text-primary"></i>Movements</span>
+                            <span id="val-movements" class="fw-bold fs-5">0</span>
+                        </button>
+                        <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3" onclick="playTurn('stances')">
+                            <span><i class="bi bi-person-walking me-2 text-primary"></i>Stances</span>
+                            <span id="val-stances" class="fw-bold fs-5">0</span>
+                        </button>
+                        <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3" onclick="playTurn('difficulty')">
+                            <span><i class="bi bi-bar-chart me-2 text-primary"></i>Difficulty</span>
+                            <span id="val-difficulty" class="fw-bold fs-5">0</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- VIEW: QUIZ -->
 <div id="view-quiz" class="view-container">
+  <div class="progress-wrapper"><div id="progress-bar"></div></div>
   <div class="quiz-card">
-      <div class="d-flex justify-content-between small text-muted mb-2">
-          <span id="q-counter">Question 1/50</span>
-          <span id="q-timer" class="fw-bold"></span>
-      </div>
-      <div class="progress mb-4" style="height:8px;"><div id="q-progress" class="progress-bar bg-primary" style="width: 0%"></div></div>
-      <h4 id="question-text" class="mb-4 fw-bold text-center"></h4>
+    <div class="d-flex justify-content-between mb-3">
+      <span id="q-count" class="badge bg-light text-dark border"></span>
+      <span id="timer-display" class="hidden text-danger fw-bold"></span>
+    </div>
+    
+    <div id="ui-standard" class="hidden">
+      <h4 id="question-text" class="mb-4 fw-bold"></h4>
       <div id="options-container"></div>
-      <button id="next-btn" class="btn btn-dark w-100 mt-3 p-3 rounded-pill hidden" onclick="nextQuestion()">Next</button>
+      <button id="next-btn" class="btn btn-dark w-100 mt-3 p-3 hidden" onclick="nextQuestion()">Next Question</button>
+    </div>
+
+    <div id="ui-match" class="hidden"><div class="match-grid" id="match-grid"></div></div>
+
+    <div id="ui-swipe" class="hidden text-center">
+        <div class="p-4 border rounded-4 mb-4 bg-light">
+            <h3 id="swipe-term" class="fw-bold"></h3>
+            <p class="text-muted my-2">IS THIS...</p>
+            <h4 id="swipe-def" class="text-primary fw-bold"></h4>
+        </div>
+        <div class="d-flex gap-3">
+            <button class="btn btn-danger btn-lg w-50 py-3" onclick="handleSwipe(false)">FALSE</button>
+            <button class="btn btn-success btn-lg w-50 py-3" onclick="handleSwipe(true)">TRUE</button>
+        </div>
+    </div>
   </div>
 </div>
 
-<!-- OVERLAYS -->
-<div id="result-overlay" class="app-overlay">
-    <div class="overlay-content text-center">
+<div id="view-results" class="view-container text-center">
+  <div class="quiz-card">
+    <h2 id="res-title" class="fw-bold"></h2>
+    <h1 id="res-percent" class="display-1 fw-bold text-primary my-3"></h1>
+    <p id="res-score" class="fw-bold text-muted"></p>
+    <div id="review-section" class="text-start mb-4">
+      <h6 class="fw-bold">Mistakes Review:</h6>
+      <div id="review-list" style="max-height: 200px; overflow-y: auto;" class="small"></div>
+    </div>
+    <button class="btn btn-primary w-100 p-3 rounded-pill" onclick="handleNavigation('view-modes')">Finish Session</button>
+  </div>
+</div>
+
+
+  <div id="result-overlay" class="result-overlay hidden">
+    <!-- The result-box creates the white popup container -->
+    <div class="result-box shadow-lg border-0">
         <h2 id="result-text" class="fw-bold mb-3"></h2>
-        <div id="result-details" class="mb-3"></div>
-        <div id="review-list" style="max-height: 40vh; overflow-y: auto;"></div>
-        <button class="btn btn-primary w-100 rounded-pill p-3 mt-3" onclick="closeOverlay()">Return Home</button>
+        <hr>
+        <p id="result-details" class="fs-5 mt-3"></p>
+    </div>
+</div>
+</div>
+
+<div id="view-account" class="view-container">
+    <div class="quiz-card">
+        <h3 class="mb-4">Account Profile</h3>
+        <div class="mb-4"><label class="small fw-bold text-muted">CURRENT GRADE</label><select id="grade-selector" class="form-select p-3" onchange="saveGrade()"></select></div>
+        <div class="mb-4"><label class="small fw-bold text-muted">PASSWORD</label><input type="password" id="new-pass" class="form-control p-3 mb-2" placeholder="New Password"><button class="btn btn-primary w-100 p-3" onclick="updatePass()">Update Password</button></div>
+        <button class="btn btn-outline-danger w-100 p-3" onclick="handleLogout()">Log Out</button>
     </div>
 </div>
 
-<div id="app-modal" class="app-overlay">
-    <div class="overlay-content text-center">
-        <h4 id="modal-title" class="fw-bold mb-3"></h4>
-        <div id="modal-body" class="mb-4 text-start small"></div>
-        <div id="modal-footer" class="d-grid gap-2"></div>
+<div id="view-about" class="view-container text-center">
+  <div class="quiz-card">
+    <h4 class="text-primary mb-3">TKD Theory App</h4>
+    <p>Created by Jonathan for</p>
+    <h5 class="fw-bold">Jacob Gallucci</h5>
+    <p class="text-muted">1st Dan • Age 10</p>
+    <hr>
+    <p class="mb-1">Club:</p>
+    <p class="fw-bold">TSX Martial Arts, Bingley</p>
     </div>
 </div>
 
-<!-- NAV BAR -->
 <div class="footer-container hidden" id="navbar">
     <nav class="bottom-nav">
-        <button class="nav-item active" id="nav-home" onclick="handleNavigation('view-modes')"><i class="bi bi-house fs-3"></i>Home</button>
-        <button class="nav-item" id="nav-account" onclick="handleNavigation('view-account')"><i class="bi bi-person-gear fs-3"></i>Account</button>
-        <button class="nav-item" id="nav-about" onclick="handleNavigation('view-about')"><i class="bi bi-info-circle fs-3"></i>About</button>
-    </nav>
+    <button class="nav-item active" id="nav-modes" onclick="handleNavigation('view-modes')"><i class="bi bi-house-door"></i>Home</button>
+    <button class="nav-item" id="nav-account" onclick="handleNavigation('view-account')"><i class="bi bi-person"></i>Account</button>
+    <button class="nav-item" id="nav-about" onclick="handleNavigation('view-about')"><i class="bi bi-info-circle"></i>About</button>
+  </nav>
+  <div class="copyright-text">(C) J Gallucci 2026</div>
 </div>
 
+<div id="view-trumps" class="view-container">
+    <!-- The TulUI content will be injected here -->
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-  let quizData = [], currentIndex = 0, score = 0, activeUser = "", isQuizActive = false, quizMode = "";
-  let gameTimer, incorrectAnswers = [];
 
-  const loadMsgs = [
-    "Straightening the dobok...", "Sharpening your side kick...", 
-    "Reviewing the patterns...", "Warming up for the grading...", 
-    "Breathe in and out...", "Tying the black belt...", 
-    "Learning Korean...", "Focusing your Ki-Hap..."
-  ];
+  document.addEventListener('touchstart', function(e) {
+    if (e.touches.length > 1) return; // Allow pinch-zoom
+    this.startY = e.touches[0].pageY;
+    }, { passive: false });
 
-  function toggleLoad(show, msg) {
-      const loader = document.getElementById('loading-overlay');
-      if (show) {
-          document.getElementById('loading-msg').innerText = msg || loadMsgs[Math.floor(Math.random()*loadMsgs.length)];
-          loader.style.display = 'flex';
-          loader.style.opacity = '1';
-      } else {
-          loader.style.opacity = '0';
-          setTimeout(function() { loader.style.display = 'none'; }, 300);
-      }
+document.addEventListener('touchmove', function(e) {
+    const top = window.pageYOffset || document.documentElement.scrollTop;
+    if (top <= 0 && e.touches[0].pageY > this.startY) {
+        e.preventDefault(); // Stop the refresh trigger
+    }
+    }, { passive: false });
+
+  let playerHand = [], cpuHand = []; 
+  let isProcessing = false;
+
+  let quizData = [], currentIndex = 0, score = 0, activeUser = "", timerInterval = null, timeLeft = 0, isQuizActive = false, currentMode = "", questionsAnswered = 0, missedQuestions = [];
+  let matchSelected = { qId: null, aId: null, qEl: null, aEl: null }, matchesFound = 0, setsCleared = 0, swipeCorrect = false;
+
+function handleNavigation(targetView) {
+    // Check if the user is in the middle of Tul Trumps or an Exam
+    if (isQuizActive) {
+    const mode = (playerHand && playerHand.length > 0) ? "trumps" : "exam";
+    showUniversalWarning(targetView, mode); 
+  } else {
+    switchView(targetView);
+  }
+}
+
+function showUniversalWarning(targetView, mode) {
+    const resText = document.getElementById('result-text');
+    const resDetails = document.getElementById('result-details');
+    const overlay = document.getElementById('result-overlay');
+
+    // Ensure no lingering game timers interfere with the warning
+    if (roundTimeout) clearInterval(roundTimeout);
+    isProcessing = true; // Lock the game interactions
+
+    resText.innerText = "QUIT SESSION?";
+    resText.className = "fw-bold text-dark";
+
+    let message = (mode === "trumps") 
+        ? "Your progress in this match will be lost." 
+        : "You will see your current grade for answered questions before leaving.";
+
+    resDetails.innerHTML = `
+        <p class="mb-4">${message}</p>
+        <div class="d-grid gap-2">
+            <button class="btn btn-primary btn-lg rounded-pill py-3" onclick="closeWarning()">Stay & Play</button>
+            <button class="btn btn-outline-secondary rounded-pill py-2" onclick="confirmExit('${targetView}', '${mode}')">Exit Session</button>
+        </div>
+    `;
+
+    overlay.classList.remove('hidden');
+}
+
+function closeWarning() {
+    const overlay = document.getElementById('result-overlay');
+    overlay.classList.add('hidden');
+    isProcessing = false;
+}
+
+function confirmExit(targetView, mode) {
+    const overlay = document.getElementById('result-overlay');
+    
+    if (mode === "exam") {
+        // This ensures they get their grade and review for what they've done
+        endQuiz(); 
+    }
+
+    // Reset game states
+    isQuizActive = false;
+    isProcessing = false;
+    playerHand = [];
+    cpuHand = [];
+
+    // Close the warning overlay
+    overlay.classList.add('hidden');
+
+    // If it was an exam, endQuiz() already switched the view to 'results'
+    // If it was Trumps, we need to switch them to their target now
+    if (mode !== "exam") {
+        if (targetView === 'login') {
+            handleLogout();
+        } else {
+            switchView(targetView);
+        }
+    }
+}
+
+let roundTimeout = null; // To track the auto-advance timer
+
+function playTurn(stat) {
+    if (isProcessing || playerHand.length === 0 || cpuHand.length === 0) return;
+    isProcessing = true;
+
+    const pCard = playerHand[0];
+    const cCard = cpuHand[0];
+    const pVal = parseInt(pCard[stat]) || 0;
+    const cVal = parseInt(cCard[stat]) || 0;
+
+    const overlay = document.getElementById('result-overlay');
+    const resText = document.getElementById('result-text');
+    const resDetails = document.getElementById('result-details');
+
+    let statusText = "";
+    let textColorClass = "";
+    let resultMessage = "";
+
+    if (pVal > cVal) {
+        statusText = "ROUND WON!";
+        textColorClass = "fw-bold text-win";
+        resultMessage = `Your ${pCard.name} (${pVal}) beat ${cCard.name} (${cVal}).`;
+        playerHand.push(playerHand.shift(), cpuHand.shift());
+    } else if (cVal > pVal) {
+        statusText = "ROUND LOST";
+        textColorClass = "fw-bold text-loss";
+        resultMessage = `CPU's ${cCard.name} (${cVal}) beat your ${pCard.name} (${pVal}).`;
+        cpuHand.push(cpuHand.shift(), playerHand.shift());
+    } else {
+        statusText = "DRAW";
+        textColorClass = "fw-bold text-draw";
+        resultMessage = `Both patterns have ${pVal} ${stat}.`;
+        playerHand.push(playerHand.shift());
+        cpuHand.push(cpuHand.shift());
+    }
+
+    resText.innerText = statusText;
+    resText.className = textColorClass;
+
+    // UI with "Next Round" button and countdown
+    resDetails.innerHTML = `
+        <p class="mb-4">${resultMessage}</p>
+        <div class="d-grid">
+            <button id="next-round-btn" class="btn btn-primary btn-lg rounded-pill py-3" onclick="manualNextRound()">
+                Next Round (3s)
+            </button>
+        </div>
+    `;
+
+    overlay.classList.remove('hidden');
+    
+    // Start the 3-second timer
+    let count = 3;
+    roundTimeout = setInterval(() => {
+        count--;
+        const btn = document.getElementById('next-round-btn');
+        if (btn) btn.innerText = `Next Round (${count}s)`;
+        
+        if (count <= 0) {
+            manualNextRound();
+        }
+    }, 1000);
+}
+
+function manualNextRound() {
+    clearInterval(roundTimeout);
+    const overlay = document.getElementById('result-overlay');
+    
+    if (playerHand.length > 0) {
+        const nextImg = new Image();
+        nextImg.onload = () => {
+            overlay.classList.add('hidden');
+            if (!checkGameOver()) {
+                isProcessing = false;
+                updateGameUI();
+            }
+        };
+        // Use Variable here
+        nextImg.src = playerHand[0].img || "";
+    } else {
+        overlay.classList.add('hidden');
+        checkGameOver();
+    }
+}
+
+function checkGameOver() {
+    if (playerHand.length === 0 || cpuHand.length === 0) {
+        const resText = document.getElementById('result-text');
+        const resDetails = document.getElementById('result-details');
+        const overlay = document.getElementById('result-overlay');
+        const isWin = cpuHand.length === 0;
+
+        // Allow navigation functions to work by resetting the state gate
+        isQuizActive = false; 
+
+        if (isWin) { 
+            triggerConfetti(); 
+            resText.innerText = "VICTORY!"; 
+            resText.className = "fw-bold text-win display-5"; 
+        } else { 
+            resText.innerText = "GAME OVER"; 
+            resText.className = "fw-bold text-loss display-5"; 
+        }
+
+        resDetails.innerHTML = `
+          <p>${isWin ? 'Amazing! You have captured all the patterns.' : 'The CPU took your deck.'}</p>
+          <div class="d-grid gap-2 mt-4">
+              <button class="btn btn-primary btn-lg rounded-pill" onclick="restartGame()">Play Again</button>
+              <button class="btn btn-outline-secondary rounded-pill" onclick="goHome()">Return Home</button>
+          </div>`;
+          
+        overlay.classList.remove('hidden');
+        return true;
+    }
+    return false;
+}
+
+function restartGame() {
+      document.getElementById('result-overlay').classList.add('hidden');
+      isProcessing = false;
+      playerHand = [];
+      cpuHand = [];
+      initTulTrumps(); // Re-shuffles and starts over
   }
 
-  function showAppAlert(title, msg, isHtml = false) {
-      document.getElementById('modal-title').innerText = title;
-      const body = document.getElementById('modal-body');
-      if(isHtml) body.innerHTML = msg; else body.innerText = msg;
-      document.getElementById('modal-footer').innerHTML = `<button class="btn btn-primary rounded-pill p-3" onclick="closeModal()">Understood</button>`;
-      document.getElementById('app-modal').style.display = 'flex';
-  }
-
-  function closeModal() { document.getElementById('app-modal').style.display = 'none'; }
-
-  function handleLogin() {
-      const u = document.getElementById('user-input').value;
-      const p = document.getElementById('pass-input').value;
-      const errorDiv = document.getElementById('login-error');
-      errorDiv.style.display = 'none';
-      
-      if(!u || !p) return;
-      toggleLoad(true, "Authenticating...");
-      google.script.run.withSuccessHandler(function(res) {
-          toggleLoad(false);
-          if (res.success) {
-              activeUser = res.username;
-              document.getElementById('user-welcome').innerText = res.displayName;
-              document.getElementById('user-streak').innerText = res.streak;
-              document.getElementById('acc-grade-select').value = res.gradeValue;
-              document.getElementById('navbar').classList.remove('hidden');
-              switchView('view-modes');
-          } else { errorDiv.style.display = 'block'; }
-      }).loginUser(u, p);
-  }
-
-  function handleNavigation(target) {
-      if (isQuizActive && currentIndex > 0) {
-          document.getElementById('modal-title').innerText = "Exit Quiz?";
-          document.getElementById('modal-body').innerText = "You will see your results for answered questions and return home.";
-          document.getElementById('modal-footer').innerHTML = `
-            <button class="btn btn-danger rounded-pill p-2" onclick="closeModal(); endQuiz();">Exit & View Results</button>
-            <button class="btn btn-light rounded-pill p-2" onclick="closeModal()">Stay</button>`;
-          document.getElementById('app-modal').style.display = 'flex';
-      } else { switchView(target); }
-  }
-
-  function switchView(id) {
-      document.querySelectorAll('.view-container').forEach(v => v.classList.remove('active-view'));
-      document.getElementById(id).classList.add('active-view');
-      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-      const map = { 'view-modes': 'nav-home', 'view-account': 'nav-account', 'view-about': 'nav-about', 'view-game-center': 'nav-home' };
-      if(map[id]) document.getElementById(map[id]).classList.add('active');
-  }
-
-  function startApp(mode) {
-      quizData = []; currentIndex = 0; score = 0; incorrectAnswers = [];
-      clearInterval(gameTimer);
-      quizMode = mode; isQuizActive = true;
-      toggleLoad(true);
-      google.script.run.withSuccessHandler(function(data) {
-          toggleLoad(false);
-          quizData = data;
-          switchView('view-quiz');
-          if (mode === 'test') startTimer(3600); 
-          showQuestion();
-      }).getQuizData(activeUser, mode);
-  }
-
-  function startTimer(s) {
-      let time = s;
-      gameTimer = setInterval(function() {
-          time--;
-          const mins = Math.floor(time / 60).toString().padStart(2, '0');
-          const secs = (time % 60).toString().padStart(2, '0');
-          document.getElementById('q-timer').innerHTML = `<i class="bi bi-clock"></i> ${mins}:${secs}`;
-          if (time <= 0) endQuiz();
-      }, 1000);
-  }
-
-  function showQuestion() {
-      const q = quizData[currentIndex];
-      document.getElementById('q-counter').innerText = `Question ${currentIndex + 1}/${quizData.length}`;
-      document.getElementById('q-progress').style.width = ((currentIndex / quizData.length) * 100) + '%';
-      document.getElementById('question-text').innerText = q.question;
-      let html = '';
-      q.options.forEach(o => {
-          if(o && String(o).trim() !== "") {
-            html += `<button class="option-btn" onclick="checkAnswer(this, '${String(o).replace(/'/g, "\\'")}')">${o}</button>`;
-          }
-      });
-      document.getElementById('options-container').innerHTML = html;
-      document.getElementById('next-btn').classList.add('hidden');
-  }
-
-  function checkAnswer(btn, opt) {
-      const q = quizData[currentIndex];
-      const isCorrect = opt === String(q.answer);
-      if (quizMode === 'test') { btn.classList.add('selected-neutral'); } 
-      else {
-          btn.classList.add(isCorrect ? 'correct' : 'wrong');
-          if (!isCorrect) {
-              document.querySelectorAll('.option-btn').forEach(b => { if(b.innerText === String(q.answer)) b.classList.add('correct'); });
-          }
-      }
-      if (isCorrect) score++; else incorrectAnswers.push({q: q.question, a: q.answer});
-      google.script.run.updateQuestionScore(activeUser, q.qId, isCorrect);
-      document.getElementById('next-btn').classList.remove('hidden');
-      document.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
-  }
-
-  function nextQuestion() {
-      currentIndex++;
-      if (currentIndex >= quizData.length) endQuiz(); else showQuestion();
-  }
-
-  function endQuiz() {
-      clearInterval(gameTimer);
+function goHome() {
+      document.getElementById('result-overlay').classList.add('hidden');
+      isProcessing = false;
       isQuizActive = false;
-      const count = currentIndex || 1;
-      const percent = Math.round((score / count) * 100);
-      const passed = percent >= 75;
-      
-      document.getElementById('result-text').innerText = passed ? "KORYO!" : "KEEP TRAINING";
-      document.getElementById('result-details').innerHTML = `<h1 class="display-4 fw-bold">${percent}%</h1><p>Scored ${score} of ${count}</p>`;
-      
-      let reviewHtml = incorrectAnswers.length > 0 ? '<hr><p class="fw-bold">Review Errors:</p>' : '';
-      incorrectAnswers.forEach(i => {
-          reviewHtml += `<div class="review-item"><strong>Q:</strong> ${i.q}<br><span class="text-success"><strong>A:</strong> ${i.a}</span></div>`;
-      });
-      document.getElementById('review-list').innerHTML = reviewHtml;
-      document.getElementById('result-overlay').style.display = 'flex';
-      if (passed) confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, zIndex: 10000 });
-  }
-
-  function closeOverlay() {
-      document.getElementById('result-overlay').style.display = 'none';
+      playerHand = [];
+      cpuHand = [];
       switchView('view-modes');
   }
 
-  function validatePassword(p) {
-      return p.length >= 5 && /[A-Z]/.test(p) && /[a-z]/.test(p) && /[0-9]/.test(p) && /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(p);
-  }
+  function toggleLoad(show, customMsg) {
+  const loader = document.getElementById('loading-overlay');
+  const msgEl = document.getElementById('loading-msg');
+  if (!loader) return;
 
-  function saveAccountChanges() {
-      const grade = document.getElementById('acc-grade-select').value;
-      const pass = document.getElementById('acc-pass-input').value.trim();
-      
-      if (pass !== "" && !validatePassword(pass)) {
-          showAppAlert("Invalid Password", "Must contain: 5+ chars, uppercase, lowercase, number, and special character.");
-          return;
+  // Your specific Taekwondo messages
+  const loadMsgs = [
+    "Straightening the dobok...", 
+    "Sharpening your side kick...", 
+    "Reviewing the patterns...", 
+    "Warming up for the grading...", 
+    "Breathe in and out...",
+    "Tying the black belt...", 
+    "Learning Korean...", 
+    "Focusing your Ki-Hap..."
+  ];
+
+  if (show) {
+    if (customMsg) {
+      // Use the specific message passed (e.g., "Shuffling the deck...")
+      msgEl.innerText = customMsg;
+    } else {
+      // Pick a random TKD message from your list
+      const randomIdx = Math.floor(Math.random() * loadMsgs.length);
+      msgEl.innerText = loadMsgs[randomIdx];
+    }
+    loader.style.display = 'flex';
+  } else {
+    loader.style.display = 'none';
+  }
+}
+
+  function handleLogin() {
+    const u = document.getElementById('user-input').value, p = document.getElementById('pass-input').value;
+    if(!u || !p) return;
+    toggleLoad(true);
+    google.script.run.withSuccessHandler(res => {
+      toggleLoad(false);
+      if(res.success) {
+        activeUser = res.username; 
+        document.getElementById('user-welcome').innerText = res.displayName;
+        document.getElementById('user-streak').innerHTML = `<i class="bi bi-fire"></i> ${res.streak} Day Streak`;
+        document.getElementById('navbar').classList.remove('hidden');
+        const sel = document.getElementById('grade-selector'); sel.innerHTML = '';
+        const gradeMap = { 1:"10th Kup", 2:"9th Kup", 3:"8th Kup", 4:"7th Kup", 5:"6th Kup", 6:"5th Kup", 7:"4th Kup", 8:"3rd Kup", 9:"2nd Kup", 10:"1st Kup", 11:"1st Dan", 12:"2nd Dan" };
+        for(let k in gradeMap) sel.innerHTML += `<option value="${k}" ${k==res.gradeValue?'selected':''}>${gradeMap[k]}</option>`;
+        switchView('view-modes');
       }
-
-      toggleLoad(true, "Saving updates...");
-      google.script.run.withSuccessHandler(function(success) {
-          toggleLoad(false);
-          if (success) {
-              document.getElementById('acc-pass-input').value = "";
-              showAppAlert("Success", "Account settings updated successfully.");
-          }
-      }).updateUserData(activeUser, grade, pass);
+    }).loginUser(u, p);
   }
 
-  // Hide loader after a tiny delay once script is ready
-  setTimeout(function() { toggleLoad(false); }, 500);
+/**function initTulTrumps() {
+    isQuizActive = true;
+    
+    toggleLoad(true, "Shuffling the deck...");
+    
+    google.script.run
+      .withSuccessHandler(data => {
+        if (!data || data.error) {
+            isQuizActive = false;
+            toggleLoad(false);
+            alert("Error: " + data.error);
+            return;
+        }
+        
+        playerHand = data.playerHand;
+        cpuHand = data.cpuHand;
+        
+        if (playerHand.length > 0) {
+            const imgLoader = new Image();
+            imgLoader.onload = () => {
+                toggleLoad(false);
+                updateGameUI();
+            };
+            imgLoader.onerror = () => {
+                toggleLoad(false);
+                updateGameUI();
+            };
+            // Use Variable here
+            imgLoader.src = playerHand[0].img || TUL_PLACEHOLDER;
+        } else {
+            toggleLoad(false);
+            updateGameUI();
+        }
+      })
+      .getTulTrumpsData(activeUser);
+}*/
+
+  function startApp(mode) {
+    console.log("Starting App Mode:", mode);
+    
+    // 1. Determine the correct View ID based on the mode
+    let targetView = 'view-quiz'; 
+    if (mode === 'game_tuls') targetView = 'view-trumps';
+
+    // 2. Reset global game state variables
+    isQuizActive = true; 
+    currentMode = mode; 
+    questionsAnswered = 0; 
+    score = 0; 
+    currentIndex = 0; 
+    missedQuestions = []; 
+    setsCleared = 0;
+
+    // 3. Clear existing timers and UI elements from previous sessions
+    if (timerInterval) clearInterval(timerInterval);
+    document.querySelectorAll('#view-quiz [id^="ui-"]').forEach(el => el.classList.add('hidden'));
+    document.getElementById('timer-display')?.classList.add('hidden');
+    document.getElementById('next-btn')?.classList.add('hidden');
+
+    // 4. Handle Tul Trumps separately (it has its own data fetcher)
+    if (mode === 'game_tuls') {
+        switchView('view-trumps');
+        initTulTrumps(); 
+        return;
+    }
+
+    // 5. Handle Standard Quizzes and Interactive Games
+    toggleLoad(true);
+    const isGame = mode.startsWith('game_');
+
+    if (isGame) {
+        google.script.run.withSuccessHandler(data => {
+            toggleLoad(false); 
+            quizData = data;
+            switchView('view-quiz'); // Fixed: Changed from 'quiz' to 'view-quiz'
+            if (mode === 'game_match') setupMatch();
+            else if (mode === 'game_swipe') setupSwipe();
+        }).getGameData(activeUser, mode); 
+    } else {
+        google.script.run.withSuccessHandler(data => {
+            toggleLoad(false); 
+            quizData = data;
+            if (mode === 'test') { 
+                timeLeft = 3600; 
+                document.getElementById('timer-display')?.classList.remove('hidden'); 
+                updateTimerUI(); 
+                timerInterval = setInterval(() => { 
+                    timeLeft--; 
+                    updateTimerUI(); 
+                    if (timeLeft <= 0) endQuiz(); 
+                }, 1000); 
+            }
+            switchView('view-quiz'); // Fixed: Changed from 'quiz' to 'view-quiz'
+            showQuestion();
+        }).getQuizData(activeUser, (mode === 'test' ? 'test' : 'practice'));
+    }
+}
+
+  
+
+  /**
+ * UI UPDATE LOGIC
+ * Replaces old logic in TulUI.html / Index.html
+ */
+function updateGameUI() {
+    if (!playerHand || playerHand.length === 0) { 
+        isProcessing = false; 
+        toggleLoad(false);
+        return; 
+    }
+    
+    const wrapper = document.getElementById('trumps-content-wrapper');
+    const card = playerHand[0];
+    const cpuCard = cpuHand[0];
+    const imgEl = document.getElementById('tul-card-img');
+
+    if (wrapper) wrapper.style.opacity = "0";
+
+    // Update Card Counts and Stats
+    document.getElementById('player-card-count').innerText = playerHand.length;
+    document.getElementById('cpu-card-count').innerText = cpuHand.length;
+    
+    const cpuNameEl = document.getElementById('cpu-card-name');
+    if (cpuCard && cpuNameEl) cpuNameEl.innerText = `(${cpuCard.name})`;
+
+    document.getElementById('tul-card-name').innerText = card.name;
+    document.getElementById('tul-card-ready').innerText = "Ready: " + card.readyStance;
+    document.getElementById('tul-card-meaning').innerText = card.meaning; 
+    document.getElementById('val-movements').innerText = card.movements;
+    document.getElementById('val-stances').innerText = card.stances;
+    document.getElementById('val-difficulty').innerText = card.difficulty;
+
+    // Ensure loader turns off even if image is broken
+    imgEl.onload = function() {
+        if (wrapper) wrapper.style.opacity = "1";
+        toggleLoad(false);
+        isProcessing = false;
+    };
+    imgEl.onerror = function() {
+        toggleLoad(false);
+        isProcessing = false;
+    };
+    imgEl.src = card.img; 
+}
+
+function initTulTrumps() {
+    toggleLoad(true, "Shuffling deck...");
+    // This calls the single consolidated function in TulGame.gs
+    google.script.run
+        .withSuccessHandler(data => {
+            if (data.error) {
+                alert(data.error);
+                toggleLoad(false);
+                return;
+            }
+            playerHand = data.playerHand;
+            cpuHand = data.cpuHand;
+            updateGameUI();
+        })
+        .getTulTrumpsData(activeUser);
+}
+
+  function showQuestion() {
+    document.getElementById('progress-bar').style.width = ((currentIndex / quizData.length) * 100) + "%";
+    document.getElementById('ui-standard').classList.remove('hidden');
+    const q = quizData[currentIndex];
+    document.getElementById('q-count').innerText = `Q${currentIndex + 1}/${quizData.length}`;
+    document.getElementById('question-text').innerText = q.question;
+    const optCont = document.getElementById('options-container'); optCont.innerHTML = '';
+    q.options.forEach(opt => {
+      const b = document.createElement('button'); b.className = 'option-btn'; b.innerText = opt;
+      b.onclick = () => {
+        questionsAnswered++;
+        const isCorrect = (opt === q.answer);
+        if(isCorrect) score++; else missedQuestions.push({q: q.question, a: q.answer});
+        google.script.run.updateQuestionScore(activeUser, q.qId, isCorrect);
+        document.querySelectorAll('.option-btn').forEach(btn => btn.disabled = true);
+        b.style.background = isCorrect ? "#d1e7dd" : "#f8d7da";
+        document.getElementById('next-btn').classList.remove('hidden');
+      };
+      optCont.appendChild(b);
+    });
+  }
+
+  function setupMatch() {
+    document.getElementById('progress-bar').style.width = ((setsCleared / 2) * 100) + "%";
+    document.getElementById('ui-match').classList.remove('hidden');
+    document.getElementById('q-count').innerText = `Board ${setsCleared + 1}/2`;
+    
+    // Fix: Defined batch and removed duplicate mapping logic
+    const batch = quizData.slice(setsCleared * 5, (setsCleared + 1) * 5);
+    const qList = batch.map(x => ({ t: x.matchingTerm, id: x.qId, type: 'q' }));
+    const aList = batch.map(x => ({ t: x.correctAnswer, id: x.qId, type: 'a' }));
+
+    matchesFound = 0; const grid = document.getElementById('match-grid'); grid.innerHTML = '';
+    
+    [...qList, ...aList].sort(() => Math.random() - 0.5).forEach(item => {
+        const d = document.createElement('div'); d.className = 'match-btn shadow-sm'; d.innerText = item.t;
+        d.onclick = () => {
+            if(d.classList.contains('selected') || d.classList.contains('matched')) return;
+            if(item.type === 'q') { if(matchSelected.qEl) matchSelected.qEl.classList.remove('selected'); matchSelected.qId = item.id; matchSelected.qEl = d; }
+            else { if(matchSelected.aEl) matchSelected.aEl.classList.remove('selected'); matchSelected.aId = item.id; matchSelected.aEl = d; }
+            d.classList.add('selected');
+            if(matchSelected.qId && matchSelected.aId) {
+                if(matchSelected.qId === matchSelected.aId) {
+                    const q=matchSelected.qEl, a=matchSelected.aEl;
+                    setTimeout(() => { 
+                        q.classList.add('matched'); a.classList.add('matched'); matchesFound++; 
+                        // Inside setupMatch() ... inside the matchesFound === 5 block:
+                        if (matchesFound === 5) { 
+                            setsCleared++;
+                            if (setsCleared >= 2) { 
+                                isQuizActive = false; // Stop the session
+                                document.getElementById('progress-bar').style.width = "100%";
+                                triggerConfetti(); 
+                                // Directly back to home (modes) after confetti delay, skipping results
+                                setTimeout(() => switchView('view-modes'), 2500); 
+                            } else { 
+                                setupMatch(); 
+                            }
+                        }
+                    }, 200);
+                } else {
+                    const q=matchSelected.qEl, a=matchSelected.aEl;
+                    setTimeout(() => { q.classList.remove('selected'); a.classList.remove('selected'); }, 400);
+                }
+                matchSelected = { qId: null, aId: null, qEl: null, aEl: null };
+            }
+        };
+        grid.appendChild(d);
+    });
+  }
+
+  function setupSwipe() {
+    document.getElementById('progress-bar').style.width = ((currentIndex / quizData.length) * 100) + "%";
+    document.getElementById('ui-swipe').classList.remove('hidden');
+    const q = quizData[currentIndex];
+    document.getElementById('q-count').innerText = `Q${currentIndex+1}/${quizData.length}`;
+    
+    const isLying = Math.random() > 0.5;
+    swipeCorrect = !isLying;
+    
+    // Line 1: SimplifiedDef from Column T
+    document.getElementById('swipe-term').innerText = q.simplifiedDef; 
+    
+    if (isLying) {
+        // Line 2: Use a decoy from E-H if available, otherwise pick from another question
+        if (q.decoys && q.decoys.length > 0) {
+            document.getElementById('swipe-def').innerText = q.decoys[Math.floor(Math.random() * q.decoys.length)];
+        } else {
+            const externalDecoys = quizData.filter(d => d.qId !== q.qId);
+            document.getElementById('swipe-def').innerText = externalDecoys[Math.floor(Math.random() * externalDecoys.length)].correctAnswer;
+        }
+    } else {
+        // Line 2: Correct Answer from Column L
+        document.getElementById('swipe-def').innerText = q.correctAnswer;
+    }
+}
+
+function handleSwipe(userAnswer) {
+    const q = quizData[currentIndex];
+    const isCorrect = (userAnswer === swipeCorrect);
+    
+    // Log the mistake using the SimplifiedDef (Line 1) and Correct Answer
+    if (isCorrect) {
+        score++;
+    } else {
+        missedQuestions.push({
+            q: q.simplifiedDef, 
+            a: q.correctAnswer
+        });
+    }
+    
+    google.script.run.updateQuestionScore(activeUser, q.qId, isCorrect);
+    questionsAnswered++; 
+    currentIndex++;
+    
+    if (currentIndex >= quizData.length) endQuiz(); else setupSwipe();
+}
+
+  function triggerConfetti() {
+    for(let i=0; i<70; i++) {
+        const c = document.createElement('div'); c.className = 'confetti';
+        c.style.left = Math.random()*100+'vw';
+        c.style.top = '-20px';
+        c.style.backgroundColor = ['#0d6efd','#ffc107','#dc3545','#198754','#ffffff'][Math.floor(Math.random()*5)];
+        c.style.animationDuration = (Math.random()*2 + 1.5)+'s';
+        c.style.animationDelay = Math.random()+'s';
+        document.body.appendChild(c);
+        setTimeout(() => c.remove(), 4000);
+    }
+  }
+
+  function endQuiz() {
+    clearInterval(timerInterval); // Stop any active timers
+    isQuizActive = false; // Reset the quiz state flag
+
+    // 1. If no questions were answered, just go home
+    if (questionsAnswered === 0) {
+        switchView('view-modes');
+        return;
+    }
+
+    // 2. Clear all views to prevent overlapping
+    const views = ['view-login', 'view-modes', 'view-game-center', 'view-trumps', 'view-quiz', 'view-results', 'view-account', 'view-about'];
+    views.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.classList.add('hidden');
+            el.classList.remove('active-view');
+        }
+    });
+
+    // 3. Prepare the results data
+    const resTarget = document.getElementById('view-results');
+    const p = Math.round((score / questionsAnswered) * 100); 
+    
+    if (p >= 75) triggerConfetti(); // Celebrate success!
+
+    document.getElementById('res-title').innerText = p >= 75 ? "GREAT JOB!" : "KEEP PRACTISING!";
+    document.getElementById('res-percent').innerText = p + "%";
+    document.getElementById('res-score').innerText = `${score}/${questionsAnswered} Correct`;
+
+    // 4. Handle the mistakes review list
+    const rList = document.getElementById('review-list');
+    rList.innerHTML = '';
+    if (missedQuestions.length > 0) {
+        missedQuestions.forEach(m => {
+            rList.innerHTML += `<div class="mb-2 p-2 bg-light border-start border-danger"><b>${m.q}</b><br><span class="text-success">${m.a}</span></div>`;
+        });
+    } else {
+        rList.innerHTML = '<div class="text-success p-2">Perfect! No mistakes to review.</div>';
+    }
+
+    // 5. Explicitly show the results view
+    if (resTarget) {
+        resTarget.classList.remove('hidden');
+        resTarget.style.display = 'block'; // Force display if hidden class is stubborn
+        setTimeout(() => resTarget.classList.add('active-view'), 10);
+    }
+}
+
+  function updateTimerUI() { const m = Math.floor(timeLeft / 60), s = timeLeft % 60; document.getElementById('timer-display').innerText = `${m}:${s < 10 ? '0' : ''}${s}`; }
+
+function switchView(targetView) {
+  // Hide all views using the exact IDs in your HTML
+  const views = ['view-login', 'view-modes', 'view-game-center', 'view-trumps', 'view-quiz', 'view-results', 'view-account', 'view-about'];
+  
+  views.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.classList.add('hidden');
+      el.classList.remove('active-view');
+    }
+  });
+
+  // Show target - targetView now matches the ID perfectly
+  const targetEl = document.getElementById(targetView);
+  if (targetEl) {
+    targetEl.classList.remove('hidden');
+    targetEl.classList.add('active-view');
+  }
+
+  updateNavIcons(targetView);
+}
+
+function updateNavIcons(activeView) {
+  // Maps the View ID directly to the Nav Button ID
+  const navMap = {
+    'view-modes': 'nav-modes',
+    'view-account': 'nav-account',
+    'view-about': 'nav-about'
+  };
+
+  const activeBtnId = navMap[activeView];
+  
+  // Reset all nav items
+  document.querySelectorAll('.nav-item').forEach(btn => {
+    btn.classList.remove('active');
+  });
+
+  // Set the correct one to active
+  const activeBtn = document.getElementById(activeBtnId);
+  if (activeBtn) {
+    activeBtn.classList.add('active');
+  }
+}
+
+function nextQuestion() { 
+  (currentIndex < quizData.length - 1) ? (currentIndex++, showQuestion()) : endQuiz(); 
+}
+
+function handleLogout() { 
+  isQuizActive = false; // Prevents the 'Stay & Play' warning from appearing
+  activeUser = ""; 
+  document.getElementById('navbar').classList.add('hidden'); 
+  switchView('view-login'); 
+}
+
+function saveGrade() { 
+  google.script.run.saveGrade(activeUser, document.getElementById('grade-selector').value); 
+}
+
+function updatePass() {
+    const newPass = document.getElementById('new-pass').value;
+    const resText = document.getElementById('result-text');
+    const resDetails = document.getElementById('result-details');
+    const overlay = document.getElementById('result-overlay');
+    
+    // Validation: 5+ chars, Upper, Lower, Num, Special
+    const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*]).{5,}$/;
+
+    if (!regex.test(newPass)) {
+        resText.innerText = "WEAK PASSWORD";
+        resText.className = "fw-bold text-danger";
+        resDetails.innerHTML = `
+            <p class="mb-4">Must be 5+ characters with Uppercase, Lowercase, Number, and Special Characters (!@#$%^&*)</p>
+            <div class="d-grid">
+                <button class="btn btn-primary rounded-pill" onclick="closeWarning()">Try Again</button>
+            </div>
+        `;
+        overlay.classList.remove('hidden');
+        return;
+    }
+
+    toggleLoad(true, "Securing account...");
+    
+    google.script.run
+        .withSuccessHandler(res => {
+            toggleLoad(false);
+            // Use the overlay for success confirmation
+            resText.innerText = "UPDATED!";
+            resText.className = "fw-bold text-success";
+            resDetails.innerHTML = `
+                <p class="mb-4">Your new password has been saved successfully.</p>
+                <div class="d-grid">
+                    <button class="btn btn-primary rounded-pill" onclick="closeWarning()">Great</button>
+                </div>
+            `;
+            document.getElementById('new-pass').value = ''; 
+            overlay.classList.remove('hidden');
+        })
+        .withFailureHandler(err => {
+            toggleLoad(false);
+            resText.innerText = "SERVER ERROR";
+            resText.className = "fw-bold text-danger";
+            resDetails.innerHTML = `<p>${err}</p><button class="btn btn-primary rounded-pill" onclick="closeWarning()">Close</button>`;
+            overlay.classList.remove('hidden');
+        })
+        .updatePass(activeUser, newPass);
+}
+
+/**
+ * Reusing your existing close logic
+ */
+function closeWarning() {
+    const overlay = document.getElementById('result-overlay');
+    if (overlay) overlay.classList.add('hidden');
+    isProcessing = false;
+}
 </script>
 </body>
 </html>
