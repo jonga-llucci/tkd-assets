@@ -6,14 +6,19 @@
 
 const BUCKET_INTERVALS = { 1: 0, 2: 2, 3: 4, 4: 5 };
 
+
+/** 
+ * Keep your existing loginUser, getQuizData, and updateQuestionScore functions exactly as they were.
+ */
+
 function doGet() {
   return HtmlService.createTemplateFromFile('Index')
     .evaluate()
-    .setTitle('TKD Theory Practice Quiz')
-    // THIS LINE IS CRITICAL: It tells Google to allow the iframe
+    .setTitle('TKD Theory Academy')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL) 
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
 }
+
 
 function loginUser(username, password) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -58,17 +63,9 @@ function getQuizData(username, mode) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const qSheet = ss.getSheetByName("Questions");
   const pSheet = ss.getSheetByName("UserProgress");
-  const userSheet = ss.getSheetByName("Users");
   const cleanUser = username ? username.toString().trim() : "";
   
-  const userData = userSheet.getDataRange().getValues();
-  let userGradeLevel = 1; 
-  for (let i = 1; i < userData.length; i++) {
-    if (userData[i][0] && userData[i][0].toString().trim() === cleanUser) {
-      userGradeLevel = parseInt(userData[i][2]) || 1;
-      break;
-    }
-  }
+  const userGradeLevel = getUserGrade_(username);
 
   const qData = qSheet.getDataRange().getValues();
   const pData = pSheet.getDataRange().getValues() || [];
@@ -112,6 +109,17 @@ function getQuizData(username, mode) {
 
   const limit = (mode === 'test') ? 50 : 10;
 
+  // Before returning, sort practice questions by SRS priority (bucket ascending, most overdue first)
+  // then shuffle within each priority tier so it doesn't feel mechanical
+  if (mode !== 'test') {
+    filtered.sort((a, b) => {
+      const progA = progressMap[a[14]?.toString()] || { bucket: 1, date: new Date(0) };
+      const progB = progressMap[b[14]?.toString()] || { bucket: 1, date: new Date(0) };
+      if (progA.bucket !== progB.bucket) return progA.bucket - progB.bucket; // Bucket 1 first
+      return (progA.date - progB.date); // Most overdue first within same bucket
+    });
+  }
+
   return filtered.map(row => {
     let rawOpts = [row[4], row[5], row[6], row[7]].filter(String);
     return {
@@ -120,7 +128,7 @@ function getQuizData(username, mode) {
       answer: row[11] ? row[11].toString().trim() : "",
       qId: row[14].toString()
     };
-  }).sort(() => Math.random() - 0.5).slice(0, limit);
+  }).slice(0, limit);
 }
 
 function updateQuestionScore(username, qId, isCorrect) {
@@ -153,27 +161,19 @@ function updateQuestionScore(username, qId, isCorrect) {
 function getGameData(username, gameType) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const qSheet = ss.getSheetByName("Questions");
-  const userSheet = ss.getSheetByName("Users");
-  const userData = userSheet.getDataRange().getValues();
   
-  let userGrade = 1;
-  for (let i = 1; i < userData.length; i++) {
-    if (userData[i][0] && userData[i][0].toString().trim() === username.toString().trim()) { 
-      userGrade = parseInt(userData[i][2]) || 1; 
-      break; 
-    }
-  }
+  const userGradeLevel = getUserGrade_(username);
 
   const qData = qSheet.getRange(2, 1, qSheet.getLastRow() - 1, qSheet.getLastColumn()).getValues();
   
   const filtered = qData.filter(row => {
-    const isLevelMatch = (parseInt(row[17]) || 1) <= userGrade;
+    const isLevelMatch = (parseInt(row[17]) || 1) <= userGradeLevel;
     const isNotExcluded = row[16] !== "N";
     
     if (gameType === 'game_match') {
-      return isLevelMatch && isNotExcluded && row[18].toString().trim() !== ""; // Column S
+      return isLevelMatch && isNotExcluded && row[18].toString().trim() !== "";
     } else {
-      return isLevelMatch && isNotExcluded && row[19].toString().trim() !== ""; // Column T
+      return isLevelMatch && isNotExcluded && row[19].toString().trim() !== "";
     }
   });
 
@@ -181,11 +181,10 @@ function getGameData(username, gameType) {
     const possibleDecoys = [row[4], row[5], row[6], row[7]].filter(val => 
       val && val.toString().trim() !== "" && val.toString().trim() !== row[11].toString().trim()
     );
-
     return {
-      matchingTerm: row[18].toString().trim(),  // Column S
-      simplifiedDef: row[19].toString().trim(), // Column T
-      correctAnswer: row[11].toString().trim(), // Column L
+      matchingTerm: row[18].toString().trim(),
+      simplifiedDef: row[19].toString().trim(),
+      correctAnswer: row[11].toString().trim(),
       decoys: possibleDecoys,
       qId: row[14].toString()
     };
@@ -214,5 +213,66 @@ function updatePass(u, p) {
       sheet.getRange(i + 1, 2).setValue(p); 
       return "Updated!"; 
     }
+  }
+}                          
+
+function getBeltOptions() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("Belts");
+  const data = sheet.getDataRange().getValues();
+  return data.slice(1)
+    .filter(row => row[0] && row[1])
+    .map(row => ({ label: row[0].toString().trim(), value: parseInt(row[1]) }));
+}
+
+function getUserGrade_(username) {
+  const data = SpreadsheetApp.getActiveSpreadsheet()
+    .getSheetByName("Users").getDataRange().getValues();
+  const clean = username ? username.toString().trim().toLowerCase() : "";
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] && data[i][0].toString().trim().toLowerCase() === clean)
+      return parseInt(data[i][2]) || 1;
+  }
+  return 1;
+}
+
+function getTulTrumpsData(username) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const tulSheet = ss.getSheetByName("Tuls");
+
+    const userGradeLevel = getUserGrade_(username);
+
+    const tulData = tulSheet.getDataRange().getValues();
+    
+    const deck = tulData.slice(1)
+      .filter(row => {
+        const tulName = row[0];
+        const tulRequiredGrade = Number(row[5]);
+        return tulName && !isNaN(tulRequiredGrade) && tulRequiredGrade <= userGradeLevel;
+      }) 
+      .map(row => ({
+        name: row[0],         
+        movements: parseInt(row[1]) || 0, 
+        stances: parseInt(row[2]) || 0,   
+        readyStance: row[3] || "---",  
+        difficulty: parseInt(row[4]) || 0, 
+        meaning: row[6] || "",      
+        img: row[7] || "https://placehold.co/300x200?text=No+Pattern+Image"
+      }));
+
+    if (deck.length < 4) {
+      return { error: "Not enough Tuls unlocked for this grade. (Found: " + deck.length + ")" };
+    }
+
+    const shuffled = deck.sort(() => Math.random() - 0.5);
+    const mid = Math.ceil(shuffled.length / 2);
+    
+    return {
+      playerHand: shuffled.slice(0, mid),
+      cpuHand: shuffled.slice(mid)
+    };
+  } catch (e) {
+    return { error: e.message };
   }
 }

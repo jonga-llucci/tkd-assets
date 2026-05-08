@@ -1,0 +1,227 @@
+============================================================
+PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
+============================================================
+
+1. CORE SYSTEM ARCHITECTURE
+------------------------------------------------------------
+- Platform: Google Apps Script (GAS)
+- UI Engine: HTMLService (Index.html)
+- Styling: Bootstrap 5.3 + Custom CSS
+- Database: Google Sheets (Active Spreadsheet)
+- Device Target: Mobile-first PWA / WebIntoApp Shell
+
+2. FILE STRUCTURE & RESPONSIBILITIES
+------------------------------------------------------------
+- Code.gs          : Core server-side logic (Login, User Management, SRS calculations).
+- Index.html       : Main App Shell, CSS, and standardized Navigation logic.
+
+3. SPREADSHEET SCHEMA (The Data Source)
+------------------------------------------------------------
+[Tab: Users]
+- Col A: Username (String, Primary Key)
+- Col B: Password (String)
+- Col C: BeltLevel (Integer, 1-10+)
+- Col D: LastActive (Date)
+- Col E: Streak (Integer)
+- Col F: DisplayName (String)
+
+[Tab: Questions]
+- Col A: QuestionText
+- Col E-H: Options (Randomized on load)
+- Col L: CorrectAnswer (Matches one of E-H)
+- Col O: qId (Unique String ID - CRITICAL for SRS)
+- Col Q: Exam (Y/N - "N" = Flashcard Only)
+- Col R: BeltLevel (Integer)
+- col S: SimpleTerm (Text for Matching game)
+- col T: SimplifiedDef (Text for True / False game)
+- col U: GameCategory (answer categorisation for future game features)
+- col V: TimeLimit (Difficulty based time limit for future game features)
+- col W: TulName (Tul question is related to for future game features)
+
+[Tab: UserProgress] (SRS Data)
+- Col A: Username
+- Col B: qId
+- Col C: Score (Cumulative)
+- Col D: Bucket (1-4, Spaced Repetition Stage)
+- Col E: LastDate (Date)
+
+[Tab: Tuls] (Trump Cards)
+- Col A: Name
+- Col B: Movements
+- Col C: Stances
+- Col D: ReadyStance
+- Col E: Difficulty
+- Col F: BeltLevel
+- col G: Interpretation
+- Col H: ImageURL
+- Col I: KoreanReadyStance
+
+4. GLOBAL VARIABLE DICTIONARY (Code.gs & Index.html)
+------------------------------------------------------------
+- activeUserCurrent     : Currently logged-in username (string).
+- isQuizActive          : Boolean flag to prevent accidental navigation during sessions. Must be TRUE during any game/quiz to trigger exit warnings.
+- currentMode           : 'practice', 'test', 'game_match', 'game_swipe', 'game_tuls'.
+- quizData              : The current array of objects being processed.
+- currentIndex          : Track progress within the current session.
+- score                 : Running count of correct answers in session.
+- activeUserGrade       : Integer, the logged-in user's current belt level. Set on login, updated by saveGrade(). Used to filter all game and quiz data.
+- playerHand            : Array of Tul card objects for the player in Tul Trumps.
+- cpuHand               : Array of Tul card objects for the CPU in Tul Trumps.
+- isProcessing          : Boolean, locks Tul Trumps interactions during round resolution to prevent double-taps.
+- matchSelected         : Object tracking the currently selected pair in Matching Pairs { qId, aId, qEl, aEl }.
+- matchesFound          : Integer, count of matched pairs in the current board.
+- setsCleared           : Integer, count of completed boards in Matching Pairs (max 2).
+- swipeCorrect          : Boolean, whether the current True/False card is showing the correct answer.
+- roundTimeout          : Timer reference for Tul Trumps auto-advance. Cleared by clearInterval on exit.
+- questionsAnswered     : Integer, count of questions answered in the current session. Guards against zero-question exit review.
+- missedQuestions       : Array of { q, a } objects for review at session end.
+
+5. NAVIGATIONAL & NON-FUNCTIONAL REQUIREMENTS
+------------------------------------------------------------
+- DRY Principle: One 'switchView(id)' function controls all UI transitions.
+- Performance must be prioritised by accessing the minimum data required when needed. Do not pre-load data. Users will have frequent short sessions.
+- At the bottom of the container / each screen there should be a navigation bar with icons for "Home" (returns to the home screen), "Account" (Goes to a screen which shows their grade which is selectale in a drop-down, and the ability to change their password) and, "About" (Contains information in section 8). If any of these are selected during game play a confirmation pop-up appears and if the user chooses to "Exit" rather than "Stay & Play" they will be shown their results including incorrect answers to review (unless they have ansered 0 questions).
+- At the end of a game, in the results box show a percentage score as a whole number, a pass is =>75%
+- View Naming: All HTML IDs must follow 'view-[name]' (e.g., view-login, view-results).
+- Session Exit: If 'isQuizActive' is true, Home/Logout must trigger 'showExitWarning'.
+- Session Review: Upon exit, user must receive grade/review for answered questions unless they have not answered any questions
+- The review-list container must have sufficient vertical space (e.g., max-height with overflow-y: auto) to display all incorrect answers without cutting off content.
+- Single-Source Data: All quiz and trump data must flow from the Spreadsheet via google.script.run.
+- Code Integrity: Be explicit when providing code updates. State which lines of code are to be added or replaced by line number.
+- Universal Nav: handleNavigation(targetId) is the sole gatekeeper.
+- Intercept: If isQuizActive == true, triggers showUniversalOverlay('QUIT_SESSION').
+- Menu items must only display the mode name and icon; do not include question count indicators (e.g., /10 or /50) on the selection buttons.
+- Pop-up System: Uses a single #result-overlay for:
+    * Exit Warnings (Stay/Exit)
+    * Session Results (Grade/Review)
+    * Game Over / Victory announcements
+- Do not add citations in code - [cite: X]
+- loadAccountView() is called by handleNavigation when target is view-account. It fetches belt options on demand via getBeltOptions() and populates the grade selector. It is never called at login.
+- goHome() must call handleNavigation('view-modes'), not switchView directly, to preserve the single-gatekeeper principle.
+
+6. LOGIC & ALGORITHMS
+------------------------------------------------------------
+- Navigational Logic:
+  * Variable Name: targetView (JS) / id (HTML).
+  * ID Convention: view-[name] (e.g., view-modes, view-quiz).
+  * Gatekeeper: handleNavigation(targetView) checks isQuizActive. If true, triggers showUniversalWarning.
+  * Execution: switchView(targetView) clears all .view-container classes and adds .active-view to the target.
+- SRS Logic: 
+  * Bucket 1: 0 days | Bucket 2: 2 days | Bucket 3: 4 days | Bucket 4: 5 days.
+  * Filter: (Today >= NextReviewDate) AND (BeltLevel <= UserGrade).
+  * SRS Sort: For practice mode, questions are sorted by bucket ascending (bucket 1 first), then by LastDate ascending (most overdue first) within each bucket. This sort runs after filtering and before the 10-question slice. The answer option order is independently randomised per question.
+  * SRS Fallback: If the SRS filter returns zero questions (all due dates in the future), the filter is relaxed to all eligible questions for the user's grade to ensure practice is always available.
+- Exam Logic:
+  * Filter: (Column Q == "Y") AND (BeltLevel <= UserGrade).
+  * Limit: 50 questions.
+
+7. GAME-SPECIFIC LOGIC
+------------------------------------------------------------
+- Tul Trumps     - Initialization: Fetches data via getTulTrumpsData(username).
+- Tul Trumps     - Filtering: Deck is filtered by User Grade (Tab: Tuls, Col F).
+- Tul Trumps     - Game State: Managed in Index.html (playerHand, cpuHand).
+- Tul Trumps     - Constraints: isQuizActive is set to TRUE upon game start to prevent accidental exit.
+- Tul Trumps     - Minimum Deck: Game requires at least 4 Tuls to start. If fewer are unlocked for the user's grade, an error message is shown and the game does not launch.
+- Matching Pairs - Only Question rows where col P = Y and has values in col S should be used.
+- Matching Pairs - Pairs: Formed with col S and col L.
+- Matching Pairs - Filtering: Cards are filtered by User Grade (Tab: Questions, Col R).
+- Matching Pairs - SRS: Questions should be prioritised using SRS buckets.
+- True / False   - Only Question rows where col P = Y and has values in col T should be used.
+- True / False   - Pairs: Formed with col S and col L.
+- True / False   - Filtering: Cards are filtered by User Grade (Tab: Questions, Col R).
+- True / False   - SRS: Questions should be prioritised using SRS buckets.
+- Daily practise - 10 questions
+- Daily practise - Blank answer options should not be shown
+- Daily practise - Filtering: Cards are filtered by User Grade (Tab: Questions, Col R).
+- Daily practise - Filtering: Cards are filtered by whether to be used as exam questions Col Q =='Y' (Tab: Questions, Col Q).
+- Daily practise - SRS: Questions should be prioritised using SRS buckets.
+- Daily practise - Selection highlighting during daily practise should show green for answers correctly selected and red if incorrect.
+- Mock exam      - Time limit (shown with MM:SS timer) 60 mins
+- Mock exam      - 50 questions
+- Mock exam      - Passing mark => 75%
+- Mock exam      - Blank answer options should not be shown
+- Mock exam      - Filtering: Cards are filtered by User Grade (Tab: Questions, Col R).
+- Mock exam      - Filtering: Cards are filtered by whether to be used as exam questions Col Q =='Y' (Tab: Questions, Col Q).
+- Mock exam      - SRS: Not used for exam. Questions should be a random selection.
+- Mock exam      - SRS: Answers submitted from mock exam should contribute to question SRS bucket.
+- Mock exam      - Selection highlighting during the Mock Exam must be neutral (TKD Blue) and must not indicate if the answer is correct or incorrect until the final review.
+
+8. FIXED CONTENT: 'ABOUT' SECTION
+------------------------------------------------------------
+- Location: view-about (Accessible from Navigation Bar).
+- Heading
+    * "TKD Theory App"
+- Attribution
+    * "Created by Jonathan for"
+    * "Jacob Gallucci"
+    * "1st Dan • Age 10"
+    * "Club: TSX Martial Arts, Bingley"
+- Educational Disclosure: 
+    * "Spaced Repetition (SRS): Uses the Leitner System to optimize memory retention."
+    * "Mock Exams: Follows strict 50-question limits, 60 minute time limit, pass mark 75%"
+- Version details
+    *vXX.X
+
+9. FIXED CONTENT: 'ACCOUNT' SECTION
+------------------------------------------------------------
+- Location: view-account (Accessible from Navigation Bar).
+- Grade selector is populated on demand when the user navigates to view-account, not at login. This avoids an unnecessary server call on every login.
+- Selected grade in the dropdown reflects activeUserGrade at the time the view loads.
+- Heading
+    * "Account Settings"
+- Grade
+    * "Grading level (this is your next belt, not current one)"
+    * Drop down box with all selections from Tab: Belts, Col A "Belt"
+    * Change of value updates Tab: Users, Col C "BeltLevel" with corresponding value from Tab: Belts, Col B "BeltLevel" for selection
+- Password
+    * "Change Password"
+    * Text box available to input "New Password" validation requirements, 5 chars, 1 uppercase letter, 1 lower case letter, one number, one special character
+    * Validation check on new passwords should warn a user in a pop up message what the validation rules are
+    * Confirmation should be displayed that a password has successfully been changed
+    * There is no requirement to be able to logout
+
+10. UX STANDARDS
+------------------------------------------------------------
+- Primary Color: TKD Blue (#0d6efd) / TKD Red (#dc3545).
+- Standardized UI: All card-based games must use consistent shadows, radii, and 'TKD Blue' accents.
+- Feedback: Incorrect answers must be listed in the 'review-list' on results screen.
+- In games a progress bar should be shown along the top
+- Bootstrap icons should be used to make the interface user friendly - Flame for streak, controller for game centre, lightening for daily practice, stopwatch for mock grading
+- In "mock exam" a countdown timer set from 60 minutes should be shown in the format MM:SS
+- Animation: 0.3s ease-in-out on all view transitions.
+- Maintain loading messages. They must be specific to / make sense for Taekwon-do training (section 10)
+- Zero-Footprint Personalization: User data (Grade, Streak) influences logic silently; never use "Because you are [X]..." phrasing in UI.
+- Transition: All views use a 0.3s ease-out translateY animation.
+- Interactions: Buttons must use :active scales (0.98) for haptic-like feedback.
+- Suppression: overscroll-behavior-y: contain must be present on the body to prevent pull-to-refresh loops.
+- On completing a game with a passing mark (=>75%), or just completing the matching pairs game, then the confetti celebration should be shown. Confetti must be triggered with a high zIndex (e.g., 10000) to ensure it appears in front of the results card.
+
+11. FIXED CONTENT: 'LOADING' MESSAGES
+------------------------------------------------------------
+- Your specific Taekwondo messages
+  const loadMsgs = [
+    "Straightening the dobok...", 
+    "Sharpening your side kick...", 
+    "Reviewing the patterns...", 
+    "Warming up for the grading...", 
+    "Breathe in and out...",
+    "Tying the black belt...", 
+    "Learning Korean...", 
+    "Focusing your Ki-Hap..."
+- Unless loading TulTrumps "Shuffling deck...";
+
+12. PRIVATE SERVER-SIDE HELPERS (Code.gs)
+------------------------------------------------------------
+- getUserGrade_(username) : Reads Users tab, returns integer BeltLevel for the given username.
+  Used by getQuizData, getGameData, getTulTrumpsData. Trailing underscore = private (not 
+  callable from frontend). Never duplicate this logic inline in other functions.
+
+13. ROADMAP / NEXT ITERATIONS (v11.0+)
+------------------------------------------------------------
+- Dynamic Grade Banner: Top bar colors change based on 'UserGrade'.
+- 5s Timer: Integrated into 'game_swipe' (Board Break) and Infinite Mode.
+- Infinite Warrior Mode: Sudden death high-score game.
+- Per-user SRS stats screen: Show the user their bucket distribution (how many questions at each stage) — this is all already in UserProgress, just needs a read function and a simple bar chart view.
+- Belt-gated content unlock animation: When a user changes their grade up, show a brief unlock message indicating new content is available. All data is already filtered by grade — this is purely a UX layer.
+- Monetization Gate: 'SignupDate' check for trial period / Stripe integration.
+============================================================

@@ -31,8 +31,69 @@
     .nav-item.active { color: var(--tkd-blue); font-weight: bold; }
     
     .hidden { display: none !important; }
-    #loading-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(255,255,255,0.9); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; }
-    .copyright-text { text-align: center; font-size: 0.65rem; color: #bbb; padding: 4px; background: #fff; border-bottom: 1px solid #f8f9fa; }
+    
+    #loading-overlay { 
+    position: fixed; 
+    top:0; 
+    left:0; 
+    width:100%; 
+    height:100%; 
+    background: rgba(255,255,255,0.9); 
+    z-index: 9999; 
+    display: none; /* Changed from flex to none by default */
+    flex-direction: column; 
+    align-items: center; 
+    justify-content: center; 
+}
+    .copyright-text { text-align: center; font-size: 0.65rem; color: #bbb; padding: 4px; background: #fff; }
+
+    .result-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center; /* Centers vertically */
+    justify-content: center; /* Centers horizontally */
+    z-index: 9999;
+    transition: opacity 0.3s ease;
+}
+
+/* This creates the actual "Popup" look */
+.result-box {
+    background: white;
+    padding: 40px;
+    border-radius: 20px;
+    text-align: center;
+    max-width: 85%;
+    width: 400px;
+    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.result-box .btn {
+    transition: transform 0.2s ease;
+    font-weight: 600;
+}
+
+.result-box .btn:active {
+    transform: scale(0.95);
+}
+
+.display-5 {
+    font-size: 2.5rem;
+    letter-spacing: -1px;
+}
+
+@keyframes popIn {
+    from { transform: scale(0.8); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.text-win { color: #198754; }
+.text-loss { color: #dc3545; }
+.text-draw { color: #6c757d; }
 
     @keyframes confetti { 0% { transform: translateY(0) rotate(0); opacity: 1; } 100% { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
     .confetti { position: fixed; width: 10px; height: 10px; animation: confetti 3s ease-out forwards; z-index: 9999; pointer-events: none; }
@@ -40,22 +101,9 @@
 </head>
 <body>
 
-<div id="loading-overlay" class="hidden">
+<div id="loading-overlay">
     <div class="spinner-border text-primary mb-3"></div>
     <div id="loading-msg" class="fw-bold text-primary small px-4 text-center"></div>
-</div>
-
-<div class="modal fade" id="confirmModal" data-bs-backdrop="static" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered mx-auto" style="max-width: 350px;">
-    <div class="modal-content shadow-lg text-center p-4 rounded-4">
-        <h5 class="fw-bold">End Session?</h5>
-        <p class="text-muted small mb-4">See results for the questions answered so far?</p>
-        <div class="d-flex gap-2">
-          <button class="btn btn-light w-50 rounded-pill" data-bs-dismiss="modal">Stay</button>
-          <button class="btn btn-primary w-50 rounded-pill" id="confirm-end-btn">Confirm</button>
-        </div>
-    </div>
-  </div>
 </div>
 
 <div id="view-login" class="view-container active-view">
@@ -63,6 +111,7 @@
     <h2 class="fw-bold mb-4">TKD Academy</h2>
     <input type="text" id="user-input" class="form-control mb-3 p-3" placeholder="Username">
     <input type="password" id="pass-input" class="form-control mb-3 p-3" placeholder="Password">
+    <div id="login-error" class="text-danger small mt-1 mb-2" style="display:none; min-height:1.2em;"></div>
     <button class="btn btn-primary w-100 btn-lg" onclick="handleLogin()">Login</button>
     <div class="copyright-text mt-3">(C) J Gallucci 2026</div>
   </div>
@@ -74,8 +123,8 @@
       <div><h3 class="mb-0">Hi, <span id="user-welcome"></span></h3><small id="user-streak" class="text-primary fw-bold"></small></div>
       <i class="bi bi-person-circle fs-1 text-primary"></i>
     </div>
-    <button class="btn btn-warning w-100 mb-3 p-3 text-start border-0 shadow-sm" onclick="switchView('game-center')">
-      <div class="d-flex align-items-center"><i class="bi bi-controller me-3 fs-3"></i><div><strong>Game Center</strong><br><small>Interactive Challenges</small></div></div>
+    <button class="btn btn-warning w-100 mb-3 p-3 text-start border-0 shadow-sm" onclick="handleNavigation('view-game-center')">
+      <div class="d-flex align-items-center"><i class="bi bi-controller me-3 fs-3"></i><div><strong>Game Centre</strong><br><small>Interactive Challenges</small></div></div>
     </button>
     <button class="btn btn-primary w-100 mb-3 p-3 text-start shadow-sm" onclick="startApp('practice')">
       <div class="d-flex align-items-center"><i class="bi bi-lightning me-3 fs-3"></i><div><strong>Daily Practice</strong><br><small>10 Questions</small></div></div>
@@ -88,12 +137,48 @@
 
 <div id="view-game-center" class="view-container">
     <div class="quiz-card text-center">
-        <h4 class="fw-bold mb-4">Game Center</h4>
+        <h4 class="fw-bold mb-4">Game Centre</h4>
         <div class="game-grid">
-            <div class="game-card" onclick="startApp('game_match')"><i class="bi bi-grid-3x3-gap"></i><strong>Match Pairs</strong></div>
+            <div class="game-card" onclick="startApp('game_match')"><i class="bi bi-grid-3x3-gap"></i><strong>Matching Pairs</strong></div>
             <div class="game-card" onclick="startApp('game_swipe')"><i class="bi bi-check-circle"></i><strong>True or False</strong></div>
+            <div class="game-card" onclick="startApp('game_tuls')"><i class="bi bi-stack"></i><strong>Tul Trumps</strong></div>
         </div>
-        <button class="btn btn-light w-100 mt-4 rounded-pill" onclick="switchView('modes')">Back Home</button>
+    </div>
+</div>
+
+<div id="view-trumps" class="view-container">
+    <div class="quiz-card text-center">
+        <div id="trumps-content-wrapper" style="transition: opacity 0.3s ease;">
+            <div class="d-flex justify-content-between mb-3 fw-bold">
+                <span class="text-primary">Your Cards: <span id="player-card-count">0</span></span>
+                <span class="text-danger">CPU Cards: <span id="cpu-card-count">0</span> <small id="cpu-card-name" class="ms-1 opacity-75"></small></span>
+            </div>
+            
+            <div class="card shadow-sm mb-4">
+                <img id="tul-card-img" src="" class="card-img-top p-3" style="max-height: 100%; object-fit: contain;">
+                <div class="card-body">
+                    <h3 id="tul-card-name" class="fw-bold">---</h3>
+                    <span id="tul-card-ready" class="badge bg-primary mb-2">---</span>
+                    <p id="tul-card-meaning" class="small text-muted"></p>
+                    
+                    <div class="list-group list-group-flush text-start shadow-sm rounded-3">
+                        <!-- Ensure IDs match playTurn calls -->
+                        <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3" onclick="playTurn('movements')">
+                            <span><i class="bi bi-arrows-move me-2 text-primary"></i>Movements</span>
+                            <span id="val-movements" class="fw-bold fs-5">0</span>
+                        </button>
+                        <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3" onclick="playTurn('stances')">
+                            <span><i class="bi bi-person-walking me-2 text-primary"></i>Stances</span>
+                            <span id="val-stances" class="fw-bold fs-5">0</span>
+                        </button>
+                        <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3" onclick="playTurn('difficulty')">
+                            <span><i class="bi bi-bar-chart me-2 text-primary"></i>Difficulty</span>
+                            <span id="val-difficulty" class="fw-bold fs-5">0</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -136,16 +221,26 @@
       <h6 class="fw-bold">Mistakes Review:</h6>
       <div id="review-list" style="max-height: 200px; overflow-y: auto;" class="small"></div>
     </div>
-    <button class="btn btn-primary w-100 p-3 rounded-pill" onclick="switchView('modes')">Finish Session</button>
+    <button class="btn btn-primary w-100 p-3 rounded-pill" onclick="handleNavigation('view-modes')">Finish Session</button>
   </div>
+</div>
+
+
+  <div id="result-overlay" class="result-overlay hidden">
+    <!-- The result-box creates the white popup container -->
+    <div class="result-box shadow-lg border-0">
+        <h2 id="result-text" class="fw-bold mb-3"></h2>
+        <hr>
+        <p id="result-details" class="fs-5 mt-3"></p>
+    </div>
+</div>
 </div>
 
 <div id="view-account" class="view-container">
     <div class="quiz-card">
         <h3 class="mb-4">Account Profile</h3>
-        <div class="mb-4"><label class="small fw-bold text-muted">CURRENT GRADE</label><select id="grade-selector" class="form-select p-3" onchange="saveGrade()"></select></div>
-        <div class="mb-4"><label class="small fw-bold text-muted">PASSWORD</label><input type="password" id="new-pass" class="form-control p-3 mb-2" placeholder="New Password"><button class="btn btn-primary w-100 p-3" onclick="updatePass()">Update Password</button></div>
-        <button class="btn btn-outline-danger w-100 p-3" onclick="handleLogout()">Log Out</button>
+        <div class="mb-4"><label class="small fw-bold text-muted">Grading for (next belt):</label><select id="grade-selector" class="form-select p-3" onchange="saveGrade()"></select></div>
+        <div class="mb-4"><label class="small fw-bold text-muted">Change Password:</label><input type="password" id="new-pass" class="form-control p-3 mb-2" placeholder="New Password"><button class="btn btn-primary w-100 p-3" onclick="updatePass()">Update Password</button></div>
     </div>
 </div>
 
@@ -158,79 +253,425 @@
     <hr>
     <p class="mb-1">Club:</p>
     <p class="fw-bold">TSX Martial Arts, Bingley</p>
-    <div class="copyright-text mt-5">(C) J Gallucci 2026</div>
-  </div>
+    </div>
 </div>
 
 <div class="footer-container hidden" id="navbar">
-  <div class="copyright-text">(C) J Gallucci 2026</div>
-  <nav class="bottom-nav">
-    <button class="nav-item active" id="nav-modes" onclick="switchView('modes')"><i class="bi bi-house-door"></i>Home</button>
-    <button class="nav-item" id="nav-account" onclick="switchView('account')"><i class="bi bi-person"></i>Account</button>
-    <button class="nav-item" id="nav-about" onclick="switchView('about')"><i class="bi bi-info-circle"></i>About</button>
+    <nav class="bottom-nav">
+    <button class="nav-item active" id="nav-modes" onclick="handleNavigation('view-modes')"><i class="bi bi-house-door"></i>Home</button>
+    <button class="nav-item" id="nav-account" onclick="handleNavigation('view-account')"><i class="bi bi-person"></i>Account</button>
+    <button class="nav-item" id="nav-about" onclick="handleNavigation('view-about')"><i class="bi bi-info-circle"></i>About</button>
   </nav>
+  <div class="copyright-text">(C) J Gallucci 2026</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-  let quizData = [], currentIndex = 0, score = 0, activeUser = "", timerInterval = null, timeLeft = 0, isQuizActive = false, currentMode = "", questionsAnswered = 0, missedQuestions = [];
+
+  document.addEventListener('touchstart', function(e) {
+    if (e.touches.length > 1) return; // Allow pinch-zoom
+    this.startY = e.touches[0].pageY;
+    }, { passive: false });
+
+document.addEventListener('touchmove', function(e) {
+    const top = window.pageYOffset || document.documentElement.scrollTop;
+    if (top <= 0 && e.touches[0].pageY > this.startY) {
+        e.preventDefault(); // Stop the refresh trigger
+    }
+    }, { passive: false });
+
+  let playerHand = [], cpuHand = []; 
+  let isProcessing = false;
+
+  let quizData = [], currentIndex = 0, score = 0, activeUser = "", activeUserGrade = 1, timerInterval = null, timeLeft = 0, isQuizActive = false, currentMode = "", questionsAnswered = 0, missedQuestions = [];
+
   let matchSelected = { qId: null, aId: null, qEl: null, aEl: null }, matchesFound = 0, setsCleared = 0, swipeCorrect = false;
 
-  const loadMsgs = ["Straightening the dobok...", "Sharpening your side kick...", "Reviewing the patterns...", "Warming up for the grading...", "Breathe in and out...","Tying the black belt...", "Learning Korean...", "Focusing your Ki-Hap..."];
-
-  function toggleLoad(s) { 
-    const l = document.getElementById('loading-overlay');
-    if(s) { document.getElementById('loading-msg').innerText = loadMsgs[Math.floor(Math.random()*loadMsgs.length)]; l.classList.remove('hidden'); }
-    else l.classList.add('hidden');
+function handleNavigation(targetView) {
+  if (isQuizActive) {
+    const mode = (playerHand && playerHand.length > 0) ? "trumps" : "exam";
+    showUniversalWarning(targetView, mode);
+  } else {
+    if (targetView === 'view-account') loadAccountView();
+    switchView(targetView);
   }
+}
+
+function showUniversalWarning(targetView, mode) {
+    const resText = document.getElementById('result-text');
+    const resDetails = document.getElementById('result-details');
+    const overlay = document.getElementById('result-overlay');
+
+    // Ensure no lingering game timers interfere with the warning
+    if (roundTimeout) clearInterval(roundTimeout);
+    isProcessing = true; // Lock the game interactions
+
+    resText.innerText = "QUIT SESSION?";
+    resText.className = "fw-bold text-dark";
+
+    let message = (mode === "trumps") 
+        ? "Your progress in this match will be lost." 
+        : "You will see your current grade for answered questions before leaving.";
+
+    resDetails.innerHTML = `
+        <p class="mb-4">${message}</p>
+        <div class="d-grid gap-2">
+            <button class="btn btn-primary btn-lg rounded-pill py-3" onclick="closeWarning()">Stay & Play</button>
+            <button class="btn btn-outline-secondary rounded-pill py-2" onclick="confirmExit('${targetView}', '${mode}')">Exit Session</button>
+        </div>
+    `;
+
+    overlay.classList.remove('hidden');
+}
+
+function closeWarning() {
+    const overlay = document.getElementById('result-overlay');
+    overlay.classList.add('hidden');
+    isProcessing = false;
+}
+
+function confirmExit(targetView, mode) {
+    const overlay = document.getElementById('result-overlay');
+    
+    if (mode === "exam") {
+        // This ensures they get their grade and review for what they've done
+        endQuiz(); 
+    }
+
+    // Reset game states
+    isQuizActive = false;
+    isProcessing = false;
+    playerHand = [];
+    cpuHand = [];
+
+    // Close the warning overlay
+    overlay.classList.add('hidden');
+
+    // If it was an exam, endQuiz() already switched the view to 'results'
+    // If it was Trumps, we need to switch them to their target now
+    if (mode !== "exam") {
+        if (targetView === 'login') {
+            handleLogout();
+        } else {
+            switchView(targetView);
+        }
+    }
+}
+
+let roundTimeout = null; // To track the auto-advance timer
+
+function playTurn(stat) {
+    if (isProcessing || playerHand.length === 0 || cpuHand.length === 0) return;
+    isProcessing = true;
+
+    const pCard = playerHand[0];
+    const cCard = cpuHand[0];
+    const pVal = parseInt(pCard[stat]) || 0;
+    const cVal = parseInt(cCard[stat]) || 0;
+
+    const overlay = document.getElementById('result-overlay');
+    const resText = document.getElementById('result-text');
+    const resDetails = document.getElementById('result-details');
+
+    let statusText = "";
+    let textColorClass = "";
+    let resultMessage = "";
+
+    if (pVal > cVal) {
+        statusText = "ROUND WON!";
+        textColorClass = "fw-bold text-win";
+        resultMessage = `Your ${pCard.name} (${pVal}) beat ${cCard.name} (${cVal}).`;
+        playerHand.push(playerHand.shift(), cpuHand.shift());
+    } else if (cVal > pVal) {
+        statusText = "ROUND LOST";
+        textColorClass = "fw-bold text-loss";
+        resultMessage = `CPU's ${cCard.name} (${cVal}) beat your ${pCard.name} (${pVal}).`;
+        cpuHand.push(cpuHand.shift(), playerHand.shift());
+    } else {
+        statusText = "DRAW";
+        textColorClass = "fw-bold text-draw";
+        resultMessage = `Both patterns have ${pVal} ${stat}.`;
+        playerHand.push(playerHand.shift());
+        cpuHand.push(cpuHand.shift());
+    }
+
+    resText.innerText = statusText;
+    resText.className = textColorClass;
+
+    // UI with "Next Round" button and countdown
+    resDetails.innerHTML = `
+        <p class="mb-4">${resultMessage}</p>
+        <div class="d-grid">
+            <button id="next-round-btn" class="btn btn-primary btn-lg rounded-pill py-3" onclick="manualNextRound()">
+                Next Round (3s)
+            </button>
+        </div>
+    `;
+
+    overlay.classList.remove('hidden');
+    
+    // Start the 3-second timer
+    let count = 3;
+    roundTimeout = setInterval(() => {
+        count--;
+        const btn = document.getElementById('next-round-btn');
+        if (btn) btn.innerText = `Next Round (${count}s)`;
+        
+        if (count <= 0) {
+            manualNextRound();
+        }
+    }, 1000);
+}
+
+function manualNextRound() {
+    clearInterval(roundTimeout);
+    const overlay = document.getElementById('result-overlay');
+    
+    if (playerHand.length > 0) {
+        const nextImg = new Image();
+        nextImg.onload = () => {
+            overlay.classList.add('hidden');
+            if (!checkGameOver()) {
+                isProcessing = false;
+                updateGameUI();
+            }
+        };
+        // Use Variable here
+        nextImg.src = playerHand[0].img || "";
+    } else {
+        overlay.classList.add('hidden');
+        checkGameOver();
+    }
+}
+
+function checkGameOver() {
+    if (playerHand.length === 0 || cpuHand.length === 0) {
+        const resText = document.getElementById('result-text');
+        const resDetails = document.getElementById('result-details');
+        const overlay = document.getElementById('result-overlay');
+        const isWin = cpuHand.length === 0;
+
+        // Allow navigation functions to work by resetting the state gate
+        isQuizActive = false; 
+
+        if (isWin) { 
+            triggerConfetti(); 
+            resText.innerText = "VICTORY!"; 
+            resText.className = "fw-bold text-win display-5"; 
+        } else { 
+            resText.innerText = "GAME OVER"; 
+            resText.className = "fw-bold text-loss display-5"; 
+        }
+
+        resDetails.innerHTML = `
+          <p>${isWin ? 'Amazing! You have captured all the patterns.' : 'The CPU took your deck.'}</p>
+          <div class="d-grid gap-2 mt-4">
+              <button class="btn btn-primary btn-lg rounded-pill" onclick="restartGame()">Play Again</button>
+              <button class="btn btn-outline-secondary rounded-pill" onclick="goHome()">Return Home</button>
+          </div>`;
+          
+        overlay.classList.remove('hidden');
+        return true;
+    }
+    return false;
+}
+
+function restartGame() {
+      document.getElementById('result-overlay').classList.add('hidden');
+      isProcessing = false;
+      playerHand = [];
+      cpuHand = [];
+      initTulTrumps(); // Re-shuffles and starts over
+  }
+
+function goHome() {
+      document.getElementById('result-overlay').classList.add('hidden');
+      isProcessing = false;
+      isQuizActive = false;
+      playerHand = [];
+      cpuHand = [];
+      handleNavigation('view-modes');
+  }
+
+  function toggleLoad(show, customMsg) {
+  const loader = document.getElementById('loading-overlay');
+  const msgEl = document.getElementById('loading-msg');
+  if (!loader) return;
+
+  // Your specific Taekwondo messages
+  const loadMsgs = [
+    "Straightening my dobok...", 
+    "Sharpening your footsword...", 
+    "Stretching...", 
+    "Reviewing the patterns...", 
+    "Warming up...", 
+    "Breathe in and out...",
+    "Tying my belt...", 
+    "Learning Korean...", 
+    "Focusing my Ki-Hap..."
+  ];
+
+  if (show) {
+    if (customMsg) {
+      // Use the specific message passed (e.g., "Shuffling the deck...")
+      msgEl.innerText = customMsg;
+    } else {
+      // Pick a random TKD message from your list
+      const randomIdx = Math.floor(Math.random() * loadMsgs.length);
+      msgEl.innerText = loadMsgs[randomIdx];
+    }
+    loader.style.display = 'flex';
+  } else {
+    loader.style.display = 'none';
+  }
+}
 
   function handleLogin() {
     const u = document.getElementById('user-input').value, p = document.getElementById('pass-input').value;
     if(!u || !p) return;
+    document.getElementById('login-error').style.display = 'none';
     toggleLoad(true);
     google.script.run.withSuccessHandler(res => {
-      toggleLoad(false);
-      if(res.success) {
-        activeUser = res.username; 
-        document.getElementById('user-welcome').innerText = res.displayName;
-        document.getElementById('user-streak').innerHTML = `<i class="bi bi-fire"></i> ${res.streak} Day Streak`;
-        document.getElementById('navbar').classList.remove('hidden');
-        const sel = document.getElementById('grade-selector'); sel.innerHTML = '';
-        const gradeMap = { 1:"10th Kup", 2:"9th Kup", 3:"8th Kup", 4:"7th Kup", 5:"6th Kup", 6:"5th Kup", 7:"4th Kup", 8:"3rd Kup", 9:"2nd Kup", 10:"1st Kup", 11:"1st Dan", 12:"2nd Dan" };
-        for(let k in gradeMap) sel.innerHTML += `<option value="${k}" ${k==res.gradeValue?'selected':''}>${gradeMap[k]}</option>`;
-        switchView('modes');
-      }
-    }).loginUser(u, p);
+  toggleLoad(false);
+  const errEl = document.getElementById('login-error');
+  if (res.success) {
+    errEl.style.display = 'none';
+    activeUser = res.username;
+    activeUserGrade = res.gradeValue;
+    document.getElementById('user-welcome').innerText = res.displayName;
+    document.getElementById('user-streak').innerHTML = `<i class="bi bi-fire"></i> ${res.streak} Day Streak`;
+    document.getElementById('navbar').classList.remove('hidden');
+    
+    switchView('view-modes');
+  } else {
+    errEl.innerText = "Incorrect username or password.";
+    errEl.style.display = 'block';
+  }
+}).loginUser(u, p);
   }
 
   function startApp(mode) {
-    isQuizActive = true; currentMode = mode; questionsAnswered = 0; score = 0; currentIndex = 0; missedQuestions = []; setsCleared = 0;
-    document.querySelectorAll('#view-quiz [id^="ui-"]').forEach(el => el.classList.add('hidden'));
-    document.getElementById('timer-display').classList.add('hidden');
-    document.getElementById('next-btn').classList.add('hidden');
-    clearInterval(timerInterval);
-    toggleLoad(true);
+    
+    // 1. Determine the correct View ID based on the mode
+    let targetView = 'view-quiz'; 
+    if (mode === 'game_tuls') targetView = 'view-trumps';
 
-    const isGame = mode.startsWith('game_');
-    if (isGame) {
-      // Pass 'mode' as the second argument so the server knows which column to filter
-      google.script.run.withSuccessHandler(data => {
-          toggleLoad(false); quizData = data;
-          switchView('quiz');
-          if (mode === 'game_match') setupMatch();
-          else if (mode === 'game_swipe') setupSwipe();
-      }).getGameData(activeUser, mode); 
-    } else {
-      google.script.run.withSuccessHandler(data => {
-          toggleLoad(false); quizData = data;
-          if(mode === 'test') { 
-            timeLeft = 3600; document.getElementById('timer-display').classList.remove('hidden'); 
-            updateTimerUI(); timerInterval = setInterval(() => { timeLeft--; updateTimerUI(); if(timeLeft<=0) endQuiz(); }, 1000); 
-          }
-          switchView('quiz');
-          showQuestion();
-      }).getQuizData(activeUser, (mode === 'test' ? 'test' : 'practice'));
+    // 2. Reset global game state variables
+    isQuizActive = true; 
+    currentMode = mode; 
+    questionsAnswered = 0; 
+    score = 0; 
+    currentIndex = 0; 
+    missedQuestions = []; 
+    setsCleared = 0;
+
+    // 3. Clear existing timers and UI elements from previous sessions
+    if (timerInterval) clearInterval(timerInterval);
+    document.querySelectorAll('#view-quiz [id^="ui-"]').forEach(el => el.classList.add('hidden'));
+    document.getElementById('timer-display')?.classList.add('hidden');
+    document.getElementById('next-btn')?.classList.add('hidden');
+
+    // 4. Handle Tul Trumps separately (it has its own data fetcher)
+    if (mode === 'game_tuls') {
+        switchView('view-trumps');
+        initTulTrumps(); 
+        return;
     }
+
+    // 5. Handle Standard Quizzes and Interactive Games
+    toggleLoad(true);
+    const isGame = mode.startsWith('game_');
+
+    if (isGame) {
+        google.script.run.withSuccessHandler(data => {
+            toggleLoad(false); 
+            quizData = data;
+            switchView('view-quiz'); // Fixed: Changed from 'quiz' to 'view-quiz'
+            if (mode === 'game_match') setupMatch();
+            else if (mode === 'game_swipe') setupSwipe();
+        }).getGameData(activeUser, mode); 
+    } else {
+        google.script.run.withSuccessHandler(data => {
+            toggleLoad(false); 
+            quizData = data;
+            if (mode === 'test') { 
+                timeLeft = 3600; 
+                document.getElementById('timer-display')?.classList.remove('hidden'); 
+                updateTimerUI(); 
+                timerInterval = setInterval(() => { 
+                    timeLeft--; 
+                    updateTimerUI(); 
+                    if (timeLeft <= 0) endQuiz(); 
+                }, 1000); 
+            }
+            switchView('view-quiz'); // Fixed: Changed from 'quiz' to 'view-quiz'
+            showQuestion();
+        }).getQuizData(activeUser, (mode === 'test' ? 'test' : 'practice'));
+    }
+}
+
+  
+
+  /**
+ * UI UPDATE LOGIC
+ * Replaces old logic in TulUI.html / Index.html
+ */
+function updateGameUI() {
+    if (!playerHand || playerHand.length === 0) { 
+        isProcessing = false; 
+        toggleLoad(false);
+        return; 
+    }
+    
+    const wrapper = document.getElementById('trumps-content-wrapper');
+    const card = playerHand[0];
+    const cpuCard = cpuHand[0];
+    const imgEl = document.getElementById('tul-card-img');
+
+    if (wrapper) wrapper.style.opacity = "0";
+
+    // Update Card Counts and Stats
+    document.getElementById('player-card-count').innerText = playerHand.length;
+    document.getElementById('cpu-card-count').innerText = cpuHand.length;
+    
+    const cpuNameEl = document.getElementById('cpu-card-name');
+    if (cpuCard && cpuNameEl) cpuNameEl.innerText = `(${cpuCard.name})`;
+
+    document.getElementById('tul-card-name').innerText = card.name;
+    document.getElementById('tul-card-ready').innerText = "Ready: " + card.readyStance;
+    document.getElementById('tul-card-meaning').innerText = card.meaning; 
+    document.getElementById('val-movements').innerText = card.movements;
+    document.getElementById('val-stances').innerText = card.stances;
+    document.getElementById('val-difficulty').innerText = card.difficulty;
+
+    // Ensure loader turns off even if image is broken
+    imgEl.onload = function() {
+        if (wrapper) wrapper.style.opacity = "1";
+        toggleLoad(false);
+        isProcessing = false;
+    };
+    imgEl.onerror = function() {
+        toggleLoad(false);
+        isProcessing = false;
+    };
+    imgEl.src = card.img; 
+}
+
+function initTulTrumps() {
+    toggleLoad(true, "Shuffling deck...");
+    // Fetches and shuffles deck from Tuls sheet
+    google.script.run
+        .withSuccessHandler(data => {
+            if (data.error) {
+                alert(data.error);
+                toggleLoad(false);
+                return;
+            }
+            playerHand = data.playerHand;
+            cpuHand = data.cpuHand;
+            updateGameUI();
+        })
+        .getTulTrumpsData(activeUser);
 }
 
   function showQuestion() {
@@ -287,7 +728,7 @@
                                 document.getElementById('progress-bar').style.width = "100%";
                                 triggerConfetti(); 
                                 // Directly back to home (modes) after confetti delay, skipping results
-                                setTimeout(() => switchView('modes'), 2500); 
+                                setTimeout(() => switchView('view-modes'), 2500); 
                             } else { 
                                 setupMatch(); 
                             }
@@ -365,42 +806,155 @@ function handleSwipe(userAnswer) {
   }
 
   function endQuiz() {
-    clearInterval(timerInterval); isQuizActive = false;
-    document.querySelectorAll('.view-container').forEach(v => { v.classList.remove('active-view'); v.style.display = 'none'; });
-    const resTarget = document.getElementById('view-results');
-    const p = Math.round((score/(questionsAnswered||1))*100);
-    if(p >= 75) triggerConfetti();
+    clearInterval(timerInterval);
+    isQuizActive = false;
+
+    if (questionsAnswered === 0) {
+        switchView('view-modes');
+        return;
+    }
+
+    const p = Math.round((score / questionsAnswered) * 100);
+    if (p >= 75) triggerConfetti();
+
     document.getElementById('res-title').innerText = p >= 75 ? "GREAT JOB!" : "KEEP PRACTISING!";
     document.getElementById('res-percent').innerText = p + "%";
     document.getElementById('res-score').innerText = `${score}/${questionsAnswered} Correct`;
-    const rList = document.getElementById('review-list'); rList.innerHTML = '';
-    if(missedQuestions.length) {
-        missedQuestions.forEach(m => rList.innerHTML += `<div class="mb-2 p-2 bg-light border-start border-danger"><b>${m.q}</b><br><span class="text-success">${m.a}</span></div>`);
-    } else rList.innerHTML = '<div class="text-success p-2">Perfect! No mistakes to review.</div>';
-    resTarget.style.display = 'block'; setTimeout(() => resTarget.classList.add('active-view'), 10);
-  }
+
+    const rList = document.getElementById('review-list');
+    rList.innerHTML = '';
+    if (missedQuestions.length > 0) {
+        missedQuestions.forEach(m => {
+            rList.innerHTML += `<div class="mb-2 p-2 bg-light border-start border-danger"><b>${m.q}</b><br><span class="text-success">${m.a}</span></div>`;
+        });
+    } else {
+        rList.innerHTML = '<div class="text-success p-2">Perfect! No mistakes to review.</div>';
+    }
+
+    switchView('view-results');
+}
 
   function updateTimerUI() { const m = Math.floor(timeLeft / 60), s = timeLeft % 60; document.getElementById('timer-display').innerText = `${m}:${s < 10 ? '0' : ''}${s}`; }
 
-  function switchView(id) {
-    if (isQuizActive && id !== 'quiz') { 
-        const m = bootstrap.Modal.getOrCreateInstance(document.getElementById('confirmModal'));
-        document.getElementById('confirm-end-btn').onclick = () => { m.hide(); endQuiz(); };
-        m.show(); return; 
+function switchView(targetView) {
+  // Hide all views using the exact IDs in your HTML
+  const views = ['view-login', 'view-modes', 'view-game-center', 'view-trumps', 'view-quiz', 'view-results', 'view-account', 'view-about'];
+  
+  views.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.classList.add('hidden');
+      el.classList.remove('active-view');
     }
-    document.querySelectorAll('.view-container').forEach(v => { v.classList.remove('active-view'); v.style.display = 'none'; });
-    const t = document.getElementById('view-' + id);
-    if(t) { t.style.display = 'block'; setTimeout(() => t.classList.add('active-view'), 10); }
-    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    const activeNav = document.getElementById('nav-' + id);
-    if(activeNav) activeNav.classList.add('active');
-    else if(id === 'results' || id === 'game-center') document.getElementById('nav-modes').classList.add('active');
+  });
+
+  // Show target - targetView now matches the ID perfectly
+  const targetEl = document.getElementById(targetView);
+  if (targetEl) {
+    targetEl.classList.remove('hidden');
+    targetEl.classList.add('active-view');
   }
 
-  function nextQuestion() { (currentIndex < quizData.length - 1) ? (currentIndex++, showQuestion()) : endQuiz(); }
-  function handleLogout() { isQuizActive = false; switchView('login'); }
-  function saveGrade() { google.script.run.saveGrade(activeUser, document.getElementById('grade-selector').value); }
-  function updatePass() { google.script.run.updatePass(activeUser, document.getElementById('new-pass').value); }
+  updateNavIcons(targetView);
+}
+
+function updateNavIcons(activeView) {
+  // Maps the View ID directly to the Nav Button ID
+  const navMap = {
+    'view-modes': 'nav-modes',
+    'view-account': 'nav-account',
+    'view-about': 'nav-about'
+  };
+
+  const activeBtnId = navMap[activeView];
+  
+  // Reset all nav items
+  document.querySelectorAll('.nav-item').forEach(btn => {
+    btn.classList.remove('active');
+  });
+
+  // Set the correct one to active
+  const activeBtn = document.getElementById(activeBtnId);
+  if (activeBtn) {
+    activeBtn.classList.add('active');
+  }
+}
+
+function nextQuestion() { 
+  (currentIndex < quizData.length - 1) ? (currentIndex++, showQuestion()) : endQuiz(); 
+}
+
+function handleLogout() { 
+  isQuizActive = false; // Prevents the 'Stay & Play' warning from appearing
+  activeUser = ""; 
+  document.getElementById('navbar').classList.add('hidden'); 
+  switchView('view-login'); 
+}
+
+function saveGrade() {
+  activeUserGrade = parseInt(document.getElementById('grade-selector').value);
+  google.script.run.saveGrade(activeUser, activeUserGrade);
+}
+
+function updatePass() {
+    const newPass = document.getElementById('new-pass').value;
+    const resText = document.getElementById('result-text');
+    const resDetails = document.getElementById('result-details');
+    const overlay = document.getElementById('result-overlay');
+    
+    // Validation: 5+ chars, Upper, Lower, Num, Special
+    const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*]).{5,}$/;
+
+    if (!regex.test(newPass)) {
+        resText.innerText = "WEAK PASSWORD";
+        resText.className = "fw-bold text-danger";
+        resDetails.innerHTML = `
+            <p class="mb-4">Must be 5+ characters with Uppercase, Lowercase, Number, and Special Characters (!@#$%^&*)</p>
+            <div class="d-grid">
+                <button class="btn btn-primary rounded-pill" onclick="closeWarning()">Try Again</button>
+            </div>
+        `;
+        overlay.classList.remove('hidden');
+        return;
+    }
+
+    toggleLoad(true, "Securing account...");
+    
+    google.script.run
+        .withSuccessHandler(res => {
+            toggleLoad(false);
+            // Use the overlay for success confirmation
+            resText.innerText = "UPDATED!";
+            resText.className = "fw-bold text-success";
+            resDetails.innerHTML = `
+                <p class="mb-4">Your new password has been saved successfully.</p>
+                <div class="d-grid">
+                    <button class="btn btn-primary rounded-pill" onclick="closeWarning()">Great</button>
+                </div>
+            `;
+            document.getElementById('new-pass').value = ''; 
+            overlay.classList.remove('hidden');
+        })
+        .withFailureHandler(err => {
+            toggleLoad(false);
+            resText.innerText = "SERVER ERROR";
+            resText.className = "fw-bold text-danger";
+            resDetails.innerHTML = `<p>${err}</p><button class="btn btn-primary rounded-pill" onclick="closeWarning()">Close</button>`;
+            overlay.classList.remove('hidden');
+        })
+        .updatePass(activeUser, newPass);
+}
+
+function loadAccountView() {
+  google.script.run.withSuccessHandler(belts => {
+    const sel = document.getElementById('grade-selector');
+    sel.innerHTML = '';
+    belts.forEach(b => {
+      sel.innerHTML += `<option value="${b.value}" ${b.value == activeUserGrade ? 'selected' : ''}>${b.label}</option>`;
+    });
+  }).getBeltOptions();
+}
+
 </script>
 </body>
 </html>
