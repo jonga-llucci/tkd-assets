@@ -490,7 +490,7 @@ function goHome() {
       isQuizActive = false;
       playerHand = [];
       cpuHand = [];
-      switchView('view-modes');
+      handleNavigation('view-modes');
   }
 
   function toggleLoad(show, customMsg) {
@@ -541,13 +541,7 @@ function goHome() {
     document.getElementById('user-welcome').innerText = res.displayName;
     document.getElementById('user-streak').innerHTML = `<i class="bi bi-fire"></i> ${res.streak} Day Streak`;
     document.getElementById('navbar').classList.remove('hidden');
-    google.script.run.withSuccessHandler(belts => {
-      const sel = document.getElementById('grade-selector');
-      sel.innerHTML = '';
-      belts.forEach(b => {
-        sel.innerHTML += `<option value="${b.value}" ${b.value === userGradeValue ? 'selected' : ''}>${b.label}</option>`;
-      });
-    })
+    
     switchView('view-modes');
   } else {
     errEl.innerText = "Incorrect username or password.";
@@ -665,7 +659,7 @@ function updateGameUI() {
 
 function initTulTrumps() {
     toggleLoad(true, "Shuffling deck...");
-    // This calls the single consolidated function in TulGame.gs
+    // Fetches and shuffles deck from Tuls sheet
     google.script.run
         .withSuccessHandler(data => {
             if (data.error) {
@@ -959,15 +953,6 @@ function loadAccountView() {
       sel.innerHTML += `<option value="${b.value}" ${b.value == activeUserGrade ? 'selected' : ''}>${b.label}</option>`;
     });
   }).getBeltOptions();
-}
-
-/**
- * Reusing your existing close logic
- */
-function closeWarning() {
-    const overlay = document.getElementById('result-overlay');
-    if (overlay) overlay.classList.add('hidden');
-    isProcessing = false;
 }
 
 </script>

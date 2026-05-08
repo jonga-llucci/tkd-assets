@@ -5,8 +5,6 @@
  */
 
 const BUCKET_INTERVALS = { 1: 0, 2: 2, 3: 4, 4: 5 };
-//const TUL_PLACEHOLDER = "https://placehold.co/300x200?text=Pattern+Image";
-
 
 
 /** 
@@ -65,7 +63,6 @@ function getQuizData(username, mode) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const qSheet = ss.getSheetByName("Questions");
   const pSheet = ss.getSheetByName("UserProgress");
-  const userSheet = ss.getSheetByName("Users");
   const cleanUser = username ? username.toString().trim() : "";
   
   const userGradeLevel = getUserGrade_(username);
