@@ -121,14 +121,15 @@ function getQuizData(username, mode) {
   }
 
   return filtered.map(row => {
-    let rawOpts = [row[4], row[5], row[6], row[7]].filter(String);
-    return {
-      question: row[0].toString(),
-      options: rawOpts.sort(() => Math.random() - 0.5).map(s => s.toString().trim()),
-      answer: row[11] ? row[11].toString().trim() : "",
-      qId: row[14].toString()
-    };
-  }).slice(0, limit);
+  let rawOpts = [row[4], row[5], row[6], row[7]].filter(String);
+  return {
+    question: row[0].toString(),
+    options: rawOpts.sort(() => Math.random() - 0.5).map(s => s.toString().trim()),
+    answer: row[11] ? row[11].toString().trim() : "",
+    qId: row[14].toString(),
+    timeLimit: parseInt(row[21]) || 5
+  };
+}).slice(0, limit);
 }
 
 function updateQuestionScore(username, qId, isCorrect) {
@@ -223,6 +224,68 @@ function getBeltOptions() {
   return data.slice(1)
     .filter(row => row[0] && row[1])
     .map(row => ({ label: row[0].toString().trim(), value: parseInt(row[1]) }));
+}
+
+function getSrsStats(username) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const pData = ss.getSheetByName("UserProgress").getDataRange().getValues();
+  const qData = ss.getSheetByName("Questions").getDataRange().getValues();
+  const cleanUser = username ? username.toString().trim() : "";
+  const userGradeLevel = getUserGrade_(username);
+
+  // Total questions eligible for this user's grade
+  const eligible = qData.slice(1).filter(row =>
+    row[0] && row[14] && (parseInt(row[17]) || 1) <= userGradeLevel && row[16] !== "N"
+  ).length;
+
+  // Count user's rows by bucket
+  const buckets = { 1: 0, 2: 0, 3: 0, 4: 0 };
+  pData.slice(1).forEach(row => {
+    if (row[0] && row[0].toString().trim() === cleanUser) {
+      const b = parseInt(row[3]) || 1;
+      if (buckets[b] !== undefined) buckets[b]++;
+    }
+  });
+
+  // Questions not yet seen = eligible minus all seen
+  const seen = buckets[1] + buckets[2] + buckets[3] + buckets[4];
+  const unseen = Math.max(0, eligible - seen);
+
+  return { buckets, unseen, eligible };
+}
+
+function getHighScore(username) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName("HighScores");
+  if (!sheet) {
+    sheet = ss.insertSheet("HighScores");
+    sheet.appendRow(["Username", "InfiniteWarrior"]);
+  }
+  const data = sheet.getDataRange().getValues();
+  const clean = username ? username.toString().trim() : "";
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] && data[i][0].toString().trim() === clean)
+      return parseInt(data[i][1]) || 0;
+  }
+  return 0;
+}
+
+function saveHighScore(username, newScore) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName("HighScores");
+  if (!sheet) {
+    sheet = ss.insertSheet("HighScores");
+    sheet.appendRow(["Username", "InfiniteWarrior"]);
+  }
+  const data = sheet.getDataRange().getValues();
+  const clean = username ? username.toString().trim() : "";
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] && data[i][0].toString().trim() === clean) {
+      sheet.getRange(i + 1, 2).setValue(newScore);
+      return;
+    }
+  }
+  sheet.appendRow([clean, newScore]);
 }
 
 function getUserGrade_(username) {
