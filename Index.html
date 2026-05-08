@@ -269,9 +269,12 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
       <span id="q-count" class="badge bg-light text-dark border"></span>
       <div id="infinite-score-display" class="hidden text-center">
-        <div class="small text-muted">Best: <span id="infinite-high-score" class="fw-bold text-warning">0</span></div>
-        <div class="fw-bold text-primary fs-5">Score: <span id="infinite-current-score">0</span></div>
-      </div>
+  <div class="small text-muted">Your Best: <span id="infinite-high-score" class="fw-bold text-warning">0</span> &nbsp;·&nbsp; All Time: <span id="infinite-all-time" class="fw-bold text-danger">0</span></div>
+  <div class="fw-bold text-primary fs-5">Score: <span id="infinite-current-score">0</span></div>
+  <div class="progress mt-1" style="height:6px;">
+    <div id="infinite-progress-bar" class="progress-bar bg-primary" style="width:0%; transition: width 0.4s ease;"></div>
+  </div>
+</div>
       <span id="timer-display" class="hidden text-danger fw-bold"></span>
     </div>
 
@@ -429,7 +432,7 @@ document.addEventListener('touchmove', function(e) {
   let playerHand = [], cpuHand = []; 
   let isProcessing = false;
   
-  let quizData = [], currentIndex = 0, score = 0, activeUser = "", activeUserGrade = 1, timerInterval = null, questionTimerInterval = null, timeLeft = 0, isQuizActive = false, currentMode = "", questionsAnswered = 0, missedQuestions = [], infiniteHighScore = 0;
+  let quizData = [], currentIndex = 0, score = 0, activeUser = "", activeUserGrade = 1, timerInterval = null, questionTimerInterval = null, timeLeft = 0, isQuizActive = false, currentMode = "", questionsAnswered = 0, missedQuestions = [], infiniteHighScore = 0, infiniteAllTimeHigh = 0;
 
 
   let matchSelected = { qId: null, aId: null, qEl: null, aEl: null }, matchesFound = 0, setsCleared = 0, swipeCorrect = false;
@@ -713,6 +716,8 @@ function goHome() {
   document.getElementById('timer-display')?.classList.add('hidden');
   document.getElementById('next-btn')?.classList.add('hidden');
   document.getElementById('infinite-score-display')?.classList.add('hidden');
+  document.getElementById('q-count').classList.remove('hidden');
+
 
   if (mode === 'game_tuls') {
     switchView('view-trumps');
@@ -721,17 +726,30 @@ function goHome() {
   }
 
   if (mode === 'game_infinite') {
-    toggleLoad(true);
-    google.script.run.withSuccessHandler(highScore => {
-      infiniteHighScore = highScore;
-      document.getElementById('infinite-high-score').innerText = highScore;
-      document.getElementById('infinite-current-score').innerText = '0';
-      document.getElementById('infinite-score-display').classList.remove('hidden');
-      // Fetch a fresh batch — infinite mode reloads questions when exhausted
-      loadInfiniteBatch();
-    }).getHighScore(activeUser);
-    return;
-  }
+  toggleLoad(true);
+  document.getElementById('q-count').classList.add('hidden');
+  let personalLoaded = false, allTimeLoaded = false;
+  const checkReady = () => {
+    if (!personalLoaded || !allTimeLoaded) return;
+    toggleLoad(false);
+    document.getElementById('infinite-high-score').innerText = infiniteHighScore;
+    document.getElementById('infinite-all-time').innerText = infiniteAllTimeHigh;
+    document.getElementById('infinite-current-score').innerText = '0';
+    document.getElementById('infinite-score-display').classList.remove('hidden');
+    loadInfiniteBatch();
+  };
+  google.script.run.withSuccessHandler(h => {
+    infiniteHighScore = h;
+    personalLoaded = true;
+    checkReady();
+  }).getHighScore(activeUser);
+  google.script.run.withSuccessHandler(h => {
+    infiniteAllTimeHigh = h;
+    allTimeLoaded = true;
+    checkReady();
+  }).getAllTimeHighScore();
+  return;
+}
 
   toggleLoad(true);
   const isGame = mode.startsWith('game_');
@@ -867,12 +885,22 @@ function endInfiniteWarrior(wrongQuestion) {
 
   resDetails.innerHTML = `
     <p class="mb-1">Score: <strong>${score}</strong></p>
-    <p class="text-muted small mb-3">Best: ${infiniteHighScore}</p>
+    <p class="text-muted small mb-1">Your Best: ${infiniteHighScore}</p>
+    <p class="text-muted small mb-3">All Time: ${infiniteAllTimeHigh}</p>
     ${reviewHtml}
     <div class="d-grid gap-2">
       <button class="btn btn-primary btn-lg rounded-pill" onclick="closeWarning(); startApp('game_infinite');">Play Again</button>
       <button class="btn btn-outline-secondary rounded-pill" onclick="closeWarning(); handleNavigation('view-modes');">Return Home</button>
     </div>`;
+
+  if (isNewHigh) {
+  infiniteHighScore = score;
+  if (score > infiniteAllTimeHigh) infiniteAllTimeHigh = score;
+  google.script.run.saveHighScore(activeUser, score);
+  triggerConfetti();
+  resText.innerText = "NEW HIGH SCORE!";
+  resText.className = "fw-bold text-warning";
+  }
 
   overlay.classList.remove('hidden');
 }
@@ -905,6 +933,14 @@ function showQuestion() {
           score++;
           b.style.background = '#d1e7dd';
           document.getElementById('infinite-current-score').innerText = score;
+          
+          // Progress bar tracks score vs personal best (capped at 100%)
+          const target = Math.max(infiniteHighScore, 1);
+          const pct = Math.min(Math.round((score / target) * 100), 100);
+          document.getElementById('infinite-progress-bar').style.width = pct + '%';
+          // Turn gold when personal best is matched or beaten
+          document.getElementById('infinite-progress-bar').style.background = score >= infiniteHighScore ? '#FFD700' : '';
+
           google.script.run.updateQuestionScore(activeUser, q.qId, true);
           currentIndex++;
           setTimeout(() => {

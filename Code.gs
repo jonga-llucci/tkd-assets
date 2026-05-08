@@ -288,6 +288,19 @@ function saveHighScore(username, newScore) {
   sheet.appendRow([clean, newScore]);
 }
 
+function getAllTimeHighScore() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("HighScores");
+  if (!sheet) return 0;
+  const data = sheet.getDataRange().getValues();
+  let max = 0;
+  for (let i = 1; i < data.length; i++) {
+    const val = parseInt(data[i][1]) || 0;
+    if (val > max) max = val;
+  }
+  return max;
+}
+
 function getUserGrade_(username) {
   const data = SpreadsheetApp.getActiveSpreadsheet()
     .getSheetByName("Users").getDataRange().getValues();
