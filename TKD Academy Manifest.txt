@@ -56,6 +56,10 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 - Col H: ImageURL
 - Col I: KoreanReadyStance
 
+[Tab: HighScores] (Auto-created on first Infinite Warrior game)
+- Col A: Username
+- Col B: InfiniteWarrior (Integer, all-time high score)
+
 4. GLOBAL VARIABLE DICTIONARY (Code.gs & Index.html)
 ------------------------------------------------------------
 - activeUserCurrent     : Currently logged-in username (string).
@@ -117,34 +121,40 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 
 7. GAME-SPECIFIC LOGIC
 ------------------------------------------------------------
-- Tul Trumps     - Initialization: Fetches data via getTulTrumpsData(username).
-- Tul Trumps     - Filtering: Deck is filtered by User Grade (Tab: Tuls, Col F).
-- Tul Trumps     - Game State: Managed in Index.html (playerHand, cpuHand).
-- Tul Trumps     - Constraints: isQuizActive is set to TRUE upon game start to prevent accidental exit.
-- Tul Trumps     - Minimum Deck: Game requires at least 4 Tuls to start. If fewer are unlocked for the user's grade, an error message is shown and the game does not launch.
-- Matching Pairs - Only Question rows where col P = Y and has values in col S should be used.
-- Matching Pairs - Pairs: Formed with col S and col L.
-- Matching Pairs - Filtering: Cards are filtered by User Grade (Tab: Questions, Col R).
-- Matching Pairs - SRS: Questions should be prioritised using SRS buckets.
-- True / False   - Only Question rows where col P = Y and has values in col T should be used.
-- True / False   - Pairs: Formed with col S and col L.
-- True / False   - Filtering: Cards are filtered by User Grade (Tab: Questions, Col R).
-- True / False   - SRS: Questions should be prioritised using SRS buckets.
-- Daily practise - 10 questions
-- Daily practise - Blank answer options should not be shown
-- Daily practise - Filtering: Cards are filtered by User Grade (Tab: Questions, Col R).
-- Daily practise - Filtering: Cards are filtered by whether to be used as exam questions Col Q =='Y' (Tab: Questions, Col Q).
-- Daily practise - SRS: Questions should be prioritised using SRS buckets.
-- Daily practise - Selection highlighting during daily practise should show green for answers correctly selected and red if incorrect.
-- Mock exam      - Time limit (shown with MM:SS timer) 60 mins
-- Mock exam      - 50 questions
-- Mock exam      - Passing mark => 75%
-- Mock exam      - Blank answer options should not be shown
-- Mock exam      - Filtering: Cards are filtered by User Grade (Tab: Questions, Col R).
-- Mock exam      - Filtering: Cards are filtered by whether to be used as exam questions Col Q =='Y' (Tab: Questions, Col Q).
-- Mock exam      - SRS: Not used for exam. Questions should be a random selection.
-- Mock exam      - SRS: Answers submitted from mock exam should contribute to question SRS bucket.
-- Mock exam      - Selection highlighting during the Mock Exam must be neutral (TKD Blue) and must not indicate if the answer is correct or incorrect until the final review.
+- Tul Trumps       - Initialization: Fetches data via getTulTrumpsData(username).
+- Tul Trumps       - Filtering: Deck is filtered by User Grade (Tab: Tuls, Col F).
+- Tul Trumps       - Game State: Managed in Index.html (playerHand, cpuHand).
+- Tul Trumps       - Constraints: isQuizActive is set to TRUE upon game start to prevent accidental exit.
+- Tul Trumps       - Minimum Deck: Game requires at least 4 Tuls to start. If fewer are unlocked for the user's grade, an error message is shown and the game does not launch.
+- Matching Pairs   - Only Question rows where col P = Y and has values in col S should be used.
+- Matching Pairs   - Pairs: Formed with col S and col L.
+- Matching Pairs   - Filtering: Cards are filtered by User Grade (Tab: Questions, Col R).
+- Matching Pairs   - SRS: Questions should be prioritised using SRS buckets.
+- True / False     - Only Question rows where col P = Y and has values in col T should be used.
+- True / False     - Pairs: Formed with col S and col L.
+- True / False     - Filtering: Cards are filtered by User Grade (Tab: Questions, Col R).
+- True / False     - SRS: Questions should be prioritised using SRS buckets.
+- Daily practise   - 10 questions
+- Daily practise   - Blank answer options should not be shown
+- Daily practise   - Filtering: Cards are filtered by User Grade (Tab: Questions, Col R).
+- Daily practise   - Filtering: Cards are filtered by whether to be used as exam questions Col Q =='Y' (Tab: Questions, Col Q).
+- Daily practise   - SRS: Questions should be prioritised using SRS buckets.
+- Daily practise   - Selection highlighting during daily practise should show green for answers correctly selected and red if incorrect.
+- Mock exam        - Time limit (shown with MM:SS timer) 60 mins
+- Mock exam        - 50 questions
+- Mock exam        - Passing mark => 75%
+- Mock exam        - Blank answer options should not be shown
+- Mock exam        - Filtering: Cards are filtered by User Grade (Tab: Questions, Col R).
+- Mock exam        - Filtering: Cards are filtered by whether to be used as exam questions Col Q =='Y' (Tab: Questions, Col Q).
+- Mock exam        - SRS: Not used for exam. Questions should be a random selection.
+- Mock exam        - SRS: Answers submitted from mock exam should contribute to question SRS bucket.
+- Mock exam        - Selection highlighting during the Mock Exam must be neutral (TKD Blue) and must not indicate if the answer is correct or incorrect until the final review.
+- Infinite Warrior - Questions fetched via getQuizData(username, 'practice') in batches of 10, reloading when exhausted.
+- Infinite Warrior - Score increments +1 per correct answer. One wrong answer ends the game immediately.
+- Infinite Warrior - High score persists server-side in Tab: HighScores, Col B.
+- Infinite Warrior - New high score triggers confetti. Previous high score shown on end screen regardless.
+- Infinite Warrior - SRS scores updated for every answered question via updateQuestionScore.
+- Infinite Warrior - No per-question timer.
 
 8. FIXED CONTENT: 'ABOUT' SECTION
 ------------------------------------------------------------
@@ -195,19 +205,18 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 - Interactions: Buttons must use :active scales (0.98) for haptic-like feedback.
 - Suppression: overscroll-behavior-y: contain must be present on the body to prevent pull-to-refresh loops.
 - On completing a game with a passing mark (=>75%), or just completing the matching pairs game, then the confetti celebration should be shown. Confetti must be triggered with a high zIndex (e.g., 10000) to ensure it appears in front of the results card.
+- Typography: All headings must use Bootstrap's fw-bold class rather than inline font-weight declarations. Font sizes should use Bootstrap's native scale (h1–h6, display-1 etc) or rem units consistent with the existing scale (2rem for primary headings, 1rem for labels, 0.85rem for supporting text). Custom CSS font-weight declarations are only permitted where a Bootstrap class is not available (e.g. inside fixed-position overlays or SVG elements). Never mix inline style font declarations with Bootstrap utility classes on the same element.
 
 11. FIXED CONTENT: 'LOADING' MESSAGES
 ------------------------------------------------------------
 - Your specific Taekwondo messages
   const loadMsgs = [
-    "Straightening the dobok...", 
-    "Sharpening your side kick...", 
-    "Reviewing the patterns...", 
-    "Warming up for the grading...", 
-    "Breathe in and out...",
-    "Tying the black belt...", 
-    "Learning Korean...", 
-    "Focusing your Ki-Hap..."
+    "White signifies innocence, as that of a beginning student, who has no previous knowledge of Tae Kwon-Do", 
+    "Yellow signifies the Earth, from which a plant sprouts and takes root, as Tae Kwon-Do foundation is being laid.", 
+    "Green signifies the plant's growth as tae kwon-do skills begin to develop.", 
+    "Blue signifies Heaven, towards which the plant matures into a towering tree, as training in tae kwon-do progresses.", 
+    "Red signifies danger, cautioning the student to exercise control and warning the opponent to stay away.", 
+    "Black is opposite to white, therefore signifying maturity and proficiency in Tae Kwon Do. Also indicates the wearer’s imperviousness to darkness and fear.",
 - Unless loading TulTrumps "Shuffling deck...";
 
 12. PRIVATE SERVER-SIDE HELPERS (Code.gs)
@@ -218,10 +227,16 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 
 13. ROADMAP / NEXT ITERATIONS (v11.0+)
 ------------------------------------------------------------
-- Dynamic Grade Banner: Top bar colors change based on 'UserGrade'.
+- Implement PWA Proxy with iframe via a real domain. Host a thin static index.html on a real domain (GitHub Pages is free) that contains just the manifest, service worker, and an iframe or redirect to your GAS URL. The PWA shell lives on the real domain; the GAS app loads inside it. More complex to set up but gives you a genuine installable PWA with full browser prompt.If you load the GAS URL inside an <iframe> on your GitHub Pages domain, the banner renders inside the iframe and is visible. However you can add CSS to the parent page to crop or overlay it. Home screen icon, name
+- Mock exam length to change by grade: 50 questions for Black belts, 20 for Blue - Black, 10 for White - Blue
+- Mock exam question selection by type & level of question: 10% numbers, 10% terminology, 10% grades, 30% moves, 30% patterns
+- move data for pairs & true false game to their own tabs
+- New press-up training programme
+- grey out tul-trumps for grades with not enough patterns (cards)
 - 5s Timer: Integrated into 'game_swipe' (Board Break) and Infinite Mode.
 - Infinite Warrior Mode: Sudden death high-score game.
-- Per-user SRS stats screen: Show the user their bucket distribution (how many questions at each stage) — this is all already in UserProgress, just needs a read function and a simple bar chart view.
+- Replace "CPU" with bootstrap robot icon
+- implement game "levels" to set the timer - harder = less time
 - Belt-gated content unlock animation: When a user changes their grade up, show a brief unlock message indicating new content is available. All data is already filtered by grade — this is purely a UX layer.
 - Monetization Gate: 'SignupDate' check for trial period / Stripe integration.
 ============================================================
