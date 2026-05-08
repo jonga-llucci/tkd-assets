@@ -14,8 +14,6 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 ------------------------------------------------------------
 - Code.gs          : Core server-side logic (Login, User Management, SRS calculations).
 - Index.html       : Main App Shell, CSS, and standardized Navigation logic.
-- TulGame.gs       : Dedicated server-side logic for Tul Trumps (Shuffling, deck splitting).
-- TulUI.html       : Specific frontend UI components and card-rendering for Tul Trumps.
 
 3. SPREADSHEET SCHEMA (The Data Source)
 ------------------------------------------------------------
@@ -66,6 +64,17 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 - quizData              : The current array of objects being processed.
 - currentIndex          : Track progress within the current session.
 - score                 : Running count of correct answers in session.
+- activeUserGrade       : Integer, the logged-in user's current belt level. Set on login, updated by saveGrade(). Used to filter all game and quiz data.
+- playerHand            : Array of Tul card objects for the player in Tul Trumps.
+- cpuHand               : Array of Tul card objects for the CPU in Tul Trumps.
+- isProcessing          : Boolean, locks Tul Trumps interactions during round resolution to prevent double-taps.
+- matchSelected         : Object tracking the currently selected pair in Matching Pairs { qId, aId, qEl, aEl }.
+- matchesFound          : Integer, count of matched pairs in the current board.
+- setsCleared           : Integer, count of completed boards in Matching Pairs (max 2).
+- swipeCorrect          : Boolean, whether the current True/False card is showing the correct answer.
+- roundTimeout          : Timer reference for Tul Trumps auto-advance. Cleared by clearInterval on exit.
+- questionsAnswered     : Integer, count of questions answered in the current session. Guards against zero-question exit review.
+- missedQuestions       : Array of { q, a } objects for review at session end.
 
 5. NAVIGATIONAL & NON-FUNCTIONAL REQUIREMENTS
 ------------------------------------------------------------
@@ -87,6 +96,8 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
     * Session Results (Grade/Review)
     * Game Over / Victory announcements
 - Do not add citations in code - [cite: X]
+- loadAccountView() is called by handleNavigation when target is view-account. It fetches belt options on demand via getBeltOptions() and populates the grade selector. It is never called at login.
+- goHome() must call handleNavigation('view-modes'), not switchView directly, to preserve the single-gatekeeper principle.
 
 6. LOGIC & ALGORITHMS
 ------------------------------------------------------------
@@ -98,16 +109,19 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 - SRS Logic: 
   * Bucket 1: 0 days | Bucket 2: 2 days | Bucket 3: 4 days | Bucket 4: 5 days.
   * Filter: (Today >= NextReviewDate) AND (BeltLevel <= UserGrade).
+  * SRS Sort: For practice mode, questions are sorted by bucket ascending (bucket 1 first), then by LastDate ascending (most overdue first) within each bucket. This sort runs after filtering and before the 10-question slice. The answer option order is independently randomised per question.
+  * SRS Fallback: If the SRS filter returns zero questions (all due dates in the future), the filter is relaxed to all eligible questions for the user's grade to ensure practice is always available.
 - Exam Logic:
   * Filter: (Column Q == "Y") AND (BeltLevel <= UserGrade).
   * Limit: 50 questions.
 
 7. GAME-SPECIFIC LOGIC
 ------------------------------------------------------------
-- Tul Trumps     - Initialization: Fetches data via TulGame.getTulTrumpsData(username).
+- Tul Trumps     - Initialization: Fetches data via getTulTrumpsData(username).
 - Tul Trumps     - Filtering: Deck is filtered by User Grade (Tab: Tuls, Col F).
-- Tul Trumps     - Game State: Managed in TulUI.html (playerHand, cpuHand).
+- Tul Trumps     - Game State: Managed in Index.html (playerHand, cpuHand).
 - Tul Trumps     - Constraints: isQuizActive is set to TRUE upon game start to prevent accidental exit.
+- Tul Trumps     - Minimum Deck: Game requires at least 4 Tuls to start. If fewer are unlocked for the user's grade, an error message is shown and the game does not launch.
 - Matching Pairs - Only Question rows where col P = Y and has values in col S should be used.
 - Matching Pairs - Pairs: Formed with col S and col L.
 - Matching Pairs - Filtering: Cards are filtered by User Grade (Tab: Questions, Col R).
@@ -151,6 +165,8 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 9. FIXED CONTENT: 'ACCOUNT' SECTION
 ------------------------------------------------------------
 - Location: view-account (Accessible from Navigation Bar).
+- Grade selector is populated on demand when the user navigates to view-account, not at login. This avoids an unnecessary server call on every login.
+- Selected grade in the dropdown reflects activeUserGrade at the time the view loads.
 - Heading
     * "Account Settings"
 - Grade
@@ -194,11 +210,18 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
     "Focusing your Ki-Hap..."
 - Unless loading TulTrumps "Shuffling deck...";
 
+12. PRIVATE SERVER-SIDE HELPERS (Code.gs)
+------------------------------------------------------------
+- getUserGrade_(username) : Reads Users tab, returns integer BeltLevel for the given username.
+  Used by getQuizData, getGameData, getTulTrumpsData. Trailing underscore = private (not 
+  callable from frontend). Never duplicate this logic inline in other functions.
 
-12. ROADMAP / NEXT ITERATIONS (v11.0+)
+13. ROADMAP / NEXT ITERATIONS (v11.0+)
 ------------------------------------------------------------
 - Dynamic Grade Banner: Top bar colors change based on 'UserGrade'.
 - 5s Timer: Integrated into 'game_swipe' (Board Break) and Infinite Mode.
 - Infinite Warrior Mode: Sudden death high-score game.
+- Per-user SRS stats screen: Show the user their bucket distribution (how many questions at each stage) — this is all already in UserProgress, just needs a read function and a simple bar chart view.
+- Belt-gated content unlock animation: When a user changes their grade up, show a brief unlock message indicating new content is available. All data is already filtered by grade — this is purely a UX layer.
 - Monetization Gate: 'SignupDate' check for trial period / Stripe integration.
 ============================================================
