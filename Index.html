@@ -231,8 +231,8 @@
     <div class="quiz-card text-center">
         <div id="trumps-content-wrapper" style="transition: opacity 0.3s ease;">
             <div class="d-flex justify-content-between mb-3 fw-bold">
-                <span class="text-primary">Your Cards: <span id="player-card-count">0</span></span>
-                <span class="text-danger">CPU Cards: <span id="cpu-card-count">0</span> <small id="cpu-card-name" class="ms-1 opacity-75"></small></span>
+                <span class="text-primary"><i class="bi bi-person me-1"> - <span id="player-card-count">0</span> Cards </span>
+                <span class="text-danger"><i class="bi bi-robot me-1"> - <span id="cpu-card-count">0</span> Cards <small id="cpu-card-name" class="ms-1 opacity-75"></small></span>
             </div>
             
             <div class="card shadow-sm mb-4">
@@ -870,18 +870,26 @@ function endInfiniteWarrior(wrongQuestion) {
     <p class="text-muted small mb-3">Best: ${infiniteHighScore}</p>
     ${reviewHtml}
     <div class="d-grid gap-2">
-      <button class="btn btn-primary btn-lg rounded-pill" onclick="closeWarning(); startApp('game_infi
+      <button class="btn btn-primary btn-lg rounded-pill" onclick="closeWarning(); startApp('game_infinite');">Play Again</button>
+      <button class="btn btn-outline-secondary rounded-pill" onclick="closeWarning(); handleNavigation('view-modes');">Return Home</button>
+    </div>`;
 
-  function showQuestion() {
+  overlay.classList.remove('hidden');
+}
+
+function showQuestion() {
   clearInterval(questionTimerInterval);
   document.getElementById('question-timer-wrap').style.opacity = '0';
   document.getElementById('progress-bar').style.width = ((currentIndex / quizData.length) * 100) + "%";
   document.getElementById('ui-standard').classList.remove('hidden');
   const q = quizData[currentIndex];
-  document.getElementById('q-count').innerText = `Q${currentIndex + 1}/${quizData.length}`;
+  document.getElementById('q-count').innerText = currentMode === 'game_infinite'
+    ? `Q${score + 1}`
+    : `Q${currentIndex + 1}/${quizData.length}`;
   document.getElementById('question-text').innerText = q.question;
   const optCont = document.getElementById('options-container');
   optCont.innerHTML = '';
+
   q.options.forEach(opt => {
     const b = document.createElement('button');
     b.className = 'option-btn';
@@ -889,12 +897,37 @@ function endInfiniteWarrior(wrongQuestion) {
     b.onclick = () => {
       clearInterval(questionTimerInterval);
       document.getElementById('question-timer-wrap').style.opacity = '0';
-      questionsAnswered++;
       const isCorrect = (opt === q.answer);
-      if (isCorrect) score++; else missedQuestions.push({ q: q.question, a: q.answer });
-      google.script.run.updateQuestionScore(activeUser, q.qId, isCorrect);
       document.querySelectorAll('.option-btn').forEach(btn => btn.disabled = true);
-      // Exam: neutral blue highlight only. Practice: green/red feedback.
+
+      if (currentMode === 'game_infinite') {
+        if (isCorrect) {
+          score++;
+          b.style.background = '#d1e7dd';
+          document.getElementById('infinite-current-score').innerText = score;
+          google.script.run.updateQuestionScore(activeUser, q.qId, true);
+          currentIndex++;
+          setTimeout(() => {
+            if (currentIndex >= quizData.length) {
+              toggleLoad(true);
+              loadInfiniteBatch();
+            } else {
+              showQuestion();
+            }
+          }, 600);
+        } else {
+          b.style.background = '#f8d7da';
+          google.script.run.updateQuestionScore(activeUser, q.qId, false);
+          setTimeout(() => endInfiniteWarrior({ q: q.question, a: q.answer }), 800);
+        }
+        return;
+      }
+
+      questionsAnswered++;
+      if (isCorrect) score++;
+      else missedQuestions.push({ q: q.question, a: q.answer });
+      google.script.run.updateQuestionScore(activeUser, q.qId, isCorrect);
+
       if (currentMode === 'test') {
         b.style.background = '#cfe2ff';
         b.style.borderColor = 'var(--tkd-blue)';
