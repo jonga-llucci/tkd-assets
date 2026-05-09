@@ -164,7 +164,7 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 - Attribution
     * "Created by Jonathan for"
     * "Jacob Gallucci"
-    * "1st Dan • Age 10"
+    * "1st Dan • Age 11"
     * "Club: TSX Martial Arts, Bingley"
 - Educational Disclosure: 
     * "Spaced Repetition (SRS): Uses the Leitner System to optimize memory retention."
@@ -228,13 +228,8 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 13. ROADMAP / NEXT ITERATIONS (v11.0+)
 ------------------------------------------------------------
 - Implement PWA Proxy with iframe via a real domain. Host a thin static index.html on a real domain (GitHub Pages is free) that contains just the manifest, service worker, and an iframe or redirect to your GAS URL. The PWA shell lives on the real domain; the GAS app loads inside it. More complex to set up but gives you a genuine installable PWA with full browser prompt.If you load the GAS URL inside an <iframe> on your GitHub Pages domain, the banner renders inside the iframe and is visible. However you can add CSS to the parent page to crop or overlay it. Home screen icon, name
-- Mock exam length to change by grade: 50 questions for Black belts, 20 for Blue - Black, 10 for White - Blue
-- Mock exam question selection by type & level of question: 10% numbers, 10% terminology, 10% grades, 30% moves, 30% patterns
 - move data for pairs & true false game to their own tabs
 - New press-up training programme
-- grey out tul-trumps for grades with not enough patterns (cards)
-- 5s Timer: Integrated into 'game_swipe' (Board Break) and Infinite Mode.
 - implement game "levels" or "difficulty" for daily practise. Set the timer - harder = less time,  number of choices - more = harder
-- Belt-gated content unlock animation: When a user changes their grade up, show a brief unlock message indicating new content is available. All data is already filtered by grade — this is purely a UX layer.
 - Monetization Gate: 'SignupDate' check for trial period / Stripe integration.
 ============================================================
