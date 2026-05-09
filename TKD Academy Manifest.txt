@@ -12,8 +12,8 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 
 2. FILE STRUCTURE & RESPONSIBILITIES
 ------------------------------------------------------------
-- Code.gs          : Core server-side logic (Login, User Management, SRS calculations).
-- Index.html       : Main App Shell, CSS, and standardized Navigation logic.
+- Code.gs       : All server-side logic. Login, SRS, Quiz, Games, Admin, High Scores.
+- Index.html    : Single frontend file. All views, CSS, JS, navigation.
 
 3. SPREADSHEET SCHEMA (The Data Source)
 ------------------------------------------------------------
@@ -24,6 +24,7 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 - Col D: LastActive (Date)
 - Col E: Streak (Integer)
 - Col F: DisplayName (String)
+- Col G: isAdmin (String, "Y" = admin user)
 
 [Tab: Questions]
 - Col A: QuestionText
@@ -58,7 +59,11 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 
 [Tab: HighScores] (Auto-created on first Infinite Warrior game)
 - Col A: Username
-- Col B: InfiniteWarrior (Integer, all-time high score)
+- Col B: InfiniteWarrior (Integer, all-time personal high score)
+
+[Tab: Belts]
+- Col A: Belt (String, display label e.g. "6th Kup - Green Belt")
+- Col B: BeltLevel (Integer, corresponding numeric grade value)
 
 4. GLOBAL VARIABLE DICTIONARY (Code.gs & Index.html)
 ------------------------------------------------------------
@@ -79,6 +84,20 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 - roundTimeout          : Timer reference for Tul Trumps auto-advance. Cleared by clearInterval on exit.
 - questionsAnswered     : Integer, count of questions answered in the current session. Guards against zero-question exit review.
 - missedQuestions       : Array of { q, a } objects for review at session end.
+- activeUserGrade       : Integer. Set on login, updated by saveGrade(). Drives all grade-based filtering.
+- infiniteHighScore     : Integer. Personal best for Infinite Warrior. Reset to 0 at game start, fetched fresh from server.
+- infiniteAllTimeHigh   : Integer. All-time best across all users. Fetched fresh at game start.
+- questionTimerInterval : Timer reference for per-question countdown in practice mode. Cleared on answer or endQuiz.
+- playerHand            : Array of Tul card objects for the player in Tul Trumps.
+- cpuHand               : Array of Tul card objects for the CPU in Tul Trumps.
+- isProcessing          : Boolean. Locks Tul Trumps interactions during round resolution.
+- matchSelected         : Object { qId, aId, qEl, aEl }. Tracks current pair selection in Matching Pairs.
+- matchesFound          : Integer. Count of matched pairs on the current board.
+- setsCleared           : Integer. Count of completed boards in Matching Pairs (max 2).
+- swipeCorrect          : Boolean. Whether current True/False card shows the correct answer.
+- roundTimeout          : Timer reference for Tul Trumps auto-advance countdown.
+- questionsAnswered     : Integer. Questions answered in current session. Guards zero-question exit review.
+- missedQuestions       : Array of { q, a } objects. Populated during session for end-of-session review.
 
 5. NAVIGATIONAL & NON-FUNCTIONAL REQUIREMENTS
 ------------------------------------------------------------
@@ -102,6 +121,10 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 - Do not add citations in code - [cite: X]
 - loadAccountView() is called by handleNavigation when target is view-account. It fetches belt options on demand via getBeltOptions() and populates the grade selector. It is never called at login.
 - goHome() must call handleNavigation('view-modes'), not switchView directly, to preserve the single-gatekeeper principle.
+- switchView() maintains a master views array: ['view-login', 'view-modes', 'view-game-center', 'view-trumps', 'view-quiz', 'view-results', 'view-account', 'view-about', 'view-admin']. Any new view must be added to both this array and the navMap in updateNavIcons().
+- loadAccountView() and loadAdminView() are called by handleNavigation on demand. Neither is called at login.
+- result-overlay uses display:none via .hidden class. The .result-overlay CSS must not include display:flex — this is applied via .result-overlay:not(.hidden) to prevent the overlay blocking clicks when hidden.
+- Admin nav item (nav-admin) is hidden by default and revealed on login only if res.isAdmin is true.
 
 6. LOGIC & ALGORITHMS
 ------------------------------------------------------------
@@ -115,31 +138,54 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
   * Filter: (Today >= NextReviewDate) AND (BeltLevel <= UserGrade).
   * SRS Sort: For practice mode, questions are sorted by bucket ascending (bucket 1 first), then by LastDate ascending (most overdue first) within each bucket. This sort runs after filtering and before the 10-question slice. The answer option order is independently randomised per question.
   * SRS Fallback: If the SRS filter returns zero questions (all due dates in the future), the filter is relaxed to all eligible questions for the user's grade to ensure practice is always available.
+  * SRS Sort (Practice): Questions sorted by bucket ascending, then LastDate ascending (most overdue first) within each bucket. Answer options are independently randomised.
+  * SRS Fallback: If SRS filter returns zero questions, filter relaxes to all eligible questions for the user's grade.
+  * SRS Update: updateQuestionScore fires for all modes including Mock Exam and Infinite Warrior.
 - Exam Logic:
   * Filter: (Column Q == "Y") AND (BeltLevel <= UserGrade).
   * Limit: 50 questions.
+  - Exam Length by Grade:
+    * Grade 1–6:  10 questions, 15 minutes
+    * Grade 7–10: 20 questions, 30 minutes  
+    * Grade 11+:  50 questions, 60 minutes
+  - Exam Category Weighting (col U): 10% Basics, 10% Numbers, 10% Belts, 30% Korean, 30% Patterns, 10% fill from uncategorised or any pool.
+  - Exam Question Weighting: Within each category pool, questions are sampled with probability proportional to their BeltLevel (col R) — higher level = higher weight.
+  - Mock Exam subtitle on home screen updates dynamically on login to reflect the correct time and question count for the user's grade.
 
 7. GAME-SPECIFIC LOGIC
 ------------------------------------------------------------
-- Tul Trumps       - Initialization: Fetches data via getTulTrumpsData(username).
-- Tul Trumps       - Filtering: Deck is filtered by User Grade (Tab: Tuls, Col F).
-- Tul Trumps       - Game State: Managed in Index.html (playerHand, cpuHand).
-- Tul Trumps       - Constraints: isQuizActive is set to TRUE upon game start to prevent accidental exit.
-- Tul Trumps       - Minimum Deck: Game requires at least 4 Tuls to start. If fewer are unlocked for the user's grade, an error message is shown and the game does not launch.
+- Tul Trumps - Initialization : getTulTrumpsData(username) in Code.gs (not TulGame.gs).
+- Tul Trumps - Game State     : Managed in Index.html (playerHand, cpuHand).
+- Tul Trumps - Minimum Deck   : Requires 4+ Tuls for the user's grade. Fewer = error message.
+- Tul Trumps - Grade Lock     : Disabled and visually greyed for grades 1–5. Shows locked padlock badge and pop-up message. Grade 6 shows unlocked padlock. Grade 7+ shows no badge.
+- Tul Trumps - Pop-up         : "Unlock this game in real life — you can play Tul Trumps when you reach 6th Kup."
+
+- Infinite Warrior - Questions : Fetched via getQuizData(username, 'practice') in batches of 10. Reloads automatically when batch is exhausted.
+- Infinite Warrior - Scoring   : +1 per correct answer. One wrong answer ends the game.
+- Infinite Warrior - Progress  : Top bar fills relative to personal best + 1 (the target). Turns gold when personal best is beaten.
+- Infinite Warrior - High Score: Personal best stored in Tab: HighScores. Fetched fresh on each game start (globals reset to 0 first to prevent stale values).
+- Infinite Warrior - All Time  : getAllTimeHighScore() returns max across all users.
+- Infinite Warrior - End Screen: Shows score, personal best, all-time best, and the question that ended the run with the correct answer. New high score triggers confetti.
+- Infinite Warrior - SRS       : updateQuestionScore fires for every answered question.
+- Infinite Warrior - No timer  : Per-question countdown is not used.age is shown and the game does not launch.
+
 - Matching Pairs   - Only Question rows where col P = Y and has values in col S should be used.
 - Matching Pairs   - Pairs: Formed with col S and col L.
 - Matching Pairs   - Filtering: Cards are filtered by User Grade (Tab: Questions, Col R).
 - Matching Pairs   - SRS: Questions should be prioritised using SRS buckets.
+
 - True / False     - Only Question rows where col P = Y and has values in col T should be used.
 - True / False     - Pairs: Formed with col S and col L.
 - True / False     - Filtering: Cards are filtered by User Grade (Tab: Questions, Col R).
 - True / False     - SRS: Questions should be prioritised using SRS buckets.
+
 - Daily practise   - 10 questions
 - Daily practise   - Blank answer options should not be shown
 - Daily practise   - Filtering: Cards are filtered by User Grade (Tab: Questions, Col R).
 - Daily practise   - Filtering: Cards are filtered by whether to be used as exam questions Col Q =='Y' (Tab: Questions, Col Q).
 - Daily practise   - SRS: Questions should be prioritised using SRS buckets.
 - Daily practise   - Selection highlighting during daily practise should show green for answers correctly selected and red if incorrect.
+
 - Mock exam        - Time limit (shown with MM:SS timer) 60 mins
 - Mock exam        - 50 questions
 - Mock exam        - Passing mark => 75%
@@ -149,12 +195,6 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 - Mock exam        - SRS: Not used for exam. Questions should be a random selection.
 - Mock exam        - SRS: Answers submitted from mock exam should contribute to question SRS bucket.
 - Mock exam        - Selection highlighting during the Mock Exam must be neutral (TKD Blue) and must not indicate if the answer is correct or incorrect until the final review.
-- Infinite Warrior - Questions fetched via getQuizData(username, 'practice') in batches of 10, reloading when exhausted.
-- Infinite Warrior - Score increments +1 per correct answer. One wrong answer ends the game immediately.
-- Infinite Warrior - High score persists server-side in Tab: HighScores, Col B.
-- Infinite Warrior - New high score triggers confetti. Previous high score shown on end screen regardless.
-- Infinite Warrior - SRS scores updated for every answered question via updateQuestionScore.
-- Infinite Warrior - No per-question timer.
 
 8. FIXED CONTENT: 'ABOUT' SECTION
 ------------------------------------------------------------
@@ -164,13 +204,13 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 - Attribution
     * "Created by Jonathan for"
     * "Jacob Gallucci"
-    * "1st Dan • Age 10"
+    * "1st Dan • Age 11"
     * "Club: TSX Martial Arts, Bingley"
 - Educational Disclosure: 
     * "Spaced Repetition (SRS): Uses the Leitner System to optimize memory retention."
     * "Mock Exams: Follows strict 50-question limits, 60 minute time limit, pass mark 75%"
 - Version details
-    *vXX.X
+    *v11.7
 
 9. FIXED CONTENT: 'ACCOUNT' SECTION
 ------------------------------------------------------------
@@ -206,6 +246,9 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 - Suppression: overscroll-behavior-y: contain must be present on the body to prevent pull-to-refresh loops.
 - On completing a game with a passing mark (=>75%), or just completing the matching pairs game, then the confetti celebration should be shown. Confetti must be triggered with a high zIndex (e.g., 10000) to ensure it appears in front of the results card.
 - Typography: All headings must use Bootstrap's fw-bold class rather than inline font-weight declarations. Font sizes should use Bootstrap's native scale (h1–h6, display-1 etc) or rem units consistent with the existing scale (2rem for primary headings, 1rem for labels, 0.85rem for supporting text). Custom CSS font-weight declarations are only permitted where a Bootstrap class is not available (e.g. inside fixed-position overlays or SVG elements). Never mix inline style font declarations with Bootstrap utility classes on the same element.
+- Grade-locked content: Unavailable features are greyed (opacity 0.5) with a lock badge (bi-lock-fill, #adb5bd). Tapping shows a pop-up explanation via the standard result-overlay.Newly unlocked content shows bi-unlock-fill in green at grade 6, no badge above grade 6.
+- Per-question countdown: Shown as an SVG ring in practice mode only. Fades out (opacity:0) rather than hiding (display:none) to prevent layout shift. Default 5 seconds, overridden by Questions col V (TimeLimit).
+- Admin loading uses toggleLoad() consistently with all other views.
 
 11. FIXED CONTENT: 'LOADING' MESSAGES
 ------------------------------------------------------------
@@ -225,16 +268,41 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
   Used by getQuizData, getGameData, getTulTrumpsData. Trailing underscore = private (not 
   callable from frontend). Never duplicate this logic inline in other functions.
 
-13. ROADMAP / NEXT ITERATIONS (v11.0+)
+13. GRADE BANNER
+------------------------------------------------------------
+- Element: #grade-banner (fixed, z-index 1100, height 80px).
+- Three horizontal bars change colour by grade (see gradeConfig in updateGradeBanner()).
+- Title "TKD Academy" is absolutely centred on the banner at all grades.
+- Dan grades (11–14) show a gold Roman numeral (I–IV) pinned to the left in Georgia serif.
+- Banner hidden on login screen. Shown after successful login via updateGradeBanner().
+- Updated on grade change via saveGrade() → updateGradeBanner().
+- Grade colour map:
+  1: White | 2: White/Yellow/White | 3: Yellow | 4: Yellow/Green/Yellow
+  5: Green | 6: Green/Blue/Green   | 7: Blue   | 8: Blue/Red/Blue
+  9: Red   | 10: Red/Black/Red     | 11–14: Black (with Dan numeral)
+- Title colour: Black for grades 1–3, White for 4–10, Gold for 11–14.
+
+14. ADMIN VIEW
+------------------------------------------------------------
+- Access    : Nav bar icon (bi-door-closed). Hidden unless Users Col G = "Y" for logged-in user.
+- Security  : getAdminData() verifies isAdmin server-side. Returns { error: "Unauthorised" } if not. Frontend check alone is not sufficient.
+- Data      : Loaded on demand via loadAdminView() → getAdminData(). Uses toggleLoad().
+- Per-user card shows:
+  * Display name + ADMIN badge if applicable
+  * Grade name badge
+  * Streak, Infinite Warrior best score, % mastered
+  * SRS bucket bar (proportional width, grey=New, red=Learning, orange=Familiar, 
+    blue=Confident, green=Mastered) relative to eligible question count for user's grade
+  * Last active date/time
+  * Red border and "(Xd ago)" flag for users inactive 7+ days
+- Key       : Shown once above user cards, not repeated per card.
+- Eligible  : Calculated server-side per user based on their grade. Passed as u.eligible.
+
+15. ROADMAP / NEXT ITERATIONS (v11.0+)
 ------------------------------------------------------------
 - Implement PWA Proxy with iframe via a real domain. Host a thin static index.html on a real domain (GitHub Pages is free) that contains just the manifest, service worker, and an iframe or redirect to your GAS URL. The PWA shell lives on the real domain; the GAS app loads inside it. More complex to set up but gives you a genuine installable PWA with full browser prompt.If you load the GAS URL inside an <iframe> on your GitHub Pages domain, the banner renders inside the iframe and is visible. However you can add CSS to the parent page to crop or overlay it. Home screen icon, name
-- Mock exam length to change by grade: 50 questions for Black belts, 20 for Blue - Black, 10 for White - Blue
-- Mock exam question selection by type & level of question: 10% numbers, 10% terminology, 10% grades, 30% moves, 30% patterns
 - move data for pairs & true false game to their own tabs
 - New press-up training programme
-- grey out tul-trumps for grades with not enough patterns (cards)
-- 5s Timer: Integrated into 'game_swipe' (Board Break) and Infinite Mode.
 - implement game "levels" or "difficulty" for daily practise. Set the timer - harder = less time,  number of choices - more = harder
-- Belt-gated content unlock animation: When a user changes their grade up, show a brief unlock message indicating new content is available. All data is already filtered by grade — this is purely a UX layer.
 - Monetization Gate: 'SignupDate' check for trial period / Stripe integration.
 ============================================================
