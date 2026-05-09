@@ -381,13 +381,24 @@
     <p class="mb-1">Club:</p>
     <p class="fw-bold">TSX Martial Arts, Bingley</p>
     </div>
-</div>
+  </div>
+
+<div id="view-admin" class="view-container">
+  <div class="quiz-card">
+    <h3 class="fw-bold mb-1">Admin</h3>
+    <p class="text-muted small mb-4">Student overview</p>
+    <div id="admin-user-list">
+      <div class="text-center text-muted small py-3">Loading...</div>
+    </div>
+  </div></div>
 
 <div class="footer-container hidden" id="navbar">
     <nav class="bottom-nav">
     <button class="nav-item active" id="nav-modes" onclick="handleNavigation('view-modes')"><i class="bi bi-house-door"></i>Home</button>
     <button class="nav-item" id="nav-account" onclick="handleNavigation('view-account')"><i class="bi bi-person"></i>Account</button>
     <button class="nav-item" id="nav-about" onclick="handleNavigation('view-about')"><i class="bi bi-info-circle"></i>About</button>
+    <button class="nav-item hidden" id="nav-admin" onclick="handleNavigation('view-admin')"><i class="bi bi-door-closed"></i><span>Admin</span></button>
+</div>
   </nav>
   <div class="copyright-text">(C) J Gallucci 2026</div>
 </div>
@@ -416,12 +427,17 @@ document.addEventListener('touchmove', function(e) {
   let matchSelected = { qId: null, aId: null, qEl: null, aEl: null }, matchesFound = 0, setsCleared = 0, swipeCorrect = false;
 
 function handleNavigation(targetView) {
-  if (isQuizActive) {
-    const mode = (playerHand && playerHand.length > 0) ? "trumps" : "exam";
-    showUniversalWarning(targetView, mode);
-  } else {
-    if (targetView === 'view-account') loadAccountView();
-    switchView(targetView);
+  try {
+    if (isQuizActive) {
+      const mode = (playerHand && playerHand.length > 0) ? "trumps" : "exam";
+      showUniversalWarning(targetView, mode);
+    } else {
+      if (targetView === 'view-account') loadAccountView();
+      if (targetView === 'view-admin') loadAdminView();
+      switchView(targetView);
+    }
+  } catch(e) {
+    console.error("handleNavigation error:", e);
   }
 }
 
@@ -664,6 +680,7 @@ function goHome() {
     activeUser = res.username;
     activeUserGrade = res.gradeValue;
     updateGradeBanner(res.gradeValue);
+    if (res.isAdmin) document.getElementById('nav-admin').classList.remove('hidden');
     document.getElementById('user-welcome').innerText = res.displayName;
     document.getElementById('user-streak').innerHTML = `<i class="bi bi-fire"></i> ${res.streak} Day Streak`;
     document.getElementById('navbar').classList.remove('hidden');
@@ -1342,6 +1359,62 @@ function loadAccountView() {
       checkDone();
     })
     .getSrsStats(activeUser);
+}
+
+function loadAdminView() {
+  document.getElementById('admin-user-list').innerHTML = '<div class="text-center text-muted small py-3">Loading...</div>';
+  google.script.run
+    .withSuccessHandler(data => {
+      if (data.error) {
+        document.getElementById('admin-user-list').innerHTML = `<div class="alert alert-danger small">${data.error}</div>`;
+        return;
+      }
+      renderAdminView(data.users);
+    })
+    .withFailureHandler(() => {
+      document.getElementById('admin-user-list').innerHTML = '<div class="alert alert-danger small">Failed to load.</div>';
+    })
+    .getAdminData(activeUser);
+}
+
+function renderAdminView(users) {
+  const now = new Date();
+  let html = '';
+
+  users.forEach(u => {
+    const inactive = u.daysSince !== null && u.daysSince >= 7;
+    const masteredPct = u.totalAnswered > 0
+      ? Math.round((u.buckets[4] / u.totalAnswered) * 100) : 0;
+
+    html += `
+      <div class="mb-3 p-3 border rounded-3 ${inactive ? 'border-danger' : 'border-light'} bg-white shadow-sm">
+        <div class="d-flex justify-content-between align-items-start mb-1">
+          <div>
+            <span class="fw-bold">${u.displayName}</span>
+            ${u.isAdmin ? '<span class="badge bg-secondary ms-1" style="font-size:0.6rem;">ADMIN</span>' : ''}
+          </div>
+          <span class="badge bg-primary" style="font-size:0.7rem;">${u.gradeName}</span>
+        </div>
+        <div class="d-flex gap-3 small text-muted mb-2">
+          <span><i class="bi bi-fire text-warning"></i> ${u.streak}d streak</span>
+          <span><i class="bi bi-infinity text-primary"></i> Best: ${u.highScore}</span>
+          <span><i class="bi bi-patch-check text-success"></i> ${masteredPct}% mastered</span>
+        </div>
+        <div class="d-flex gap-1 mb-2">
+          ${[1,2,3,4].map(b => {
+            const pct = u.totalAnswered > 0 ? Math.round((u.buckets[b] / u.totalAnswered) * 100) : 0;
+            const colours = ['#dc3545','#fd7e14','#0d6efd','#198754'];
+            return `<div title="Bucket ${b}: ${u.buckets[b]}" style="flex:1; height:6px; background:${colours[b-1]}; border-radius:4px; opacity:${pct > 0 ? 1 : 0.15};"></div>`;
+          }).join('')}
+        </div>
+        <div class="small ${inactive ? 'text-danger fw-bold' : 'text-muted'}">
+          <i class="bi bi-clock"></i> ${u.lastActive}
+          ${inactive ? ` <span class="ms-1">(${u.daysSince}d ago)</span>` : ''}
+        </div>
+      </div>`;
+  });
+
+  document.getElementById('admin-user-list').innerHTML = html || '<p class="text-muted small">No users found.</p>';
 }
 
 function renderSrsStats(stats) {
