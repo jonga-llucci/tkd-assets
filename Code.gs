@@ -64,12 +64,11 @@ function getQuizData(username, mode) {
   const qSheet = ss.getSheetByName("Questions");
   const pSheet = ss.getSheetByName("UserProgress");
   const cleanUser = username ? username.toString().trim() : "";
-  
   const userGradeLevel = getUserGrade_(username);
 
   const qData = qSheet.getDataRange().getValues();
   const pData = pSheet.getDataRange().getValues() || [];
-  
+
   const progressMap = {};
   pData.forEach(row => {
     if (row[0] && row[0].toString().trim() === cleanUser) {
@@ -82,54 +81,123 @@ function getQuizData(username, mode) {
 
   const now = new Date();
 
-  let filtered = qData.slice(1).filter(row => {
-    if (!row[0] || !row[14]) return false; 
-    const questionBeltLevel = parseInt(row[17]) || 1; 
-    if (questionBeltLevel > userGradeLevel) return false;
-
-    // Strict Exam Filter: Column Q must not be "N"
+  // Base eligibility filter — shared by both modes
+  const eligible = qData.slice(1).filter(row => {
+    if (!row[0] || !row[14]) return false;
+    if ((parseInt(row[17]) || 1) > userGradeLevel) return false;
     if (row[16] === "N") return false;
+    return true;
+  });
 
-    if (mode === 'test') return true; 
+  // ── EXAM MODE ──────────────────────────────────────────────────────────────
+  if (mode === 'test') {
+    // Determine limit by grade
+    let limit;
+    if (userGradeLevel >= 11) limit = 50;
+    else if (userGradeLevel >= 7) limit = 20;
+    else limit = 10;
 
+    // Category allocations as proportions (must sum to 1.0)
+    const categories = [
+      { name: 'Basics',   pct: 0.10 },
+      { name: 'Numbers',  pct: 0.10 },
+      { name: 'Belts',    pct: 0.10 },
+      { name: 'Korean',   pct: 0.30 },
+      { name: 'Patterns', pct: 0.30 }
+      // remaining 10% filled from any category below
+    ];
+
+    // Weight questions by belt level — higher level = higher weight
+    // Weight = beltLevel / sum of all beltLevels in pool
+    function weightedSample(pool, n) {
+      if (pool.length === 0) return [];
+      const weights = pool.map(row => parseInt(row[17]) || 1);
+      const totalWeight = weights.reduce((a, b) => a + b, 0);
+      const selected = [];
+      const used = new Set();
+      let attempts = 0;
+      while (selected.length < Math.min(n, pool.length) && attempts < pool.length * 10) {
+        attempts++;
+        let rand = Math.random() * totalWeight;
+        for (let i = 0; i < pool.length; i++) {
+          if (used.has(i)) continue;
+          rand -= weights[i];
+          if (rand <= 0) {
+            selected.push(pool[i]);
+            used.add(i);
+            break;
+          }
+        }
+      }
+      return selected;
+    }
+
+    // Build category pools
+    const pools = {};
+    categories.forEach(c => pools[c.name] = []);
+    const uncategorised = [];
+    eligible.forEach(row => {
+      const cat = row[20] ? row[20].toString().trim() : '';
+      if (pools[cat] !== undefined) pools[cat].push(row);
+      else uncategorised.push(row);
+    });
+
+    // Sample from each category
+    let selected = [];
+    categories.forEach(c => {
+      const n = Math.round(c.pct * limit);
+      selected = selected.concat(weightedSample(pools[c.name], n));
+    });
+
+    // Fill remaining slots (target 10% + any shortfall) from uncategorised or any pool
+    const remaining = limit - selected.length;
+    if (remaining > 0) {
+      const selectedIds = new Set(selected.map(r => r[14].toString()));
+      const fillPool = [...uncategorised, ...eligible].filter(r => !selectedIds.has(r[14].toString()));
+      selected = selected.concat(weightedSample(fillPool, remaining));
+    }
+
+    // Shuffle final selection so category groups aren't obvious
+    selected = selected.sort(() => Math.random() - 0.5);
+
+    return selected.map(row => ({
+      question: row[0].toString(),
+      options: [row[4], row[5], row[6], row[7]].filter(String)
+        .sort(() => Math.random() - 0.5).map(s => s.toString().trim()),
+      answer: row[11] ? row[11].toString().trim() : "",
+      qId: row[14].toString(),
+      timeLimit: parseInt(row[21]) || 5
+    }));
+  }
+
+  // ── PRACTICE MODE ──────────────────────────────────────────────────────────
+  let filtered = eligible.filter(row => {
     const qId = row[14].toString();
     const prog = progressMap[qId];
-    if (!prog) return true; 
-
+    if (!prog) return true;
     const diffDays = (now - prog.date) / (1000 * 60 * 60 * 24);
     return diffDays >= (BUCKET_INTERVALS[prog.bucket] || 0);
   });
 
-  if (filtered.length === 0) {
-    filtered = qData.slice(1).filter(row => {
-      const level = parseInt(row[17]) || 1;
-      return row[0] && row[14] && level <= userGradeLevel && row[16] !== "N";
-    });
-  }
+  // SRS fallback
+  if (filtered.length === 0) filtered = [...eligible];
 
-  const limit = (mode === 'test') ? 50 : 10;
+  // SRS sort: bucket ascending, most overdue first
+  filtered.sort((a, b) => {
+    const progA = progressMap[a[14]?.toString()] || { bucket: 1, date: new Date(0) };
+    const progB = progressMap[b[14]?.toString()] || { bucket: 1, date: new Date(0) };
+    if (progA.bucket !== progB.bucket) return progA.bucket - progB.bucket;
+    return progA.date - progB.date;
+  });
 
-  // Before returning, sort practice questions by SRS priority (bucket ascending, most overdue first)
-  // then shuffle within each priority tier so it doesn't feel mechanical
-  if (mode !== 'test') {
-    filtered.sort((a, b) => {
-      const progA = progressMap[a[14]?.toString()] || { bucket: 1, date: new Date(0) };
-      const progB = progressMap[b[14]?.toString()] || { bucket: 1, date: new Date(0) };
-      if (progA.bucket !== progB.bucket) return progA.bucket - progB.bucket; // Bucket 1 first
-      return (progA.date - progB.date); // Most overdue first within same bucket
-    });
-  }
-
-  return filtered.map(row => {
-  let rawOpts = [row[4], row[5], row[6], row[7]].filter(String);
-  return {
+  return filtered.slice(0, 10).map(row => ({
     question: row[0].toString(),
-    options: rawOpts.sort(() => Math.random() - 0.5).map(s => s.toString().trim()),
+    options: [row[4], row[5], row[6], row[7]].filter(String)
+      .sort(() => Math.random() - 0.5).map(s => s.toString().trim()),
     answer: row[11] ? row[11].toString().trim() : "",
     qId: row[14].toString(),
     timeLimit: parseInt(row[21]) || 5
-  };
-}).slice(0, limit);
+  }));
 }
 
 function updateQuestionScore(username, qId, isCorrect) {
@@ -286,6 +354,19 @@ function saveHighScore(username, newScore) {
     }
   }
   sheet.appendRow([clean, newScore]);
+}
+
+function getAllTimeHighScore() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("HighScores");
+  if (!sheet) return 0;
+  const data = sheet.getDataRange().getValues();
+  let max = 0;
+  for (let i = 1; i < data.length; i++) {
+    const val = parseInt(data[i][1]) || 0;
+    if (val > max) max = val;
+  }
+  return max;
 }
 
 function getUserGrade_(username) {

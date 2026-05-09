@@ -147,17 +147,27 @@
 #grade-banner .banner-overlay {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   pointer-events: none;
 }
 #grade-banner .banner-title {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) translateY(-2px);
   font-size: 2rem;
   letter-spacing: 0.08em;
   text-align: center;
-  flex: 1;
-  margin-top: -3px;
+  white-space: nowrap;
+}
+#grade-banner .dan-numeral {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: 'Georgia', 'Times New Roman', serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #FFD700;
 }
 #grade-banner .dan-numeral {
   font-family: 'Georgia', 'Times New Roman', serif;
@@ -177,7 +187,6 @@
   <div class="banner-overlay">
     <span class="dan-numeral hidden" id="banner-dan"></span>
     <span class="banner-title fw-bold" id="banner-title">TKD Academy</span>
-    <span class="dan-numeral hidden" style="visibility:hidden;" aria-hidden="true">IV</span>
   </div>
 </div>
 
@@ -203,9 +212,10 @@
       <div><h3 class="mb-0">Hi <span id="user-welcome"></span></h3><small id="user-streak" class="text-primary fw-bold"></small></div>
       <i class="bi bi-person-circle fs-1 text-primary"></i>
     </div>
-    <button class="btn btn-warning w-100 mb-3 p-3 text-start border-0 shadow-sm" onclick="handleNavigation('view-game-center')">
-      <div class="d-flex align-items-center"><i class="bi bi-controller me-3 fs-3"></i><div><strong>Game Centre</strong><br><small>Interactive Challenges</small></div></div>
-    </button>
+        <button class="btn btn-warning w-100 mb-3 p-3 text-start border-0 shadow-sm" onclick="handleNavigation('view-game-center')" style="position:relative;">
+          <span style="position:absolute; top:8px; right:8px; background:#dc3545; color:white; font-size:0.65rem; font-weight:700; padding:2px 8px; border-radius:20px; letter-spacing:0.05em;">NEW</span>
+          <div class="d-flex align-items-center"><i class="bi bi-controller me-3 fs-3"></i><div><strong>Game Centre</strong><br><small>Interactive Challenges</small></div></div>
+        </button>
     <button class="btn btn-primary w-100 mb-3 p-3 text-start shadow-sm" onclick="startApp('practice')">
       <div class="d-flex align-items-center"><i class="bi bi-lightning me-3 fs-3"></i><div><strong>Daily Practice</strong><br><small>10 Questions</small></div></div>
     </button>
@@ -222,7 +232,10 @@
             <div class="game-card" onclick="startApp('game_match')"><i class="bi bi-grid-3x3-gap"></i><strong>Matching Pairs</strong></div>
             <div class="game-card" onclick="startApp('game_swipe')"><i class="bi bi-check-circle"></i><strong>True or False</strong></div>
             <div class="game-card" onclick="startApp('game_tuls')"><i class="bi bi-stack"></i><strong>Tul Trumps</strong></div>
-            <div class="game-card" onclick="startApp('game_infinite')"><i class="bi bi-infinity"></i><strong>Infinite Warrior</strong></div>
+            <div class="game-card" onclick="startApp('game_infinite')" style="position:relative;">
+            <span style="position:absolute; top:8px; right:8px; background:#dc3545; color:white; font-size:0.65rem; font-weight:700; padding:2px 8px; border-radius:20px; letter-spacing:0.05em;">NEW</span>
+            <i class="bi bi-infinity"></i><strong>Infinite Warrior</strong>
+          </div>
         </div>
     </div>
 </div>
@@ -268,10 +281,13 @@
   <div class="quiz-card">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <span id="q-count" class="badge bg-light text-dark border"></span>
-      <div id="infinite-score-display" class="hidden text-center">
-        <div class="small text-muted">Best: <span id="infinite-high-score" class="fw-bold text-warning">0</span></div>
-        <div class="fw-bold text-primary fs-5">Score: <span id="infinite-current-score">0</span></div>
-      </div>
+      <div id="infinite-score-display" class="hidden w-100">
+  <div class="d-flex justify-content-between align-items-center w-100 px-1">
+    <span class="small text-muted">Best: <span id="infinite-high-score" class="fw-bold text-warning">0</span></span>
+    <span class="fw-bold text-primary fs-5"><span id="infinite-current-score">0</span></span>
+    <span class="small text-muted">All Time: <span id="infinite-all-time" class="fw-bold text-danger">0</span></span>
+  </div>
+</div>
       <span id="timer-display" class="hidden text-danger fw-bold"></span>
     </div>
 
@@ -290,40 +306,6 @@
       <h4 id="question-text" class="mb-4 fw-bold"></h4>
       <div id="options-container"></div>
       <button id="next-btn" class="btn btn-dark w-100 mt-3 p-3 hidden" onclick="nextQuestion()">Next Question</button>
-    </div>
-
-    <div id="ui-match" class="hidden"><div class="match-grid" id="match-grid"></div></div>
-
-    <div id="ui-swipe" class="hidden text-center">
-        <div class="p-4 border rounded-4 mb-4 bg-light">
-            <h3 id="swipe-term" class="fw-bold"></h3>
-            <p class="text-muted my-2">IS THIS...</p>
-            <h4 id="swipe-def" class="text-primary fw-bold"></h4>
-        </div>
-        <div class="d-flex gap-3">
-            <button class="btn btn-danger btn-lg w-50 py-3" onclick="handleSwipe(false)">FALSE</button>
-            <button class="btn btn-success btn-lg w-50 py-3" onclick="handleSwipe(true)">TRUE</button>
-        </div>
-    </div>
-  </div>
-</div>
-    
-    <div id="ui-standard" class="hidden">
-  <div id="question-timer-wrap" style="opacity:0;">
-    <div class="q-timer-ring">
-      <svg viewBox="0 0 48 48">
-        <circle class="track" cx="24" cy="24" r="20"/>
-        <circle class="fill" id="q-timer-fill" cx="24" cy="24" r="20"
-          stroke-dasharray="125.6"
-          stroke-dashoffset="0"/>
-      </svg>
-      <div class="q-timer-label" id="q-timer-label">5</div>
-    </div>
-  </div>
-  <h4 id="question-text" class="mb-4 fw-bold"></h4>
-  <div id="options-container"></div>
-  <button id="next-btn" class="btn btn-dark w-100 mt-3 p-3 hidden" onclick="nextQuestion()">Next Question</button>
-</div>
     </div>
 
     <div id="ui-match" class="hidden"><div class="match-grid" id="match-grid"></div></div>
@@ -364,7 +346,6 @@
         <p id="result-details" class="fs-5 mt-3"></p>
     </div>
 </div>
-</div>
 
 <div id="view-account" class="view-container">
   <div class="quiz-card">
@@ -395,7 +376,7 @@
     <h4 class="text-primary mb-3">TKD Theory App</h4>
     <p>Created by Jonathan for</p>
     <h5 class="fw-bold">Jacob Gallucci</h5>
-    <p class="text-muted">1st Dan • Age 10</p>
+    <p class="text-muted">1st Dan • Age 11</p>
     <hr>
     <p class="mb-1">Club:</p>
     <p class="fw-bold">TSX Martial Arts, Bingley</p>
@@ -429,7 +410,7 @@ document.addEventListener('touchmove', function(e) {
   let playerHand = [], cpuHand = []; 
   let isProcessing = false;
   
-  let quizData = [], currentIndex = 0, score = 0, activeUser = "", activeUserGrade = 1, timerInterval = null, questionTimerInterval = null, timeLeft = 0, isQuizActive = false, currentMode = "", questionsAnswered = 0, missedQuestions = [], infiniteHighScore = 0;
+  let quizData = [], currentIndex = 0, score = 0, activeUser = "", activeUserGrade = 1, timerInterval = null, questionTimerInterval = null, timeLeft = 0, isQuizActive = false, currentMode = "", questionsAnswered = 0, missedQuestions = [], infiniteHighScore = 0, infiniteAllTimeHigh = 0;
 
 
   let matchSelected = { qId: null, aId: null, qEl: null, aEl: null }, matchesFound = 0, setsCleared = 0, swipeCorrect = false;
@@ -713,6 +694,8 @@ function goHome() {
   document.getElementById('timer-display')?.classList.add('hidden');
   document.getElementById('next-btn')?.classList.add('hidden');
   document.getElementById('infinite-score-display')?.classList.add('hidden');
+  document.getElementById('q-count').classList.remove('hidden');
+
 
   if (mode === 'game_tuls') {
     switchView('view-trumps');
@@ -721,17 +704,36 @@ function goHome() {
   }
 
   if (mode === 'game_infinite') {
-    toggleLoad(true);
-    google.script.run.withSuccessHandler(highScore => {
-      infiniteHighScore = highScore;
-      document.getElementById('infinite-high-score').innerText = highScore;
-      document.getElementById('infinite-current-score').innerText = '0';
-      document.getElementById('infinite-score-display').classList.remove('hidden');
-      // Fetch a fresh batch — infinite mode reloads questions when exhausted
-      loadInfiniteBatch();
-    }).getHighScore(activeUser);
-    return;
-  }
+  infiniteHighScore = 0;
+  infiniteAllTimeHigh = 0;
+  toggleLoad(true);
+  document.getElementById('q-count').classList.add('hidden');
+  let personalLoaded = false, allTimeLoaded = false;
+  const checkReady = () => {
+  if (!personalLoaded || !allTimeLoaded) return;
+  document.getElementById('infinite-high-score').innerText = infiniteHighScore;
+  document.getElementById('infinite-all-time').innerText = infiniteAllTimeHigh;
+  document.getElementById('infinite-current-score').innerText = '0';
+  document.getElementById('infinite-score-display').classList.remove('hidden');
+  document.getElementById('progress-bar').style.background = 'var(--tkd-blue)';
+  document.getElementById('progress-bar').style.width = '0%';
+  loadInfiniteBatch(); // loader stays on — toggleLoad(false) fires inside showQuestion
+  const bar = document.getElementById('progress-bar');
+  bar.style.width = '0%';
+  bar.style.background = 'var(--tkd-blue)';
+};
+  google.script.run.withSuccessHandler(h => {
+    infiniteHighScore = h;
+    personalLoaded = true;
+    checkReady();
+  }).getHighScore(activeUser);
+  google.script.run.withSuccessHandler(h => {
+    infiniteAllTimeHigh = h;
+    allTimeLoaded = true;
+    checkReady();
+  }).getAllTimeHighScore();
+  return;
+}
 
   toggleLoad(true);
   const isGame = mode.startsWith('game_');
@@ -748,8 +750,15 @@ function goHome() {
     google.script.run.withSuccessHandler(data => {
       toggleLoad(false);
       quizData = data;
+
       if (mode === 'test') {
-        timeLeft = 3600;
+        // Timer and question count by grade
+        let examMins, examQs;
+        if (activeUserGrade >= 11) { examMins = 60; examQs = 50; }
+        else if (activeUserGrade >= 7) { examMins = 30; examQs = 20; }
+        else { examMins = 15; examQs = 10; }
+
+        timeLeft = examMins * 60;
         document.getElementById('timer-display')?.classList.remove('hidden');
         updateTimerUI();
         timerInterval = setInterval(() => {
@@ -757,7 +766,12 @@ function goHome() {
           updateTimerUI();
           if (timeLeft <= 0) endQuiz();
         }, 1000);
+
+        // Update the mock grading button subtitle dynamically
+        const examSubtitle = document.querySelector('#view-modes button.btn-outline-danger small');
+        if (examSubtitle) examSubtitle.innerText = `Full Test (${examMins}m · ${examQs}Q)`;
       }
+
       switchView('view-quiz');
       showQuestion();
     }).getQuizData(activeUser, (mode === 'test' ? 'test' : 'practice'));
@@ -828,10 +842,10 @@ function initTulTrumps() {
 
 function loadInfiniteBatch() {
   google.script.run.withSuccessHandler(data => {
-    toggleLoad(false);
     quizData = data;
     currentIndex = 0;
     switchView('view-quiz');
+    toggleLoad(false);
     showQuestion();
   }).getQuizData(activeUser, 'practice');
 }
@@ -841,20 +855,19 @@ function endInfiniteWarrior(wrongQuestion) {
   isQuizActive = false;
 
   const isNewHigh = score > infiniteHighScore;
+
+  if (isNewHigh) {
+    infiniteHighScore = score;
+    if (score > infiniteAllTimeHigh) infiniteAllTimeHigh = score;
+    google.script.run.saveHighScore(activeUser, score);
+  }
+
   const resText = document.getElementById('result-text');
   const resDetails = document.getElementById('result-details');
   const overlay = document.getElementById('result-overlay');
 
-  if (isNewHigh) {
-    infiniteHighScore = score;
-    google.script.run.saveHighScore(activeUser, score);
-    triggerConfetti();
-    resText.innerText = "NEW HIGH SCORE!";
-    resText.className = "fw-bold text-warning";
-  } else {
-    resText.innerText = "WARRIOR DOWN!";
-    resText.className = "fw-bold text-danger";
-  }
+  resText.innerText = isNewHigh ? "NEW HIGH SCORE!" : "WARRIOR DOWN!";
+  resText.className = isNewHigh ? "fw-bold text-warning" : "fw-bold text-danger";
 
   let reviewHtml = '';
   if (wrongQuestion) {
@@ -867,7 +880,8 @@ function endInfiniteWarrior(wrongQuestion) {
 
   resDetails.innerHTML = `
     <p class="mb-1">Score: <strong>${score}</strong></p>
-    <p class="text-muted small mb-3">Best: ${infiniteHighScore}</p>
+    <p class="text-muted small mb-1">Your Best: ${infiniteHighScore}</p>
+    <p class="text-muted small mb-3">All Time: ${infiniteAllTimeHigh}</p>
     ${reviewHtml}
     <div class="d-grid gap-2">
       <button class="btn btn-primary btn-lg rounded-pill" onclick="closeWarning(); startApp('game_infinite');">Play Again</button>
@@ -875,12 +889,15 @@ function endInfiniteWarrior(wrongQuestion) {
     </div>`;
 
   overlay.classList.remove('hidden');
+  if (isNewHigh) triggerConfetti();
 }
 
 function showQuestion() {
   clearInterval(questionTimerInterval);
   document.getElementById('question-timer-wrap').style.opacity = '0';
-  document.getElementById('progress-bar').style.width = ((currentIndex / quizData.length) * 100) + "%";
+  if (currentMode !== 'game_infinite') {
+    document.getElementById('progress-bar').style.width = ((currentIndex / quizData.length) * 100) + "%";
+  }
   document.getElementById('ui-standard').classList.remove('hidden');
   const q = quizData[currentIndex];
   document.getElementById('q-count').innerText = currentMode === 'game_infinite'
@@ -901,10 +918,18 @@ function showQuestion() {
       document.querySelectorAll('.option-btn').forEach(btn => btn.disabled = true);
 
       if (currentMode === 'game_infinite') {
-        if (isCorrect) {
+          if (isCorrect) {
           score++;
           b.style.background = '#d1e7dd';
           document.getElementById('infinite-current-score').innerText = score;
+          
+          // Progress bar uses #progress-bar at top — fills vs personal best + 1 (the target to beat)
+          const target = infiniteHighScore + 1;
+          const pct = Math.min(Math.round((score / target) * 100), 100);
+          const bar = document.getElementById('progress-bar');
+          bar.style.width = pct + '%';
+          bar.style.background = score >= target ? '#FFD700' : 'var(--tkd-blue)';
+
           google.script.run.updateQuestionScore(activeUser, q.qId, true);
           currentIndex++;
           setTimeout(() => {
@@ -1017,6 +1042,17 @@ function showQuestion() {
         // Line 2: Correct Answer from Column L
         document.getElementById('swipe-def').innerText = q.correctAnswer;
     }
+}
+
+function showTulLockedMessage() {
+  const overlay = document.getElementById('result-overlay');
+  document.getElementById('result-text').innerText = "Locked";
+  document.getElementById('result-text').className = "fw-bold text-secondary";
+  document.getElementById('result-details').innerHTML = `
+    <p><i class="bi bi-lock-fill fs-1 text-secondary"></i></p>
+    <p>Unlock this game in real life — you can play Tul Trumps when you reach 6th Kup.</p>
+    <button class="btn btn-primary rounded-pill px-4" onclick="closeWarning()">OK</button>`;
+  overlay.classList.remove('hidden');
 }
 
 function handleSwipe(userAnswer) {
@@ -1136,10 +1172,9 @@ function updateGradeBanner(grade) {
     document.getElementById('banner-bar-2'),
     document.getElementById('banner-bar-3')
   ];
-  const title  = document.getElementById('banner-title');
-  const dan    = document.getElementById('banner-dan');
+  const title = document.getElementById('banner-title');
+  const dan   = document.getElementById('banner-dan');
 
-  // [top, middle, bottom], titleColor, danNumeral
   const gradeConfig = {
     1:  { colors: ['#ffffff','#ffffff','#ffffff'], titleColor: '#000000', dan: '' },
     2:  { colors: ['#ffffff','#f5c518','#ffffff'], titleColor: '#000000', dan: '' },
@@ -1163,15 +1198,50 @@ function updateGradeBanner(grade) {
   title.style.color = cfg.titleColor;
 
   if (cfg.dan) {
-  dan.innerText = cfg.dan;
-  dan.classList.remove('hidden');
-} else {
-  dan.innerText = '';
-  dan.classList.add('hidden');
-}
-title.style.opacity = '1'; // Always visible
+    dan.innerText = cfg.dan;
+    dan.classList.remove('hidden');
+  } else {
+    dan.innerText = '';
+    dan.classList.add('hidden');
+  }
 
   banner.classList.remove('hidden');
+
+  // Lock/unlock Tul Trumps for grades 1-5
+  const tulCard = document.querySelector('#view-game-center .game-card:nth-child(3)');
+  if (tulCard) {
+    const existing = tulCard.querySelector('.tul-lock-badge');
+    if (existing) existing.remove();
+
+    if (grade <= 5) {
+      tulCard.style.opacity = '0.5';
+      tulCard.style.cursor = 'pointer';
+      tulCard.querySelector('i').style.color = '#adb5bd';
+      const badge = document.createElement('span');
+      badge.className = 'tul-lock-badge';
+      badge.style.cssText = 'position:absolute; top:6px; right:6px;';
+      badge.innerHTML = '<i class="bi bi-lock-fill" style="font-size:1rem; color:#adb5bd;"></i>';
+      tulCard.style.position = 'relative';
+      tulCard.appendChild(badge);
+      tulCard.onclick = () => showTulLockedMessage();
+    } else if (grade === 6) {
+      tulCard.style.opacity = '1';
+      tulCard.style.cursor = 'pointer';
+      tulCard.querySelector('i').style.color = '';
+      const badge = document.createElement('span');
+      badge.className = 'tul-lock-badge';
+      badge.style.cssText = 'position:absolute; top:6px; right:6px;';
+      badge.innerHTML = '<i class="bi bi-unlock-fill" style="font-size:1rem; color:#198754;"></i>';
+      tulCard.style.position = 'relative';
+      tulCard.appendChild(badge);
+      tulCard.onclick = () => startApp('game_tuls');
+    } else {
+      tulCard.style.opacity = '1';
+      tulCard.style.cursor = 'pointer';
+      tulCard.querySelector('i').style.color = '';
+      tulCard.onclick = () => startApp('game_tuls');
+    }
+  }
 }
 
 function nextQuestion() { 

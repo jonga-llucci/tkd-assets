@@ -234,9 +234,7 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 - New press-up training programme
 - grey out tul-trumps for grades with not enough patterns (cards)
 - 5s Timer: Integrated into 'game_swipe' (Board Break) and Infinite Mode.
-- Infinite Warrior Mode: Sudden death high-score game.
-- Replace "CPU" with bootstrap robot icon
-- implement game "levels" to set the timer - harder = less time
+- implement game "levels" or "difficulty" for daily practise. Set the timer - harder = less time,  number of choices - more = harder
 - Belt-gated content unlock animation: When a user changes their grade up, show a brief unlock message indicating new content is available. All data is already filtered by grade — this is purely a UX layer.
 - Monetization Gate: 'SignupDate' check for trial period / Stripe integration.
 ============================================================
