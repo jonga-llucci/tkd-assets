@@ -200,11 +200,37 @@
 <div id="view-login" class="view-container active-view">
   <div class="quiz-card text-center shadow-lg">
     <h2 class="fw-bold mb-4">TKD Academy</h2>
-    <input type="text" id="user-input" class="form-control mb-3 p-3" placeholder="Username">
+    <input type="text" id="user-input" class="form-control mb-3 p-3" placeholder="Email Address">
     <input type="password" id="pass-input" class="form-control mb-3 p-3" placeholder="Password">
     <div id="login-error" class="text-danger small mt-1 mb-2" style="display:none; min-height:1.2em;"></div>
-    <button class="btn btn-primary w-100 btn-lg" onclick="handleLogin()">Login</button>
+    <button class="btn btn-primary w-100 btn-lg mb-3" onclick="handleLogin()">Login</button>
+    <button class="btn btn-outline-secondary w-100" onclick="showRegister()">New User? Register Here</button>
     <div class="copyright-text mt-3">(C) J Gallucci 2026</div>
+  </div>
+</div>
+
+<div id="view-register" class="view-container">
+  <div class="quiz-card shadow-lg">
+    <h2 class="fw-bold mb-1 text-center">Create Account</h2>
+    <p class="text-muted small text-center mb-4">Join TKD Academy</p>
+
+    <label class="small fw-bold text-muted">Name</label>
+    <input type="text" id="reg-name" class="form-control mb-3 p-3" placeholder="Your name">
+
+    <label class="small fw-bold text-muted">Email Address</label>
+    <input type="email" id="reg-email" class="form-control mb-3 p-3" placeholder="you@example.com">
+
+    <label class="small fw-bold text-muted">Grading For (next belt)</label>
+    <select id="reg-grade" class="form-select mb-3 p-3">
+      <option value="">Loading grades...</option>
+    </select>
+
+    <label class="small fw-bold text-muted">Password</label>
+    <input type="password" id="reg-pass" class="form-control mb-2 p-3" placeholder="Password">
+    <p class="text-muted small mb-3">Must be 5+ characters with uppercase, lowercase, number and special character (!@#$%^&*)</p>
+
+    <button class="btn btn-primary w-100 btn-lg mb-3" onclick="handleRegister()">Create Account</button>
+    <button class="btn btn-outline-secondary w-100" onclick="switchView('view-login')">Back to Login</button>
   </div>
 </div>
 
@@ -473,6 +499,19 @@ function closeWarning() {
     const overlay = document.getElementById('result-overlay');
     overlay.classList.add('hidden');
     isProcessing = false;
+}
+
+function showOverlayMessage(title, titleClass, body, btnText, btnCallback) {
+  const overlay = document.getElementById('result-overlay');
+  document.getElementById('result-text').innerText = title;
+  document.getElementById('result-text').className = `fw-bold ${titleClass}`;
+  const cb = btnCallback ? `(${btnCallback.toString()})()` : '';
+  document.getElementById('result-details').innerHTML = `
+    <p class="mb-4">${body}</p>
+    <div class="d-grid">
+      <button class="btn btn-primary rounded-pill" onclick="closeWarning(); ${cb}">${btnText}</button>
+    </div>`;
+  overlay.classList.remove('hidden');
 }
 
 function confirmExit(targetView, mode) {
@@ -794,6 +833,66 @@ function goHome() {
       showQuestion();
     }).getQuizData(activeUser, (mode === 'test' ? 'test' : 'practice'));
   }
+}
+
+function showRegister() {
+  switchView('view-register');
+  // Load belt options into registration grade selector
+  google.script.run.withSuccessHandler(belts => {
+    const sel = document.getElementById('reg-grade');
+    sel.innerHTML = '<option value="">Select your next belt...</option>';
+    belts.forEach(b => {
+      sel.innerHTML += `<option value="${b.value}">${b.label}</option>`;
+    });
+  }).getBeltOptions();
+}
+
+function handleRegister() {
+  const name     = document.getElementById('reg-name').value.trim();
+  const email    = document.getElementById('reg-email').value.trim();
+  const grade    = document.getElementById('reg-grade').value;
+  const password = document.getElementById('reg-pass').value;
+
+  // Basic field check
+  if (!name || !email || !grade || !password) {
+    showOverlayMessage("MISSING DETAILS", "text-danger", "Please fill in all fields before registering.", "Try Again");
+    return;
+  }
+
+  // Email format check
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    showOverlayMessage("INVALID EMAIL", "text-danger", "Please enter a valid email address.", "Try Again");
+    return;
+  }
+
+  // Password validation — same rules as updatePass
+  const passRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*]).{5,}$/;
+  if (!passRegex.test(password)) {
+    showOverlayMessage("WEAK PASSWORD", "text-danger", "Must be 5+ characters with uppercase, lowercase, number and special character (!@#$%^&*).", "Try Again");
+    return;
+  }
+
+  toggleLoad(true);
+  google.script.run
+    .withSuccessHandler(res => {
+      toggleLoad(false);
+      if (res.success) {
+        showOverlayMessage("WELCOME!", "text-success",
+          `Account created successfully, ${name.split(' ')[0]}. You can now log in.`,
+          "Go to Login", () => switchView('view-login'));
+        // Clear registration fields
+        ['reg-name','reg-email','reg-pass'].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('reg-grade').value = '';
+      } else {
+        showOverlayMessage("REGISTRATION FAILED", "text-danger", res.message, "Try Again");
+      }
+    })
+    .withFailureHandler(() => {
+      toggleLoad(false);
+      showOverlayMessage("SERVER ERROR", "text-danger", "Could not connect. Please try again.", "Close");
+    })
+    .registerUser(name, email, grade, password);
 }
 
   /**
@@ -1140,7 +1239,7 @@ function handleSwipe(userAnswer) {
   function updateTimerUI() { const m = Math.floor(timeLeft / 60), s = timeLeft % 60; document.getElementById('timer-display').innerText = `${m}:${s < 10 ? '0' : ''}${s}`; }
 
 function switchView(targetView) {
-  const views = ['view-login', 'view-modes', 'view-game-center', 'view-trumps', 'view-quiz', 'view-results', 'view-account', 'view-about', 'view-admin'];
+  const views = ['view-login', 'view-register', 'view-modes', 'view-game-center', 'view-trumps', 'view-quiz', 'view-results', 'view-account', 'view-about', 'view-admin'];
   
   views.forEach(id => {
     const el = document.getElementById(id);

@@ -60,6 +60,43 @@ function loginUser(username, password) {
   return { success: false, message: "Invalid credentials" };
 }
 
+function registerUser(displayName, email, gradeValue, password) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName("Users");
+  const data = sheet.getDataRange().getValues();
+  const cleanEmail = email ? email.toString().trim().toLowerCase() : "";
+
+  if (!cleanEmail || !displayName || !password || !gradeValue) {
+    return { success: false, message: "All fields are required." };
+  }
+
+  // Check email not already registered
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] && data[i][0].toString().trim().toLowerCase() === cleanEmail) {
+      return { success: false, message: "An account with this email already exists." };
+    }
+  }
+
+  const now = new Date();
+
+  // Col A:Username(email) | B:Password | C:BeltLevel | D:LastActive | E:Streak | 
+  // F:DisplayName | G:isAdmin | H:FCMToken | I:RegisteredDate | J:SubscriptionDate
+  sheet.appendRow([
+    cleanEmail,           // A — username (email)
+    password,             // B — password
+    parseInt(gradeValue), // C — belt level
+    now,                  // D — last active
+    1,                    // E — streak starts at 1
+    displayName.toString().trim(), // F — display name
+    '',                   // G — isAdmin (blank = not admin)
+    '',                   // H — FCMToken (blank until app registers)
+    now,                  // I — RegisteredDate
+    ''                    // J — SubscriptionDate (blank until payment)
+  ]);
+
+  return { success: true };
+}
+
 function getQuizData(username, mode) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const qSheet = ss.getSheetByName("Questions");
