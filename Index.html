@@ -48,18 +48,20 @@
     .copyright-text { text-align: center; font-size: 0.65rem; color: #bbb; padding: 4px; background: #fff; }
 
     .result-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.8);
-    display: flex;
-    align-items: center; /* Centers vertically */
-    justify-content: center; /* Centers horizontally */
-    z-index: 9999;
-    transition: opacity 0.3s ease;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  transition: opacity 0.3s ease;
 }
+  .result-overlay:not(.hidden) {
+    display: flex;
+  }
 
 /* This creates the actual "Popup" look */
 .result-box {
@@ -381,13 +383,23 @@
     <p class="mb-1">Club:</p>
     <p class="fw-bold">TSX Martial Arts, Bingley</p>
     </div>
-</div>
+  </div>
+
+<div id="view-admin" class="view-container">
+  <div class="quiz-card">
+    <h3 class="fw-bold mb-1">Admin</h3>
+    <p class="text-muted small mb-4">Student overview</p>
+    <div id="admin-user-list">
+      <div class="text-center text-muted small py-3">Loading...</div>
+    </div>
+  </div></div>
 
 <div class="footer-container hidden" id="navbar">
-    <nav class="bottom-nav">
+  <nav class="bottom-nav">
     <button class="nav-item active" id="nav-modes" onclick="handleNavigation('view-modes')"><i class="bi bi-house-door"></i>Home</button>
     <button class="nav-item" id="nav-account" onclick="handleNavigation('view-account')"><i class="bi bi-person"></i>Account</button>
     <button class="nav-item" id="nav-about" onclick="handleNavigation('view-about')"><i class="bi bi-info-circle"></i>About</button>
+    <button class="nav-item hidden" id="nav-admin" onclick="handleNavigation('view-admin')"><i class="bi bi-door-closed"></i>Admin</button>
   </nav>
   <div class="copyright-text">(C) J Gallucci 2026</div>
 </div>
@@ -416,12 +428,17 @@ document.addEventListener('touchmove', function(e) {
   let matchSelected = { qId: null, aId: null, qEl: null, aEl: null }, matchesFound = 0, setsCleared = 0, swipeCorrect = false;
 
 function handleNavigation(targetView) {
-  if (isQuizActive) {
-    const mode = (playerHand && playerHand.length > 0) ? "trumps" : "exam";
-    showUniversalWarning(targetView, mode);
-  } else {
-    if (targetView === 'view-account') loadAccountView();
-    switchView(targetView);
+  try {
+    if (isQuizActive) {
+      const mode = (playerHand && playerHand.length > 0) ? "trumps" : "exam";
+      showUniversalWarning(targetView, mode);
+    } else {
+      if (targetView === 'view-account') loadAccountView();
+      if (targetView === 'view-admin') loadAdminView();
+      switchView(targetView);
+    }
+  } catch(e) {
+    console.error("handleNavigation error:", e);
   }
 }
 
@@ -664,6 +681,7 @@ function goHome() {
     activeUser = res.username;
     activeUserGrade = res.gradeValue;
     updateGradeBanner(res.gradeValue);
+    if (res.isAdmin) document.getElementById('nav-admin').classList.remove('hidden');
     document.getElementById('user-welcome').innerText = res.displayName;
     document.getElementById('user-streak').innerHTML = `<i class="bi bi-fire"></i> ${res.streak} Day Streak`;
     document.getElementById('navbar').classList.remove('hidden');
@@ -1122,8 +1140,7 @@ function handleSwipe(userAnswer) {
   function updateTimerUI() { const m = Math.floor(timeLeft / 60), s = timeLeft % 60; document.getElementById('timer-display').innerText = `${m}:${s < 10 ? '0' : ''}${s}`; }
 
 function switchView(targetView) {
-  // Hide all views using the exact IDs in your HTML
-  const views = ['view-login', 'view-modes', 'view-game-center', 'view-trumps', 'view-quiz', 'view-results', 'view-account', 'view-about'];
+  const views = ['view-login', 'view-modes', 'view-game-center', 'view-trumps', 'view-quiz', 'view-results', 'view-account', 'view-about', 'view-admin'];
   
   views.forEach(id => {
     const el = document.getElementById(id);
@@ -1133,7 +1150,6 @@ function switchView(targetView) {
     }
   });
 
-  // Show target - targetView now matches the ID perfectly
   const targetEl = document.getElementById(targetView);
   if (targetEl) {
     targetEl.classList.remove('hidden');
@@ -1144,25 +1160,17 @@ function switchView(targetView) {
 }
 
 function updateNavIcons(activeView) {
-  // Maps the View ID directly to the Nav Button ID
   const navMap = {
-    'view-modes': 'nav-modes',
+    'view-modes':   'nav-modes',
     'view-account': 'nav-account',
-    'view-about': 'nav-about'
+    'view-about':   'nav-about',
+    'view-admin':   'nav-admin'
   };
 
-  const activeBtnId = navMap[activeView];
-  
-  // Reset all nav items
-  document.querySelectorAll('.nav-item').forEach(btn => {
-    btn.classList.remove('active');
-  });
+  document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
 
-  // Set the correct one to active
-  const activeBtn = document.getElementById(activeBtnId);
-  if (activeBtn) {
-    activeBtn.classList.add('active');
-  }
+  const activeBtn = document.getElementById(navMap[activeView]);
+  if (activeBtn) activeBtn.classList.add('active');
 }
 
 function updateGradeBanner(grade) {
@@ -1342,6 +1350,79 @@ function loadAccountView() {
       checkDone();
     })
     .getSrsStats(activeUser);
+}
+
+function loadAdminView() {
+  toggleLoad(true);
+  google.script.run
+    .withSuccessHandler(data => {
+      toggleLoad(false);
+      if (data.error) {
+        document.getElementById('admin-user-list').innerHTML = `<div class="alert alert-danger small">${data.error}</div>`;
+        return;
+      }
+      renderAdminView(data.users);
+    })
+    .withFailureHandler(() => {
+      toggleLoad(false);
+      document.getElementById('admin-user-list').innerHTML = '<div class="alert alert-danger small">Failed to load.</div>';
+    })
+    .getAdminData(activeUser);
+}
+
+  function renderAdminView(users) {
+  let html = `
+    <div class="d-flex justify-content-between mb-3 px-1" style="font-size:0.7rem;">
+      <span style="color:#adb5bd;" class="fw-bold">New</span>
+      <span style="color:#dc3545;" class="fw-bold">Learning</span>
+      <span style="color:#fd7e14;" class="fw-bold">Familiar</span>
+      <span style="color:#0d6efd;" class="fw-bold">Confident</span>
+      <span style="color:#198754;" class="fw-bold">Mastered</span>
+    </div>`;
+
+  users.forEach(u => {
+    const inactive = u.daysSince !== null && u.daysSince >= 7;
+    const masteredPct = u.totalAnswered > 0
+      ? Math.round((u.buckets[4] / u.totalAnswered) * 100) : 0;
+
+    html += `
+      <div class="mb-3 p-3 border rounded-3 ${inactive ? 'border-danger' : 'border-light'} bg-white shadow-sm">
+        <div class="d-flex justify-content-between align-items-start mb-1">
+          <div>
+            <span class="fw-bold">${u.displayName}</span>
+            ${u.isAdmin ? '<span class="badge bg-secondary ms-1" style="font-size:0.6rem;">ADMIN</span>' : ''}
+          </div>
+          <span class="badge bg-primary" style="font-size:0.7rem;">${u.gradeName}</span>
+        </div>
+        <div class="d-flex gap-3 small text-muted mb-2">
+          <span><i class="bi bi-fire text-warning"></i> ${u.streak}d streak</span>
+          <span><i class="bi bi-infinity text-primary"></i> Best: ${u.highScore}</span>
+          <span><i class="bi bi-patch-check text-success"></i> ${masteredPct}% mastered</span>
+        </div>
+        
+        <div class="d-flex gap-1 mb-2" style="height:8px; background:#eee; border-radius:4px; overflow:hidden;">
+          ${(() => {
+            const seen = u.buckets[1] + u.buckets[2] + u.buckets[3] + u.buckets[4];
+            const unseen = Math.max(0, u.eligible - seen);
+            const colours = ['#adb5bd','#dc3545','#fd7e14','#0d6efd','#198754'];
+            const counts = [unseen, u.buckets[1], u.buckets[2], u.buckets[3], u.buckets[4]];
+            const grandTotal = u.eligible > 0 ? u.eligible : 1;
+            return counts.map((count, i) => {
+              const pct = (count / grandTotal) * 100;
+              return pct > 0
+                ? `<div title="${['New','Learning','Familiar','Confident','Mastered'][i]}: ${count}" style="width:${pct}%; height:100%; background:${colours[i]}; flex-shrink:0;"></div>`
+                : '';
+            }).join('');
+          })()}
+        </div>
+        <div class="small ${inactive ? 'text-danger fw-bold' : 'text-muted'}">
+          <i class="bi bi-clock"></i> ${u.lastActive}
+          ${inactive ? ` <span class="ms-1">(${u.daysSince}d ago)</span>` : ''}
+        </div>
+      </div>`;
+  });
+
+  document.getElementById('admin-user-list').innerHTML = html || '<p class="text-muted small">No users found.</p>';
 }
 
 function renderSrsStats(stats) {

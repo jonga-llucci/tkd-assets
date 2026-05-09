@@ -52,7 +52,8 @@ function loginUser(username, password) {
         username: userData[i][0].toString().trim(),
         displayName: userData[i][5] ? userData[i][5].toString() : userData[i][0].toString(),
         gradeValue: parseInt(userData[i][2]) || 1, 
-        streak: streak 
+        streak: streak,
+        isAdmin: userData[i][6] && userData[i][6].toString().trim().toUpperCase() === 'Y'
       };
     }
   }
@@ -419,4 +420,86 @@ function getTulTrumpsData(username) {
   } catch (e) {
     return { error: e.message };
   }
+}
+
+function getAdminData(username) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // Verify requester is admin
+  const callerGrade = getUserGrade_(username);
+  const usersSheet = ss.getSheetByName("Users");
+  const userData = usersSheet.getDataRange().getValues();
+  const cleanCaller = username ? username.toString().trim().toLowerCase() : "";
+  let isAdmin = false;
+  for (let i = 1; i < userData.length; i++) {
+    if (userData[i][0] && userData[i][0].toString().trim().toLowerCase() === cleanCaller) {
+      isAdmin = (userData[i][6] && userData[i][6].toString().trim().toUpperCase() === 'Y');
+      break;
+    }
+  }
+  if (!isAdmin) return { error: "Unauthorised" };
+
+  const progressSheet = ss.getSheetByName("UserProgress");
+  const highScoreSheet = ss.getSheetByName("HighScores");
+  const beltsSheet = ss.getSheetByName("Belts");
+  const questionsSheet = ss.getSheetByName("Questions");
+
+  const progressData = progressSheet ? progressSheet.getDataRange().getValues() : [];
+  const highScoreData = highScoreSheet ? highScoreSheet.getDataRange().getValues() : [];
+  const beltData = beltsSheet ? beltsSheet.getDataRange().getValues() : [];
+  const questionData = questionsSheet ? questionsSheet.getDataRange().getValues() : [];
+
+  // Belt label lookup
+  const beltMap = {};
+  beltData.slice(1).forEach(row => {
+    if (row[0] && row[1]) beltMap[parseInt(row[1])] = row[0].toString().trim();
+  });
+
+  // Progress stats per user
+  const progressMap = {};
+  progressData.slice(1).forEach(row => {
+    const u = row[0] ? row[0].toString().trim() : "";
+    if (!u) return;
+    if (!progressMap[u]) progressMap[u] = { total: 0, buckets: { 1:0, 2:0, 3:0, 4:0 } };
+    progressMap[u].total++;
+    const b = parseInt(row[3]) || 1;
+    if (progressMap[u].buckets[b] !== undefined) progressMap[u].buckets[b]++;
+  });
+
+  // High score per user
+  const highScoreMap = {};
+  highScoreData.slice(1).forEach(row => {
+    if (row[0]) highScoreMap[row[0].toString().trim()] = parseInt(row[1]) || 0;
+  });
+
+  const now = new Date();
+  const users = userData.slice(1)
+    .filter(row => row[0])
+    .map(row => {
+      const uName = row[0].toString().trim();
+      const lastActive = row[3] ? new Date(row[3]) : null;
+      const daysSince = lastActive ? Math.floor((now - lastActive) / (1000 * 60 * 60 * 24)) : null;
+      const gradeVal = parseInt(row[2]) || 1;
+      const prog = progressMap[uName] || { total: 0, buckets: { 1:0, 2:0, 3:0, 4:0 } };
+      const eligible = questionData.slice(1).filter(q =>
+        q[0] && q[14] && (parseInt(q[17]) || 1) <= gradeVal && q[16] !== "N"
+      ).length;
+
+      return {
+        username: uName,
+        displayName: row[5] ? row[5].toString() : uName,
+        grade: gradeVal,
+        gradeName: beltMap[gradeVal] || `Level ${gradeVal}`,
+        streak: parseInt(row[4]) || 0,
+        lastActive: lastActive ? lastActive.toLocaleString('en-GB') : 'Never',
+        daysSince: daysSince,
+        isAdmin: row[6] && row[6].toString().trim().toUpperCase() === 'Y',
+        totalAnswered: prog.total,
+        buckets: prog.buckets,
+        highScore: highScoreMap[uName] || 0,
+        eligible: eligible
+      };
+    });
+
+  return { users };
 }
