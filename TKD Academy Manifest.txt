@@ -18,13 +18,16 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 3. SPREADSHEET SCHEMA (The Data Source)
 ------------------------------------------------------------
 [Tab: Users]
-- Col A: Username (String, Primary Key)
+- Col A: Username (String, email address, Primary Key)
 - Col B: Password (String)
-- Col C: BeltLevel (Integer, 1-10+)
+- Col C: BeltLevel (Integer, 1-14)
 - Col D: LastActive (Date)
 - Col E: Streak (Integer)
 - Col F: DisplayName (String)
-- Col G: isAdmin (String, "Y" = admin user)
+- Col G: isAdmin (String, "Y" = admin)
+- Col H: FCMToken (String, populated by WebIntoApp bridge)
+- Col I: RegisteredDate (Date, set on registration)
+- Col J: SubscriptionDate (Date, set on payment — blank during trial)
 
 [Tab: Questions]
 - Col A: QuestionText
@@ -185,6 +188,7 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 - Daily practise   - Filtering: Cards are filtered by whether to be used as exam questions Col Q =='Y' (Tab: Questions, Col Q).
 - Daily practise   - SRS: Questions should be prioritised using SRS buckets.
 - Daily practise   - Selection highlighting during daily practise should show green for answers correctly selected and red if incorrect.
+- Daily practise - Difficulty: User selects Easy (15s), Medium (10s), or Hard (5s) before starting. Default is Medium. Selection persists for the session and is controlled by practiceDifficulty global. Overrides per-question timeLimit (col V) in practice mode.
 
 - Mock exam        - Time limit (shown with MM:SS timer) 60 mins
 - Mock exam        - 50 questions
@@ -210,7 +214,7 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
     * "Spaced Repetition (SRS): Uses the Leitner System to optimize memory retention."
     * "Mock Exams: Follows strict 50-question limits, 60 minute time limit, pass mark 75%"
 - Version details
-    *v11.7
+    *v1.12.1
 
 9. FIXED CONTENT: 'ACCOUNT' SECTION
 ------------------------------------------------------------
@@ -298,11 +302,85 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 - Key       : Shown once above user cards, not repeated per card.
 - Eligible  : Calculated server-side per user based on their grade. Passed as u.eligible.
 
-15. ROADMAP / NEXT ITERATIONS (v11.0+)
+15. SUBSCRIPTION & PAYMENT
 ------------------------------------------------------------
-- Implement PWA Proxy with iframe via a real domain. Host a thin static index.html on a real domain (GitHub Pages is free) that contains just the manifest, service worker, and an iframe or redirect to your GAS URL. The PWA shell lives on the real domain; the GAS app loads inside it. More complex to set up but gives you a genuine installable PWA with full browser prompt.If you load the GAS URL inside an <iframe> on your GitHub Pages domain, the banner renders inside the iframe and is visible. However you can add CSS to the parent page to crop or overlay it. Home screen icon, name
+- Platform: Stripe (stripe.com)
+- Trial: 7 days from RegisteredDate (Col I). accessStatus = 'trial' during trial.
+- Subscription: 30 days from SubscriptionDate (Col J). accessStatus = 'subscribed'.
+- Expiry: accessStatus = 'trial_expired' or 'subscription_expired' after respective periods.
+- Manually created users (no RegisteredDate): always accessStatus = 'active', never gated.
+- Webhook: Stripe fires checkout.session.completed and invoice.payment_succeeded to GAS doPost() /exec endpoint. updateSubscriptionDate() writes now() to Col J.
+- Signature verification: STRIPE_WEBHOOK_SECRET constant in Code.gs. Roll secret in Stripe dashboard and update constant + redeploy when compromised.
+- Pricing Table: Stripe-hosted, embedded in view-subscribe via <stripe-pricing-table> web component. customer-email pre-filled via showSubscribePage(email).
+- Customer Portal: Stripe-hosted. Linked from view-account "Manage My Subscription" button.
+- Frontend gate: handleLogin() checks accessStatus. Expired users see overlay with View Plans button → showSubscribePage(). Active/trial/subscribed users proceed normally.
+- Banner: #subscription-banner shown below Mock Grading on view-modes for trial and subscribed users. Trial shows orange warning. Subscribed shows green confirmation without subscribe button.
+- Live vs Test: Update pricing-table-id, publishable-key, STRIPE_WEBHOOK_SECRET, and customer portal URL when switching from test to live. Never commit live keys to GitHub Pages — they are only in GAS Code.gs and Index.html (served by GAS, not public).
+
+16. GITHUB REPOSITORY SCHEMA
+------------------------------------------------------------
+Repository: tkd-assets (github.com/jonga-llucci/tkd-assets)
+Branch: main
+Hosted via: GitHub Pages (jonga-llucci.github.io/tkd-assets)
+
+ROOT/
+├── Code.gs                     Server-side GAS logic (reference copy)
+├── Index.html                  Main GAS app frontend (reference copy)
+├── TKD Academy Manifest.txt    This document
+├── .gitignore
+│
+├── PWA/                        GitHub Pages PWA shell
+│   ├── index.html              PWA shell — iframe wrapper, install prompt logic
+│   ├── manifest.json           PWA manifest — name, icons, display mode
+│   ├── sw.js                   Service worker — satisfies PWA installability requirement
+│   ├── icon-192.png            Home screen icon (192×192px)
+│   └── icon-512.png            Home screen icon (512×512px)
+│
+├── images/                     Tul pattern images served directly via GitHub raw URL
+│   ├── ChoiYong.jpg
+│   ├── Chon-Ji.jpg
+│   ├── ChoongJang.jpg
+│   ├── ChoongMoo.jpg
+│   ├── DanGun.jpg
+│   ├── DoSan.jpg
+│   ├── EuiAm.jpg
+│   ├── GeBack.jpg
+│   ├── HwaRang.jpg
+│   ├── JoongGun.jpg
+│   ├── KoDang.jpg
+│   ├── KwangGae.jpg
+│   ├── PoEun.jpg
+│   ├── SamIl.jpg
+│   ├── ToiGye.jpg
+│   ├── WonHyo.jpg
+│   ├── YooSin.jpg
+│   └── YulGok.jpg
+│
+└── quiz/                       
+├── Code.gs                     Server-side GAS logic (reference copy)
+├── Index.html                  Main GAS app frontend (reference copy)
+├── TKD Academy Manifest.txt    This document
+├── .gitignore
+
+------------------------------------------------------------
+NOTES
+------------------------------------------------------------
+- The live GAS app is NOT stored in this repo — Code.gs and Index.html 
+  at root are reference copies only. The authoritative versions live in 
+  Google Apps Script editor tied to the Google Sheet.
+- Image URLs in the Tuls sheet (Col H) reference raw GitHub content:
+  https://raw.githubusercontent.com/jonga-llucci/tkd-assets/main/images/[filename]
+- PWA shell at /PWA/index.html is the install entry point. 
+  The GAS /exec URL is embedded in the iframe src.
+- Never store Stripe live keys, webhook secrets, or user credentials 
+  in this repository.
+
+17. ROADMAP / NEXT ITERATIONS (v11.0+)
+------------------------------------------------------------
 - move data for pairs & true false game to their own tabs
 - New press-up training programme
-- implement game "levels" or "difficulty" for daily practise. Set the timer - harder = less time,  number of choices - more = harder
-- Monetization Gate: 'SignupDate' check for trial period / Stripe integration.
+- Implement Firebase Cloud Messaging (FCM) + a GitHub Actions workflow to enable push notifications in PWA & WebIntoApp for streak reminders / inactivity nudges / new content
+- Add "club" to user tab to be able to offer customisations from licensing
+- Additional screens in admin - to add questions, to request features, to review the question database
+- In Admin: Include subscription info on user cards, add club filter
 ============================================================
