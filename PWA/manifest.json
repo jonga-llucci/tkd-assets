@@ -10,13 +10,13 @@
   "theme_color": "#0d6efd",
   "icons": [
     {
-      "src": "https://github.com/jonga-llucci/tkd-assets/blob/6789200d113a48c428e16302e7016ac241766949/%E2%80%94Pngtree%E2%80%94taekwondo%20pintura_192.png?raw=true",
+      "src": "https://github.com/jonga-llucci/tkd-assets/blob/89c3508f49db6586d0321ceac4e929b0bd4dd166/PWA/%E2%80%94Pngtree%E2%80%94taekwondo%20pintura_192.png?raw=true",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "https://github.com/jonga-llucci/tkd-assets/blob/6789200d113a48c428e16302e7016ac241766949/%E2%80%94Pngtree%E2%80%94taekwondo%20pintura_512.png?raw=true",
+      "src": "https://github.com/jonga-llucci/tkd-assets/blob/89c3508f49db6586d0321ceac4e929b0bd4dd166/PWA/%E2%80%94Pngtree%E2%80%94taekwondo%20pintura_512.png?raw=true",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
