@@ -226,6 +226,11 @@
       <option value="">Loading grades...</option>
     </select>
 
+    <label class="small fw-bold text-muted">Club</label>
+    <select id="reg-club" class="form-select mb-3 p-3">
+      <option value="">Select your club (optional)</option>
+    </select>
+
     <label class="small fw-bold text-muted">Password</label>
     <input type="password" id="reg-pass" class="form-control mb-2 p-3" placeholder="Password">
     <p class="text-muted small mb-3">Must be 5+ characters with uppercase, lowercase, number and special character (!@#$%^&*)</p>
@@ -327,6 +332,13 @@
 
 <div id="view-quiz" class="view-container">
   <div class="progress-wrapper"><div id="progress-bar"></div></div>
+
+  <div id="difficulty-selector" class="hidden d-flex gap-2 mb-3">
+        <button id="diff-easy"   class="btn btn-sm btn-outline-secondary rounded-pill flex-fill" onclick="setPracticeDifficulty('easy')">⏱ Easy</button>
+        <button id="diff-medium" class="btn btn-sm btn-secondary rounded-pill flex-fill"          onclick="setPracticeDifficulty('medium')">⏱ Medium</button>
+        <button id="diff-hard"   class="btn btn-sm btn-outline-secondary rounded-pill flex-fill" onclick="setPracticeDifficulty('hard')">⏱ Hard</button>
+  </div>
+
   <div class="quiz-card">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <span id="q-count" class="badge bg-light text-dark border"></span>
@@ -436,17 +448,86 @@
     <hr>
     <p class="mb-1">Club:</p>
     <p class="fw-bold">TSX Martial Arts, Bingley</p>
+    <hr>
+    <p class="text-muted small">Spaced Repetition (SRS): Uses the Leitner System to optimize memory retention.</p>
+    <p class="text-muted small">Mock Exams: Follows grade-based question limits, 15–60 minute time limits, pass mark 75%</p>
+    <p class="text-muted mt-3" style="font-size:0.7rem;">v1.12.1</p>
     </div>
   </div>
 
 <div id="view-admin" class="view-container">
   <div class="quiz-card">
     <h3 class="fw-bold mb-1">Admin</h3>
-    <p class="text-muted small mb-4">Student overview</p>
-    <div id="admin-user-list">
-      <div class="text-center text-muted small py-3">Loading...</div>
+
+    <!-- Admin nav tabs -->
+    <div class="d-flex gap-2 mb-4">
+      <button id="atab-members"   class="btn btn-sm btn-primary rounded-pill flex-fill"          onclick="showAdminTab('members')"><i class="bi bi-people me-1"></i>Members</button>
+      <button id="atab-questions" class="btn btn-sm btn-outline-primary rounded-pill flex-fill"  onclick="showAdminTab('questions')"><i class="bi bi-patch-question me-1"></i>Questions</button>
+      <button id="atab-contact"   class="btn btn-sm btn-outline-primary rounded-pill flex-fill"  onclick="showAdminTab('contact')"><i class="bi bi-envelope me-1"></i>Contact</button>
     </div>
-  </div></div>
+
+    <!-- Members tab -->
+    <div id="admin-tab-members">
+      <div class="d-flex gap-2 mb-3 align-items-center">
+        <select id="admin-club-filter" class="form-select form-select-sm" onchange="filterAdminMembers()">
+          <option value="">All Clubs</option>
+        </select>
+        <span id="admin-member-count" class="text-muted small text-nowrap"></span>
+      </div>
+      <div id="admin-user-list">
+        <div class="text-center text-muted small py-3">Loading...</div>
+      </div>
+    </div>
+
+    <!-- Questions tab -->
+    <div id="admin-tab-questions" class="hidden">
+      <h6 class="fw-bold mb-3">Submit New Question</h6>
+      <label class="small fw-bold text-muted">Question</label>
+      <textarea id="aq-question" class="form-control mb-3 p-2" rows="3" placeholder="Enter the question text"></textarea>
+
+      <label class="small fw-bold text-muted">Correct Answer</label>
+      <input type="text" id="aq-correct" class="form-control mb-3 p-2" placeholder="Correct answer">
+
+      <label class="small fw-bold text-muted">Incorrect Option 1</label>
+      <input type="text" id="aq-opt1" class="form-control mb-3 p-2" placeholder="Wrong answer 1">
+
+      <label class="small fw-bold text-muted">Incorrect Option 2</label>
+      <input type="text" id="aq-opt2" class="form-control mb-3 p-2" placeholder="Wrong answer 2">
+
+      <label class="small fw-bold text-muted">Belt Level</label>
+      <select id="aq-belt" class="form-select mb-3 p-2">
+        <option value="">Loading...</option>
+      </select>
+
+      <label class="small fw-bold text-muted">Category</label>
+      <select id="aq-category" class="form-select mb-3 p-2">
+        <option value="">Loading...</option>
+      </select>
+
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="aq-club-only">
+        <label class="form-check-label small" for="aq-club-only" id="aq-club-label">Club questions only</label>
+      </div>
+
+      <button class="btn btn-primary w-100 rounded-pill" onclick="submitAdminQuestion()">Submit Question</button>
+    </div>
+
+    <!-- Contact tab -->
+    <div id="admin-tab-contact" class="hidden">
+      <h6 class="fw-bold mb-3">Contact TKD Academy</h6>
+      <label class="small fw-bold text-muted">Type of Request</label>
+      <select id="contact-type" class="form-select mb-3 p-2">
+        <option value="Issue">Report an Issue</option>
+        <option value="Feature Request">Feature Request</option>
+        <option value="Licensing">Licensing</option>
+        <option value="Other">Other</option>
+      </select>
+      <label class="small fw-bold text-muted">Message</label>
+      <textarea id="contact-message" class="form-control mb-3 p-2" rows="5" placeholder="Describe your issue or request..."></textarea>
+      <button class="btn btn-primary w-100 rounded-pill" onclick="submitAdminContact()">Send Message</button>
+    </div>
+  </div>
+</div>
 
 <div class="footer-container hidden" id="navbar">
   <nav class="bottom-nav">
@@ -476,7 +557,7 @@ document.addEventListener('touchmove', function(e) {
   let playerHand = [], cpuHand = []; 
   let isProcessing = false;
   
-  let quizData = [], currentIndex = 0, score = 0, activeUser = "", activeUserGrade = 1, timerInterval = null, questionTimerInterval = null, timeLeft = 0, isQuizActive = false, currentMode = "", questionsAnswered = 0, missedQuestions = [], infiniteHighScore = 0, infiniteAllTimeHigh = 0;
+  let quizData = [], currentIndex = 0, score = 0, activeUser = "", activeUserGrade = 1, timerInterval = null, questionTimerInterval = null, timeLeft = 0, isQuizActive = false, currentMode = "", questionsAnswered = 0, missedQuestions = [], infiniteHighScore = 0, infiniteAllTimeHigh = 0, practiceDifficulty = 'medium';
 
 
   let matchSelected = { qId: null, aId: null, qEl: null, aEl: null }, matchesFound = 0, setsCleared = 0, swipeCorrect = false;
@@ -843,6 +924,7 @@ function showSubscribePage(email) {
   if (timerInterval) clearInterval(timerInterval);
   if (questionTimerInterval) clearInterval(questionTimerInterval);
   document.querySelectorAll('#view-quiz [id^="ui-"]').forEach(el => el.classList.add('hidden'));
+  document.getElementById('difficulty-selector')?.classList.add('hidden');
   document.getElementById('timer-display')?.classList.add('hidden');
   document.getElementById('next-btn')?.classList.add('hidden');
   document.getElementById('infinite-score-display')?.classList.add('hidden');
@@ -932,7 +1014,7 @@ function showSubscribePage(email) {
 
 function showRegister() {
   switchView('view-register');
-  // Load belt options into registration grade selector
+
   google.script.run.withSuccessHandler(belts => {
     const sel = document.getElementById('reg-grade');
     sel.innerHTML = '<option value="">Select your next belt...</option>';
@@ -940,6 +1022,21 @@ function showRegister() {
       sel.innerHTML += `<option value="${b.value}">${b.label}</option>`;
     });
   }).getBeltOptions();
+
+  google.script.run.withSuccessHandler(clubs => {
+    const sel = document.getElementById('reg-club');
+    sel.innerHTML = '<option value="">Select your club (optional)</option>';
+    clubs.forEach(c => {
+      sel.innerHTML += `<option value="${c}">${c}</option>`;
+    });
+  }).getClubOptions();
+}
+
+function setPracticeDifficulty(level) {
+  practiceDifficulty = level;
+  document.getElementById('diff-easy').className   = `btn btn-sm rounded-pill flex-fill ${level === 'easy'   ? 'btn-secondary' : 'btn-outline-secondary'}`;
+  document.getElementById('diff-medium').className = `btn btn-sm rounded-pill flex-fill ${level === 'medium' ? 'btn-secondary' : 'btn-outline-secondary'}`;
+  document.getElementById('diff-hard').className   = `btn btn-sm rounded-pill flex-fill ${level === 'hard'   ? 'btn-secondary' : 'btn-outline-secondary'}`;
 }
 
 function handleRegister() {
@@ -947,6 +1044,7 @@ function handleRegister() {
   const email    = document.getElementById('reg-email').value.trim();
   const grade    = document.getElementById('reg-grade').value;
   const password = document.getElementById('reg-pass').value;
+  const club = document.getElementById('reg-club').value;
 
   // Basic field check
   if (!name || !email || !grade || !password) {
@@ -979,6 +1077,7 @@ function handleRegister() {
         // Clear registration fields
         ['reg-name','reg-email','reg-pass'].forEach(id => document.getElementById(id).value = '');
         document.getElementById('reg-grade').value = '';
+        document.getElementById('reg-club').value = '';
       } else {
         showOverlayMessage("REGISTRATION FAILED", "text-danger", res.message, "Try Again");
       }
@@ -987,7 +1086,7 @@ function handleRegister() {
       toggleLoad(false);
       showOverlayMessage("SERVER ERROR", "text-danger", "Could not connect. Please try again.", "Close");
     })
-    .registerUser(name, email, grade, password);
+    .registerUser(name, email, grade, password, club);
 }
 
   /**
@@ -1111,6 +1210,8 @@ function showQuestion() {
     document.getElementById('progress-bar').style.width = ((currentIndex / quizData.length) * 100) + "%";
   }
   document.getElementById('ui-standard').classList.remove('hidden');
+  const diffSel = document.getElementById('difficulty-selector');
+    if (diffSel) diffSel.classList.toggle('hidden', currentMode !== 'practice');
   const q = quizData[currentIndex];
   document.getElementById('q-count').innerText = currentMode === 'game_infinite'
     ? `Q${score + 1}`
@@ -1177,7 +1278,8 @@ function showQuestion() {
   });
 
   if (currentMode === 'practice') {
-    startQuestionTimer(q.timeLimit || 5);
+    const diffSeconds = { easy: 15, medium: 10, hard: 5 };
+    startQuestionTimer(diffSeconds[practiceDifficulty] || 10);
   }
 }
 
@@ -1555,13 +1657,130 @@ function loadAdminView() {
         document.getElementById('admin-user-list').innerHTML = `<div class="alert alert-danger small">${data.error}</div>`;
         return;
       }
-      renderAdminView(data.users);
+      window._adminFormData = data;
+      window._adminAllUsers = data.users; // Store for filtering
+
+      // Populate club filter
+      const clubs = [...new Set(data.users.map(u => u.club).filter(Boolean))].sort();
+      const sel = document.getElementById('admin-club-filter');
+      sel.innerHTML = '<option value="">All Clubs</option>';
+      clubs.forEach(c => sel.innerHTML += `<option value="${c}">${c}</option>`);
+
+      // Pre-select caller's club if they have one
+      if (data.callerClub) {
+        // Club admin — hide the filter, their data is already scoped server-side
+        document.getElementById('admin-club-filter').closest('.d-flex').classList.add('hidden');
+        renderAdminView(data.users);
+      } else {
+        // Super admin — show filter, default to all
+        renderAdminView(data.users);
+      }
+      updateAdminMemberCount();
+      populateAdminQuestionForm(data);
     })
     .withFailureHandler(() => {
       toggleLoad(false);
       document.getElementById('admin-user-list').innerHTML = '<div class="alert alert-danger small">Failed to load.</div>';
     })
-    .getAdminData(activeUser);
+    .getAdminPageData(activeUser);
+}
+
+function showAdminTab(tab) {
+  ['members','questions','contact'].forEach(t => {
+    document.getElementById(`admin-tab-${t}`).classList.toggle('hidden', t !== tab);
+    const btn = document.getElementById(`atab-${t}`);
+    btn.className = `btn btn-sm rounded-pill flex-fill ${t === tab ? 'btn-primary' : 'btn-outline-primary'}`;
+  });
+}
+
+function populateAdminQuestionForm(data) {
+  const beltSel = document.getElementById('aq-belt');
+  if (beltSel && data.belts) {
+    beltSel.innerHTML = '<option value="">Select belt level...</option>';
+    data.belts.forEach(b => {
+      beltSel.innerHTML += `<option value="${b.value}">${b.label}</option>`;
+    });
+  }
+  const catSel = document.getElementById('aq-category');
+  if (catSel && data.categories) {
+    catSel.innerHTML = '<option value="">Select category...</option>';
+    data.categories.forEach(c => {
+      catSel.innerHTML += `<option value="${c}">${c}</option>`;
+    });
+  }
+  // Update club-only label
+  if (data.callerClub) {
+    const lbl = document.getElementById('aq-club-label');
+    if (lbl) lbl.innerText = `${data.callerClub} members only`;
+  }
+}
+
+function submitAdminQuestion() {
+  const question    = document.getElementById('aq-question').value.trim();
+  const correct     = document.getElementById('aq-correct').value.trim();
+  const opt1        = document.getElementById('aq-opt1').value.trim();
+  const opt2        = document.getElementById('aq-opt2').value.trim();
+  const beltLevel   = document.getElementById('aq-belt').value;
+  const category    = document.getElementById('aq-category').value;
+  const clubOnly    = document.getElementById('aq-club-only').checked;
+
+  if (!question || !correct || !opt1 || !opt2 || !beltLevel || !category) {
+    showOverlayMessage("MISSING FIELDS", "text-danger", "Please fill in all required fields.", "OK");
+    return;
+  }
+
+  toggleLoad(true);
+  google.script.run
+    .withSuccessHandler(res => {
+      toggleLoad(false);
+      if (res.success) {
+        showOverlayMessage("SUBMITTED!", "text-success", "Question added successfully.", "OK");
+        ['aq-question','aq-correct','aq-opt1','aq-opt2'].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('aq-belt').value = '';
+        document.getElementById('aq-category').value = '';
+        document.getElementById('aq-club-only').checked = false;
+      } else {
+        showOverlayMessage("ERROR", "text-danger", res.message, "OK");
+      }
+    })
+    .withFailureHandler(() => {
+      toggleLoad(false);
+      showOverlayMessage("ERROR", "text-danger", "Could not submit question.", "OK");
+    })
+    .submitQuestion(activeUser, { question, correctAnswer: correct, opt1, opt2, beltLevel, category, clubOnly });
+}
+
+function submitAdminContact() {
+  const type    = document.getElementById('contact-type').value;
+  const message = document.getElementById('contact-message').value.trim();
+
+  if (!message) {
+    showOverlayMessage("MISSING MESSAGE", "text-danger", "Please enter a message before sending.", "OK");
+    return;
+  }
+
+  const formData = window._adminFormData || {};
+  toggleLoad(true);
+  google.script.run
+    .withSuccessHandler(res => {
+      toggleLoad(false);
+      if (res.success) {
+        showOverlayMessage("SENT!", "text-success", "Your message has been sent. Thank you.", "OK");
+        document.getElementById('contact-message').value = '';
+      } else {
+        showOverlayMessage("ERROR", "text-danger", "Could not send message.", "OK");
+      }
+    })
+    .withFailureHandler(() => {
+      toggleLoad(false);
+      showOverlayMessage("ERROR", "text-danger", "Could not connect.", "OK");
+    })
+    .submitContact(activeUser, {
+      displayName: document.getElementById('user-welcome').innerText,
+      club: formData.callerClub || '',
+      type,
+      message
+    });
 }
 
   function renderAdminView(users) {
@@ -1579,44 +1798,71 @@ function loadAdminView() {
     const masteredPct = u.totalAnswered > 0
       ? Math.round((u.buckets[4] / u.totalAnswered) * 100) : 0;
 
-    html += `
-      <div class="mb-3 p-3 border rounded-3 ${inactive ? 'border-danger' : 'border-light'} bg-white shadow-sm">
-        <div class="d-flex justify-content-between align-items-start mb-1">
-          <div>
-            <span class="fw-bold">${u.displayName}</span>
-            ${u.isAdmin ? '<span class="badge bg-secondary ms-1" style="font-size:0.6rem;">ADMIN</span>' : ''}
-          </div>
-          <span class="badge bg-primary" style="font-size:0.7rem;">${u.gradeName}</span>
-        </div>
-        <div class="d-flex gap-3 small text-muted mb-2">
-          <span><i class="bi bi-fire text-warning"></i> ${u.streak}d streak</span>
-          <span><i class="bi bi-infinity text-primary"></i> Best: ${u.highScore}</span>
-          <span><i class="bi bi-patch-check text-success"></i> ${masteredPct}% mastered</span>
-        </div>
-        
-        <div class="d-flex gap-1 mb-2" style="height:8px; background:#eee; border-radius:4px; overflow:hidden;">
-          ${(() => {
-            const seen = u.buckets[1] + u.buckets[2] + u.buckets[3] + u.buckets[4];
-            const unseen = Math.max(0, u.eligible - seen);
-            const colours = ['#adb5bd','#dc3545','#fd7e14','#0d6efd','#198754'];
-            const counts = [unseen, u.buckets[1], u.buckets[2], u.buckets[3], u.buckets[4]];
-            const grandTotal = u.eligible > 0 ? u.eligible : 1;
-            return counts.map((count, i) => {
-              const pct = (count / grandTotal) * 100;
-              return pct > 0
-                ? `<div title="${['New','Learning','Familiar','Confident','Mastered'][i]}: ${count}" style="width:${pct}%; height:100%; background:${colours[i]}; flex-shrink:0;"></div>`
-                : '';
-            }).join('');
-          })()}
-        </div>
-        <div class="small ${inactive ? 'text-danger fw-bold' : 'text-muted'}">
-          <i class="bi bi-clock"></i> ${u.lastActive}
-          ${inactive ? ` <span class="ms-1">(${u.daysSince}d ago)</span>` : ''}
-        </div>
-      </div>`;
+    const subBadge = {
+  'trial':        `<span class="badge bg-warning text-dark">Trial · ends ${u.subEndDate}</span>`,
+  'subscribed':   `<span class="badge bg-success">Subscribed · ends ${u.subEndDate}</span>`,
+  'trial_expired':`<span class="badge bg-danger">Trial Expired</span>`,
+  'sub_expired':  `<span class="badge bg-danger">Sub Expired</span>`,
+  'active':       `<span class="badge bg-secondary">Managed</span>`
+}[u.subStatus] || '';
+
+html += `
+  <div class="mb-3 p-3 border rounded-3 ${inactive ? 'border-danger' : 'border-light'} bg-white shadow-sm">
+    <div class="d-flex justify-content-between align-items-start mb-1">
+      <div>
+        <span class="fw-bold">${u.displayName}</span>
+        ${u.isAdmin ? '<span class="badge bg-secondary ms-1" style="font-size:0.6rem;">ADMIN</span>' : ''}
+        ${u.club ? `<span class="badge bg-light text-dark border ms-1" style="font-size:0.6rem;">${u.club}</span>` : ''}
+      </div>
+      <span class="badge bg-primary" style="font-size:0.7rem;">${u.gradeName}</span>
+    </div>
+    <div class="d-flex gap-3 small text-muted mb-2">
+      <span><i class="bi bi-fire text-warning"></i> ${u.streak}d streak</span>
+      <span><i class="bi bi-infinity text-primary"></i> Best: ${u.highScore}</span>
+      <span><i class="bi bi-patch-check text-success"></i> ${masteredPct}% mastered</span>
+    </div>
+    <div class="d-flex gap-1 mb-2" style="height:8px; background:#eee; border-radius:4px; overflow:hidden;">
+      ${(() => {
+        const seen = u.buckets[1] + u.buckets[2] + u.buckets[3] + u.buckets[4];
+        const unseen = Math.max(0, u.eligible - seen);
+        const colours = ['#adb5bd','#dc3545','#fd7e14','#0d6efd','#198754'];
+        const counts = [unseen, u.buckets[1], u.buckets[2], u.buckets[3], u.buckets[4]];
+        const grandTotal = u.eligible > 0 ? u.eligible : 1;
+        return counts.map((count, i) => {
+          const pct = (count / grandTotal) * 100;
+          return pct > 0
+            ? `<div title="${['New','Learning','Familiar','Confident','Mastered'][i]}: ${count}" style="width:${pct}%; height:100%; background:${colours[i]}; flex-shrink:0;"></div>`
+            : '';
+        }).join('');
+      })()}
+    </div>
+    <div class="d-flex justify-content-between align-items-center">
+      <div class="small ${inactive ? 'text-danger fw-bold' : 'text-muted'}">
+        <i class="bi bi-clock"></i> ${u.lastActive}
+        ${inactive ? ` <span class="ms-1">(${u.daysSince}d ago)</span>` : ''}
+      </div>
+      <div>${subBadge}</div>
+    </div>
+  </div>`;
   });
 
   document.getElementById('admin-user-list').innerHTML = html || '<p class="text-muted small">No users found.</p>';
+}
+
+function filterAdminMembers() {
+  const formData = window._adminFormData || {};
+  if (formData.callerClub) return; // Club admins can't override server-side filter
+  const club = document.getElementById('admin-club-filter').value;
+  const all = window._adminAllUsers || [];
+  const filtered = club ? all.filter(u => u.club === club) : all;
+  renderAdminView(filtered);
+  updateAdminMemberCount();
+}
+
+function updateAdminMemberCount() {
+  const list = document.getElementById('admin-user-list');
+  const count = list.querySelectorAll('.mb-3.p-3.border').length;
+  document.getElementById('admin-member-count').innerText = `${count} member${count !== 1 ? 's' : ''}`;
 }
 
 function renderSrsStats(stats) {
