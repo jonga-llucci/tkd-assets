@@ -581,7 +581,7 @@ function getAdminData(username) {
   return { users };
 }
 
-const STRIPE_WEBHOOK_SECRET = 'whsec_e6zF48c73HmZTZRbBtSA62jje64gp2QV';
+const STRIPE_WEBHOOK_SECRET = 'whsec_9RbDZF191NSxYeoXz1SfgtB2ZJ5nZHKb';
 
 function doPost(e) {
   try {
