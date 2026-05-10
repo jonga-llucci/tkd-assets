@@ -12,7 +12,7 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 
 2. FILE STRUCTURE & RESPONSIBILITIES
 ------------------------------------------------------------
-- Code.gs       : All server-side logic. Login, SRS, Quiz, Games, Admin, High Scores.
+- Code.gs       : All server-side logic. Login, SRS, Quiz, Games, Admin, Questions, Contact form, High Scores, Subscription, Club filtering.
 - Index.html    : Single frontend file. All views, CSS, JS, navigation.
 
 3. SPREADSHEET SCHEMA (The Data Source)
@@ -28,6 +28,7 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 - Col H: FCMToken (String, populated by WebIntoApp bridge)
 - Col I: RegisteredDate (Date, set on registration)
 - Col J: SubscriptionDate (Date, set on payment — blank during trial)
+- Col K: Club (String, optional — club name for club-scoped admin filtering)
 
 [Tab: Questions]
 - Col A: QuestionText
@@ -41,6 +42,7 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 - col U: GameCategory (answer categorisation for future game features)
 - col V: TimeLimit (Difficulty based time limit for future game features)
 - col W: TulName (Tul question is related to for future game features)
+- Col X: Club (String, optional — if set, question only shown to users in same club)
 
 [Tab: UserProgress] (SRS Data)
 - Col A: Username
@@ -67,6 +69,14 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 [Tab: Belts]
 - Col A: Belt (String, display label e.g. "6th Kup - Green Belt")
 - Col B: BeltLevel (Integer, corresponding numeric grade value)
+
+[Tab: Contact] (Auto-created on first contact form submission)
+- Col A: Timestamp (Date)
+- Col B: Username (String)
+- Col C: DisplayName (String)
+- Col D: Club (String)
+- Col E: Type (String — Issue / Feature Request / Licensing / Other)
+- Col F: Message (String)
 
 4. GLOBAL VARIABLE DICTIONARY (Code.gs & Index.html)
 ------------------------------------------------------------
@@ -101,6 +111,9 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 - roundTimeout          : Timer reference for Tul Trumps auto-advance countdown.
 - questionsAnswered     : Integer. Questions answered in current session. Guards zero-question exit review.
 - missedQuestions       : Array of { q, a } objects. Populated during session for end-of-session review.
+- practiceDifficulty    : String ('easy', 'medium', 'hard'). Default 'medium'. Controls per-question timer in practice mode. Easy=15s, Medium=10s, Hard=5s.
+- window._adminAllUsers : Array. Stores all users returned by getAdminPageData for client-side club filtering by super admin.
+- window._adminFormData : Object. Stores full admin page data including belts, categories and callerClub for use across admin tab functions.
 
 5. NAVIGATIONAL & NON-FUNCTIONAL REQUIREMENTS
 ------------------------------------------------------------
@@ -154,6 +167,8 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
   - Exam Category Weighting (col U): 10% Basics, 10% Numbers, 10% Belts, 30% Korean, 30% Patterns, 10% fill from uncategorised or any pool.
   - Exam Question Weighting: Within each category pool, questions are sampled with probability proportional to their BeltLevel (col R) — higher level = higher weight.
   - Mock Exam subtitle on home screen updates dynamically on login to reflect the correct time and question count for the user's grade.
+  - Club Question Filter: Questions with a value in Col X (Club) are only included in eligible pools if the user's Col K (Club) matches exactly. Questions with no Club value are visible to all users. Applied in getQuizData and getGameData.
+  - getUserClub_(username): Private helper returning Col K value for a user. Follows same pattern as getUserGrade_().
 
 7. GAME-SPECIFIC LOGIC
 ------------------------------------------------------------
@@ -188,7 +203,7 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 - Daily practise   - Filtering: Cards are filtered by whether to be used as exam questions Col Q =='Y' (Tab: Questions, Col Q).
 - Daily practise   - SRS: Questions should be prioritised using SRS buckets.
 - Daily practise   - Selection highlighting during daily practise should show green for answers correctly selected and red if incorrect.
-- Daily practise - Difficulty: User selects Easy (15s), Medium (10s), or Hard (5s) before starting. Default is Medium. Selection persists for the session and is controlled by practiceDifficulty global. Overrides per-question timeLimit (col V) in practice mode.
+- Daily practise   - Difficulty: User selects Easy (15s), Medium (10s), or Hard (5s) from a toolbar shown between the progress bar and quiz card during practice mode. Default is Medium. Selection persists for the session via practiceDifficulty global.Overrides per-question timeLimit (col V). Selector hidden in all other modes.
 
 - Mock exam        - Time limit (shown with MM:SS timer) 60 mins
 - Mock exam        - 50 questions
@@ -212,7 +227,7 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
     * "Club: TSX Martial Arts, Bingley"
 - Educational Disclosure: 
     * "Spaced Repetition (SRS): Uses the Leitner System to optimize memory retention."
-    * "Mock Exams: Follows strict 50-question limits, 60 minute time limit, pass mark 75%"
+    * "Mock Exams: Follows grade-based question limits, 15-60 minute time limits, pass mark 75%"
 - Version details
     *v1.12.1
 
@@ -288,19 +303,48 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 
 14. ADMIN VIEW
 ------------------------------------------------------------
-- Access    : Nav bar icon (bi-door-closed). Hidden unless Users Col G = "Y" for logged-in user.
-- Security  : getAdminData() verifies isAdmin server-side. Returns { error: "Unauthorised" } if not. Frontend check alone is not sufficient.
-- Data      : Loaded on demand via loadAdminView() → getAdminData(). Uses toggleLoad().
+- Access      : Nav bar icon (bi-door-closed). Hidden unless Users Col G = "Y".
+- Security    : getAdminPageData() verifies isAdmin server-side. Returns { error: "Unauthorised" } if not. Frontend check alone is not sufficient.
+- Data        : Loaded on demand via loadAdminView() → getAdminPageData(). Uses toggleLoad().
+
+- Club scoping:
+  * Super admin (Col K blank): sees all users, club filter dropdown visible.
+  * Club admin (Col K has value): server-side filter returns only same-club members. Club filter dropdown hidden. Cannot override server-side scope.
+
+- Three tabs: Members | Questions | Contact Switching tabs via showAdminTab(tab) — toggles hidden class on tab divs and updates button styles.
+
+MEMBERS TAB
+- Super admin: club filter dropdown populated from unique clubs in returned user set. Filtering is client-side via filterAdminMembers() using window._adminAllUsers.
+- Club admin: no filter shown. All returned members are same club.
+- Member count shown alongside filter.
 - Per-user card shows:
-  * Display name + ADMIN badge if applicable
+  * Display name + ADMIN badge + Club badge if applicable
   * Grade name badge
   * Streak, Infinite Warrior best score, % mastered
-  * SRS bucket bar (proportional width, grey=New, red=Learning, orange=Familiar, 
-    blue=Confident, green=Mastered) relative to eligible question count for user's grade
-  * Last active date/time
-  * Red border and "(Xd ago)" flag for users inactive 7+ days
-- Key       : Shown once above user cards, not repeated per card.
-- Eligible  : Calculated server-side per user based on their grade. Passed as u.eligible.
+  * SRS bucket bar (proportional — grey=New, red=Learning, orange=Familiar, blue=Confident, green=Mastered)
+  * Last active date/time with inactive flag (7+ days = red)
+  * Subscription badge: Trial (orange), Subscribed (green), Expired (red), Managed (grey for manually created users)
+- Key shown once above all cards.
+
+QUESTIONS TAB
+- Submit new question form with fields:
+  * Question text (Col A)
+  * Correct answer (Col L)
+  * Incorrect option 1 (Col E)
+  * Incorrect option 2 (Col F)
+  * Belt level dropdown (from Belts tab — descriptive labels)
+  * Category dropdown (from existing values in Questions Col U)
+  * Club-only checkbox (Col X) — label shows club name if admin has one
+- Submitted via submitQuestion(). Generates qId, sets ExamFlag=Y by default.
+- Server verifies admin before writing.
+
+CONTACT TAB
+- Form fields: Type (Issue / Feature Request / Licensing / Other), Message
+- Submitted via submitContact()
+- Writes to Tab: Contact with timestamp, username, display name, club, type, message
+- Sends email to jonathan_gallucci@hotmail.com with subject "TKD Academy contact"
+- MailApp must be authorised via one-time manual run of authoriseMailApp() in GAS editor before contact emails will send
+- Sheet write succeeds even if email fails
 
 15. SUBSCRIPTION & PAYMENT
 ------------------------------------------------------------
@@ -314,6 +358,7 @@ PROJECT: TKD ACADEMY PWA - MASTER MANIFEST (v10.0)
 - Pricing Table: Stripe-hosted, embedded in view-subscribe via <stripe-pricing-table> web component. customer-email pre-filled via showSubscribePage(email).
 - Customer Portal: Stripe-hosted. Linked from view-account "Manage My Subscription" button.
 - Frontend gate: handleLogin() checks accessStatus. Expired users see overlay with View Plans button → showSubscribePage(). Active/trial/subscribed users proceed normally.
+- Registration: New users select club from getClubOptions() dropdown (Col K values). Club stored in Col K on registration. Optional — blank means no club.
 - Banner: #subscription-banner shown below Mock Grading on view-modes for trial and subscribed users. Trial shows orange warning. Subscribed shows green confirmation without subscribe button.
 - Live vs Test: Update pricing-table-id, publishable-key, STRIPE_WEBHOOK_SECRET, and customer portal URL when switching from test to live. Never commit live keys to GitHub Pages — they are only in GAS Code.gs and Index.html (served by GAS, not public).
 
@@ -365,22 +410,21 @@ ROOT/
 ------------------------------------------------------------
 NOTES
 ------------------------------------------------------------
-- The live GAS app is NOT stored in this repo — Code.gs and Index.html 
-  at root are reference copies only. The authoritative versions live in 
-  Google Apps Script editor tied to the Google Sheet.
-- Image URLs in the Tuls sheet (Col H) reference raw GitHub content:
-  https://raw.githubusercontent.com/jonga-llucci/tkd-assets/main/images/[filename]
-- PWA shell at /PWA/index.html is the install entry point. 
-  The GAS /exec URL is embedded in the iframe src.
-- Never store Stripe live keys, webhook secrets, or user credentials 
-  in this repository.
+- The live GAS app is NOT stored in this repo — Code.gs and Index.html at root are reference copies only. The authoritative versions live in Google Apps Script editor tied to the Google Sheet.
+- Image URLs in the Tuls sheet (Col H) reference raw GitHub content: https://raw.githubusercontent.com/jonga-llucci/tkd-assets/main/images/[filename]
+- PWA shell at /PWA/index.html is the install entry point. The GAS /exec URL is embedded in the iframe src.
+- Never store Stripe live keys, webhook secrets, or user credentials in this repository.
 
-17. ROADMAP / NEXT ITERATIONS (v11.0+)
+17. PRIVATE SERVER-SIDE HELPERS (Code.gs)
+------------------------------------------------------------
+- getUserGrade_(username)  : Returns integer BeltLevel from Users Col C.
+- getUserClub_(username)   : Returns Club string from Users Col K. Empty string if not set.
+- parseSheetDate_(val)     : Safely parses a sheet cell value to a Date object. Handles Date objects, ISO strings, and GAS date serials. Returns null if unparseable.
+- getClubOptions()         : Returns sorted unique list of club names from Users Col K. All trailing underscore functions are GAS private convention — not callable from the frontend via google.script.run.
+
+18. ROADMAP / NEXT ITERATIONS (v11.0+)
 ------------------------------------------------------------
 - move data for pairs & true false game to their own tabs
 - New press-up training programme
 - Implement Firebase Cloud Messaging (FCM) + a GitHub Actions workflow to enable push notifications in PWA & WebIntoApp for streak reminders / inactivity nudges / new content
-- Add "club" to user tab to be able to offer customisations from licensing
-- Additional screens in admin - to add questions, to request features, to review the question database
-- In Admin: Include subscription info on user cards, add club filter
 ============================================================
