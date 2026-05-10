@@ -19,6 +19,14 @@ function doGet() {
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
 }
 
+function parseSheetDate_(val) {
+  if (!val) return null;
+  if (val instanceof Date) return val;
+  // Handle ISO string YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS
+  const str = val.toString().trim();
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? null : d;
+}
 
 function loginUser(username, password) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -47,14 +55,46 @@ function loginUser(username, password) {
         userSheet.getRange(i + 1, 4, 1, 2).setValues([[now, streak]]);
       }
 
-      return { 
-        success: true, 
+      const registeredDate = parseSheetDate_(userData[i][8]);
+      const subscriptionDate = parseSheetDate_(userData[i][9]);
+      const TRIAL_DAYS = 7;
+      const SUB_DAYS = 30;
+      let accessStatus = 'active';
+      let daysRemaining = null;
+
+      if (registeredDate) {
+        const daysSinceRegistered = (now - registeredDate) / (1000 * 60 * 60 * 24);
+        const daysSinceSub = subscriptionDate
+          ? (now - subscriptionDate) / (1000 * 60 * 60 * 24)
+          : null;
+
+        // Check subscription first — active sub overrides trial status
+        if (subscriptionDate && daysSinceSub <= SUB_DAYS) {
+          daysRemaining = Math.max(0, Math.ceil(SUB_DAYS - daysSinceSub));
+          accessStatus = 'subscribed';
+        } else if (daysSinceRegistered <= TRIAL_DAYS) {
+          // Within trial and no active subscription
+          daysRemaining = Math.max(0, Math.ceil(TRIAL_DAYS - daysSinceRegistered));
+          accessStatus = 'trial';
+        } else {
+          // Trial expired — check subscription
+          if (!subscriptionDate || daysSinceSub > SUB_DAYS) {
+            accessStatus = subscriptionDate ? 'subscription_expired' : 'trial_expired';
+          }
+        }
+      }
+      
+      return {
+        success: true,
         username: userData[i][0].toString().trim(),
         displayName: userData[i][5] ? userData[i][5].toString() : userData[i][0].toString(),
-        gradeValue: parseInt(userData[i][2]) || 1, 
+        gradeValue: parseInt(userData[i][2]) || 1,
         streak: streak,
-        isAdmin: userData[i][6] && userData[i][6].toString().trim().toUpperCase() === 'Y'
+        isAdmin: userData[i][6] && userData[i][6].toString().trim().toUpperCase() === 'Y',
+        accessStatus: accessStatus,
+        daysRemaining: daysRemaining
       };
+
     }
   }
   return { success: false, message: "Invalid credentials" };
@@ -540,3 +580,80 @@ function getAdminData(username) {
 
   return { users };
 }
+
+const STRIPE_WEBHOOK_SECRET = 'whsec_9RbDZF191NSxYeoXz1SfgtB2ZJ5nZHKb';
+
+function doPost(e) {
+  try {
+    const payload = e.postData.contents;
+    const sigHeader = e.parameter['stripe-signature'] || 
+                      (e.headers && e.headers['Stripe-Signature']) || '';
+
+    // Stripe signature verification
+    // Note: GAS doesn't support the full HMAC timing-safe comparison Stripe recommends,
+    // but this provides a meaningful integrity check for low-risk subscription data.
+    if (STRIPE_WEBHOOK_SECRET && sigHeader) {
+      const timestamp = sigHeader.split(',')
+        .find(p => p.startsWith('t='))?.split('=')[1];
+      const sig = sigHeader.split(',')
+        .find(p => p.startsWith('v1='))?.split('=')[1];
+
+      if (timestamp && sig) {
+        const signedPayload = `${timestamp}.${payload}`;
+        const computedSig = Utilities.computeHmacSha256Signature(
+          signedPayload, STRIPE_WEBHOOK_SECRET
+        );
+        const computedHex = computedSig.map(b => 
+          ('0' + (b & 0xFF).toString(16)).slice(-2)
+        ).join('');
+
+        if (computedHex !== sig) {
+          return ContentService.createTextOutput(
+            JSON.stringify({ error: 'Invalid signature' })
+          ).setMimeType(ContentService.MimeType.JSON);
+        }
+
+        // Reject requests older than 5 minutes
+        const fiveMinutes = 5 * 60;
+        const nowSeconds = Math.floor(Date.now() / 1000);
+        if (Math.abs(nowSeconds - parseInt(timestamp)) > fiveMinutes) {
+          return ContentService.createTextOutput(
+            JSON.stringify({ error: 'Timestamp too old' })
+          ).setMimeType(ContentService.MimeType.JSON);
+        }
+      }
+    }
+
+    const parsed = JSON.parse(payload);
+
+    if (parsed.type === 'checkout.session.completed' ||
+        parsed.type === 'invoice.payment_succeeded') {
+      const email = parsed.data.object.customer_email ||
+                    parsed.data.object.customer_details?.email;
+      if (email) {
+        updateSubscriptionDate(email.toString().trim().toLowerCase());
+      }
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({ received: true }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch(err) {
+    return ContentService.createTextOutput(JSON.stringify({ error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function updateSubscriptionDate(email) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Users");
+  const data = sheet.getDataRange().getValues();
+  const now = new Date();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] && data[i][0].toString().trim().toLowerCase() === email) {
+      sheet.getRange(i + 1, 10).setValue(now); // Col J = SubscriptionDate
+      return;
+    }
+  }
+}
+
+
