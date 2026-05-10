@@ -19,6 +19,14 @@ function doGet() {
     .addMetaTag('viewport', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no');
 }
 
+function parseSheetDate_(val) {
+  if (!val) return null;
+  if (val instanceof Date) return val;
+  // Handle ISO string YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS
+  const str = val.toString().trim();
+  const d = new Date(str);
+  return isNaN(d.getTime()) ? null : d;
+}
 
 function loginUser(username, password) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -47,24 +55,35 @@ function loginUser(username, password) {
         userSheet.getRange(i + 1, 4, 1, 2).setValues([[now, streak]]);
       }
 
-      const registeredDate = userData[i][8] ? new Date(userData[i][8]) : null;
-      const subscriptionDate = userData[i][9] ? new Date(userData[i][9]) : null;
-      const TRIAL_DAYS = 30;
-      const SUB_DAYS = 32;
+      const registeredDate = parseSheetDate_(userData[i][8]);
+      const subscriptionDate = parseSheetDate_(userData[i][9]);
+      const TRIAL_DAYS = 7;
+      const SUB_DAYS = 30;
       let accessStatus = 'active';
+      let daysRemaining = null;
 
       if (registeredDate) {
         const daysSinceRegistered = (now - registeredDate) / (1000 * 60 * 60 * 24);
         const daysSinceSub = subscriptionDate
           ? (now - subscriptionDate) / (1000 * 60 * 60 * 24)
           : null;
-        if (daysSinceRegistered > TRIAL_DAYS) {
+
+        // Check subscription first — active sub overrides trial status
+        if (subscriptionDate && daysSinceSub <= SUB_DAYS) {
+          daysRemaining = Math.max(0, Math.ceil(SUB_DAYS - daysSinceSub));
+          accessStatus = 'subscribed';
+        } else if (daysSinceRegistered <= TRIAL_DAYS) {
+          // Within trial and no active subscription
+          daysRemaining = Math.max(0, Math.ceil(TRIAL_DAYS - daysSinceRegistered));
+          accessStatus = 'trial';
+        } else {
+          // Trial expired — check subscription
           if (!subscriptionDate || daysSinceSub > SUB_DAYS) {
             accessStatus = subscriptionDate ? 'subscription_expired' : 'trial_expired';
           }
         }
       }
-
+      
       return {
         success: true,
         username: userData[i][0].toString().trim(),
@@ -72,7 +91,8 @@ function loginUser(username, password) {
         gradeValue: parseInt(userData[i][2]) || 1,
         streak: streak,
         isAdmin: userData[i][6] && userData[i][6].toString().trim().toUpperCase() === 'Y',
-        accessStatus: accessStatus
+        accessStatus: accessStatus,
+        daysRemaining: daysRemaining
       };
 
     }

@@ -3,6 +3,7 @@
 <head>
   <base target="_top">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script async src="https://js.stripe.com/v3/pricing-table.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <style>
     :root { --tkd-blue: #0d6efd; --tkd-red: #dc3545; --tkd-green: #198754; }
@@ -234,6 +235,21 @@
   </div>
 </div>
 
+<div id="view-subscribe" class="view-container">
+  <div class="quiz-card">
+    <h3 class="fw-bold mb-1 text-center">Choose Your Plan</h3>
+    <p class="text-muted small text-center mb-4">Unlock full access to TKD Academy</p>
+      <stripe-pricing-table 
+      pricing-table-id="prctbl_1TVUuHEfTtJ4m0hR0syXz9xH"
+      publishable-key="pk_test_51TVS4XEfTtJ4m0hRNDvHNoyOn9OzGyTfiFf0eRTHmfj5AaOjhaX3VeHx5dvQxGJYK6noNnfaDknQmrdOFWDlRgpi00LXkr80vk"
+      customer-email="">
+    </stripe-pricing-table>
+    <div class="mt-3 text-center">
+      <button class="btn btn-outline-secondary rounded-pill" onclick="switchView('view-login')">Back to Login</button>
+    </div>
+  </div>
+</div>
+
 <div id="view-modes" class="view-container">
   <div class="quiz-card">
     <div class="d-flex justify-content-between mb-4">
@@ -248,8 +264,15 @@
       <div class="d-flex align-items-center"><i class="bi bi-lightning me-3 fs-3"></i><div><strong>Daily Practice</strong><br><small>10 Questions</small></div></div>
     </button>
     <button class="btn btn-outline-danger w-100 p-3 text-start" onclick="startApp('test')">
-      <div class="d-flex align-items-center"><i class="bi bi-stopwatch me-3 fs-3"></i><div><strong>Mock Grading</strong><br><small>Full Test (60m)</small></div></div>
+      <div class="d-flex align-items-center"><i class="bi bi-stopwatch me-3 fs-3"></i><div><strong>Mock Grading</strong><br><small id="mock-grading-subtitle">Full Test</small></div></div>
     </button>
+
+    <div id="subscription-banner" class="hidden mt-3 p-3 rounded-3 text-center" style="border: 1.5px solid #fd7e14; background:#fff8f0;">
+      <div id="subscription-banner-msg" class="small fw-bold mb-2" style="color:#fd7e14;"></div>
+      <button class="btn btn-sm btn-warning rounded-pill px-4 fw-bold" onclick="showSubscribePage(activeUser)">
+        View Plans
+      </button>
+    </div>
   </div>
 </div>
 
@@ -395,6 +418,13 @@
       <label class="small fw-bold text-muted">Change Password:</label>
       <input type="password" id="new-pass" class="form-control p-3 mb-2" placeholder="New Password">
       <button class="btn btn-primary w-100 p-3" onclick="updatePass()">Update Password</button>
+    </div>
+    <div class="mb-4">
+      <label class="small fw-bold text-muted">Subscription:</label>
+      <button class="btn btn-outline-primary w-100 p-3 mt-1" 
+        onclick="window.open('https://billing.stripe.com/p/login/test_3cI5kDgcR3VOb2b5aP0co00', '_blank')">
+        <i class="bi bi-credit-card me-2"></i>Manage My Subscription
+      </button>
     </div>
   </div>
 </div>
@@ -708,52 +738,97 @@ function goHome() {
 }
 
   function handleLogin() {
-    const u = document.getElementById('user-input').value, p = document.getElementById('pass-input').value;
-    if(!u || !p) return;
-    document.getElementById('login-error').style.display = 'none';
-    toggleLoad(true);
-    google.script.run.withSuccessHandler(res => {
-  toggleLoad(false);
-  const errEl = document.getElementById('login-error');
-  if (res.success) {
+  const u = document.getElementById('user-input').value;
+  const p = document.getElementById('pass-input').value;
+  if (!u || !p) return;
+  document.getElementById('login-error').style.display = 'none';
+  toggleLoad(true);
+
+  google.script.run.withSuccessHandler(res => {
+    toggleLoad(false);
+    const errEl = document.getElementById('login-error');
+
+    if (!res.success) {
+      errEl.innerText = "Incorrect username or password.";
+      errEl.style.display = 'block';
+      return;
+    }
+
     if (res.accessStatus === 'trial_expired') {
-      toggleLoad(false);
-      showOverlayMessage(
-        "TRIAL ENDED",
-        "text-warning",
-        "Your 30-day free trial has ended. Subscribe to continue your training.",
-        "Subscribe Now",
-        () => window.open('https://buy.stripe.com/test_3cI5kDgcR3VOb2b5aP0co00', '_blank')
-      );
+      document.getElementById('result-text').innerText = "FREE TRIAL ENDED";
+      document.getElementById('result-text').className = "fw-bold text-warning";
+      document.getElementById('result-details').innerHTML = `
+        <p class="mb-2">Your 7-day free trial has ended.</p>
+        <p class="text-muted small mb-4">Subscribe to continue your Taekwondo training.</p>
+        <div class="d-grid gap-2">
+          <button class="btn btn-warning btn-lg rounded-pill fw-bold"
+            onclick="showSubscribePage('${res.username}')">
+            View Plans
+          </button>
+          <button class="btn btn-outline-secondary rounded-pill" onclick="closeWarning()">Maybe Later</button>
+        </div>`;
+      document.getElementById('result-overlay').classList.remove('hidden');
       return;
     }
+
     if (res.accessStatus === 'subscription_expired') {
-      toggleLoad(false);
-      showOverlayMessage(
-        "SUBSCRIPTION EXPIRED",
-        "text-danger",
-        "Your subscription has lapsed. Renew to get back to training.",
-        "Renew Now",
-        () => window.open('https://buy.stripe.com/test_3cI5kDgcR3VOb2b5aP0co00', '_blank')
-      );
+      document.getElementById('result-text').innerText = "SUBSCRIPTION EXPIRED";
+      document.getElementById('result-text').className = "fw-bold text-danger";
+      document.getElementById('result-details').innerHTML = `
+        <p class="mb-2">Your subscription has lapsed.</p>
+        <p class="text-muted small mb-4">Renew now to get back to training.</p>
+        <div class="d-grid gap-2">
+          <button class="btn btn-danger btn-lg rounded-pill fw-bold"
+            onclick="showSubscribePage('${res.username}')">
+            View Plans
+          </button>
+          <button class="btn btn-outline-secondary rounded-pill" onclick="closeWarning()">Maybe Later</button>
+        </div>`;
+      document.getElementById('result-overlay').classList.remove('hidden');
       return;
     }
-    // Normal login flow continues...
+
+    // Normal login flow
     activeUser = res.username;
     activeUserGrade = res.gradeValue;
     updateGradeBanner(res.gradeValue);
     if (res.isAdmin) document.getElementById('nav-admin').classList.remove('hidden');
-    document.getElementById('user-welcome').innerText = res.displayName;
+    document.getElementById('user-welcome').innerText = res.displayName.split(' ')[0];
     document.getElementById('user-streak').innerHTML = `<i class="bi bi-fire"></i> ${res.streak} Day Streak`;
     document.getElementById('navbar').classList.remove('hidden');
-    
+
+    // Subscription banner
+    const banner = document.getElementById('subscription-banner');
+    const bannerMsg = document.getElementById('subscription-banner-msg');
+    if (res.accessStatus === 'trial' && res.daysRemaining !== null) {
+      bannerMsg.innerText = `⏳ Free trial expires in ${res.daysRemaining} day${res.daysRemaining !== 1 ? 's' : ''}`;
+      bannerMsg.style.color = '#fd7e14';
+      banner.style.borderColor = '#fd7e14';
+      banner.style.background = '#fff8f0';
+      banner.querySelector('button').classList.remove('hidden');
+      banner.classList.remove('hidden');
+    } else if (res.accessStatus === 'subscribed' && res.daysRemaining !== null) {
+      bannerMsg.innerText = `✓ ${res.daysRemaining} day${res.daysRemaining !== 1 ? 's' : ''} left in subscription`;
+      bannerMsg.style.color = '#198754';
+      banner.style.borderColor = '#198754';
+      banner.style.background = '#f0fff4';
+      banner.querySelector('button').classList.add('hidden');
+      banner.classList.remove('hidden');
+    } else {
+      banner.classList.add('hidden');
+    }
+
     switchView('view-modes');
-  } else {
-    errEl.innerText = "Incorrect username or password.";
-    errEl.style.display = 'block';
-  }
-}).loginUser(u, p);
-  }
+  }).loginUser(u, p);
+}
+
+function showSubscribePage(email) {
+  // Pre-fill email if known
+  const table = document.querySelector('stripe-pricing-table');
+  if (table && email) table.setAttribute('customer-email', email);
+  closeWarning();
+  switchView('view-subscribe');
+}
 
   function startApp(mode) {
   let targetView = 'view-quiz';
@@ -1261,7 +1336,7 @@ function handleSwipe(userAnswer) {
   function updateTimerUI() { const m = Math.floor(timeLeft / 60), s = timeLeft % 60; document.getElementById('timer-display').innerText = `${m}:${s < 10 ? '0' : ''}${s}`; }
 
 function switchView(targetView) {
-  const views = ['view-login', 'view-register', 'view-modes', 'view-game-center', 'view-trumps', 'view-quiz', 'view-results', 'view-account', 'view-about', 'view-admin'];
+  const views = ['view-login', 'view-register', 'view-subscribe', 'view-modes', 'view-game-center', 'view-trumps', 'view-quiz', 'view-results', 'view-account', 'view-about', 'view-admin'];
   
   views.forEach(id => {
     const el = document.getElementById(id);
