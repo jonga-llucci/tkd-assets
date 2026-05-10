@@ -214,7 +214,7 @@
     <h2 class="fw-bold mb-1 text-center">Create Account</h2>
     <p class="text-muted small text-center mb-4">Join TKD Academy</p>
 
-    <label class="small fw-bold text-muted">Name</label>
+    <label class="small fw-bold text-muted">Full Name</label>
     <input type="text" id="reg-name" class="form-control mb-3 p-3" placeholder="Your name">
 
     <label class="small fw-bold text-muted">Email Address</label>
@@ -716,7 +716,29 @@ function goHome() {
   toggleLoad(false);
   const errEl = document.getElementById('login-error');
   if (res.success) {
-    errEl.style.display = 'none';
+    if (res.accessStatus === 'trial_expired') {
+      toggleLoad(false);
+      showOverlayMessage(
+        "TRIAL ENDED",
+        "text-warning",
+        "Your 30-day free trial has ended. Subscribe to continue your training.",
+        "Subscribe Now",
+        () => window.open('https://buy.stripe.com/test_3cI5kDgcR3VOb2b5aP0co00', '_blank')
+      );
+      return;
+    }
+    if (res.accessStatus === 'subscription_expired') {
+      toggleLoad(false);
+      showOverlayMessage(
+        "SUBSCRIPTION EXPIRED",
+        "text-danger",
+        "Your subscription has lapsed. Renew to get back to training.",
+        "Renew Now",
+        () => window.open('https://buy.stripe.com/test_3cI5kDgcR3VOb2b5aP0co00', '_blank')
+      );
+      return;
+    }
+    // Normal login flow continues...
     activeUser = res.username;
     activeUserGrade = res.gradeValue;
     updateGradeBanner(res.gradeValue);

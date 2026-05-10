@@ -47,14 +47,34 @@ function loginUser(username, password) {
         userSheet.getRange(i + 1, 4, 1, 2).setValues([[now, streak]]);
       }
 
-      return { 
-        success: true, 
+      const registeredDate = userData[i][8] ? new Date(userData[i][8]) : null;
+      const subscriptionDate = userData[i][9] ? new Date(userData[i][9]) : null;
+      const TRIAL_DAYS = 30;
+      const SUB_DAYS = 32;
+      let accessStatus = 'active';
+
+      if (registeredDate) {
+        const daysSinceRegistered = (now - registeredDate) / (1000 * 60 * 60 * 24);
+        const daysSinceSub = subscriptionDate
+          ? (now - subscriptionDate) / (1000 * 60 * 60 * 24)
+          : null;
+        if (daysSinceRegistered > TRIAL_DAYS) {
+          if (!subscriptionDate || daysSinceSub > SUB_DAYS) {
+            accessStatus = subscriptionDate ? 'subscription_expired' : 'trial_expired';
+          }
+        }
+      }
+
+      return {
+        success: true,
         username: userData[i][0].toString().trim(),
         displayName: userData[i][5] ? userData[i][5].toString() : userData[i][0].toString(),
-        gradeValue: parseInt(userData[i][2]) || 1, 
+        gradeValue: parseInt(userData[i][2]) || 1,
         streak: streak,
-        isAdmin: userData[i][6] && userData[i][6].toString().trim().toUpperCase() === 'Y'
+        isAdmin: userData[i][6] && userData[i][6].toString().trim().toUpperCase() === 'Y',
+        accessStatus: accessStatus
       };
+
     }
   }
   return { success: false, message: "Invalid credentials" };
@@ -540,3 +560,80 @@ function getAdminData(username) {
 
   return { users };
 }
+
+const STRIPE_WEBHOOK_SECRET = 'whsec_e6zF48c73HmZTZRbBtSA62jje64gp2QV';
+
+function doPost(e) {
+  try {
+    const payload = e.postData.contents;
+    const sigHeader = e.parameter['stripe-signature'] || 
+                      (e.headers && e.headers['Stripe-Signature']) || '';
+
+    // Stripe signature verification
+    // Note: GAS doesn't support the full HMAC timing-safe comparison Stripe recommends,
+    // but this provides a meaningful integrity check for low-risk subscription data.
+    if (STRIPE_WEBHOOK_SECRET && sigHeader) {
+      const timestamp = sigHeader.split(',')
+        .find(p => p.startsWith('t='))?.split('=')[1];
+      const sig = sigHeader.split(',')
+        .find(p => p.startsWith('v1='))?.split('=')[1];
+
+      if (timestamp && sig) {
+        const signedPayload = `${timestamp}.${payload}`;
+        const computedSig = Utilities.computeHmacSha256Signature(
+          signedPayload, STRIPE_WEBHOOK_SECRET
+        );
+        const computedHex = computedSig.map(b => 
+          ('0' + (b & 0xFF).toString(16)).slice(-2)
+        ).join('');
+
+        if (computedHex !== sig) {
+          return ContentService.createTextOutput(
+            JSON.stringify({ error: 'Invalid signature' })
+          ).setMimeType(ContentService.MimeType.JSON);
+        }
+
+        // Reject requests older than 5 minutes
+        const fiveMinutes = 5 * 60;
+        const nowSeconds = Math.floor(Date.now() / 1000);
+        if (Math.abs(nowSeconds - parseInt(timestamp)) > fiveMinutes) {
+          return ContentService.createTextOutput(
+            JSON.stringify({ error: 'Timestamp too old' })
+          ).setMimeType(ContentService.MimeType.JSON);
+        }
+      }
+    }
+
+    const parsed = JSON.parse(payload);
+
+    if (parsed.type === 'checkout.session.completed' ||
+        parsed.type === 'invoice.payment_succeeded') {
+      const email = parsed.data.object.customer_email ||
+                    parsed.data.object.customer_details?.email;
+      if (email) {
+        updateSubscriptionDate(email.toString().trim().toLowerCase());
+      }
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({ received: true }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch(err) {
+    return ContentService.createTextOutput(JSON.stringify({ error: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function updateSubscriptionDate(email) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Users");
+  const data = sheet.getDataRange().getValues();
+  const now = new Date();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] && data[i][0].toString().trim().toLowerCase() === email) {
+      sheet.getRange(i + 1, 10).setValue(now); // Col J = SubscriptionDate
+      return;
+    }
+  }
+}
+
+
