@@ -10,13 +10,16 @@
         :root { --tkd-blue: #0d6efd; --tkd-red: #dc3545; }
         body { font-family: 'Segoe UI', sans-serif; color: #333; }
         
+        /* Navbar Logo Styling */
+        .nav-logo { height: 40px; width: auto; margin-right: 10px; }
+
         /* Hero Section */
         .hero {
             background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), 
                         url('https://images.unsplash.com/photo-1555597673-b21d5c935865?auto=format&fit=crop&q=80&w=1600');
             background-size: cover;
             background-position: center;
-            height: 80vh;
+            height: 70vh;
             display: flex;
             align-items: center;
             color: white;
@@ -26,17 +29,20 @@
         .btn-tkd {
             background-color: var(--tkd-blue);
             color: white;
-            padding: 12px 30px;
+            padding: 12px 40px;
             border-radius: 50px;
             font-weight: 600;
             transition: all 0.3s;
             border: none;
+            text-decoration: none;
+            display: inline-block;
         }
 
         .btn-tkd:hover {
             background-color: #0a58ca;
             transform: translateY(-2px);
             color: white;
+            box-shadow: 0 4px 15px rgba(13, 110, 253, 0.4);
         }
 
         .feature-icon {
@@ -51,21 +57,20 @@
 <body>
 
     <nav class="navbar navbar-expand-lg navbar-light bg-white sticky-top shadow-sm">
-        <div class="container">
-            <a class="navbar-brand fw-bold text-primary" href="#">
-                <i class="bi bi-shield-check"></i> TKD ACADEMY
+        <div class="container justify-content-center">
+            <a class="navbar-brand fw-bold text-primary d-flex align-items-center" href="#">
+                <img src="https://github.com/jonga-llucci/tkd-assets/blob/8d8710299599b0c5f8fa5684ac7bbfc2a1f30175/PWA/%E2%80%94Pngtree%E2%80%94taekwondo%20pintura_512.png?raw=true" alt="TKD Logo" class="nav-logo">
+                TKD ACADEMY
             </a>
-            <a href="#login" class="btn btn-outline-primary btn-sm rounded-pill px-3">Student Login</a>
         </div>
     </nav>
 
     <header class="hero">
         <div class="container">
-            <h1 class="display-3 fw-bold mb-3">Integrity. Courtesy. Perseverance.</h1>
-            <p class="lead mb-4">Master your Taekwondo theory and patterns with our interactive training platform.</p>
-            <div class="d-flex justify-content-center gap-3">
+            <h1 class="display-3 fw-bold mb-3 text-uppercase">Integrity. Courtesy. Perseverance.</h1>
+            <p class="lead mb-4 px-3">Master your Taekwondo theory and patterns with our interactive training platform.</p>
+            <div class="d-flex justify-content-center">
                 <a href="#about" class="btn btn-tkd btn-lg">Learn More</a>
-                <a href="#" class="btn btn-light btn-lg rounded-pill px-4">Our Patterns</a>
             </div>
         </div>
     </header>
@@ -76,17 +81,17 @@
                 <div class="col-md-4">
                     <i class="bi bi-book feature-icon"></i>
                     <h3>Theory Mastery</h3>
-                    <p class="text-muted">Interactive quizzes covering Korean terminology, history, and meanings of patterns.</p>
+                    <p class="text-muted">Interactive quizzes covering Korean terminology, history, and the deep meanings of your Tuls.</p>
                 </div>
                 <div class="col-md-4">
-                    <i class="bi bi-grid-3x3-gap feature-icon"></i>
-                    <h3>Pattern Logic</h3>
-                    <p class="text-muted">Step-by-step breakdowns of all Tuls from White Belt to Black Belt.</p>
+                    <i class="bi bi-journal-check feature-icon"></i>
+                    <h3>Practice Exams</h3>
+                    <p class="text-muted">Simulate grading conditions with timed mock exams tailored to your specific belt level.</p>
                 </div>
                 <div class="col-md-4">
                     <i class="bi bi-trophy feature-icon"></i>
                     <h3>Track Progress</h3>
-                    <p class="text-muted">Earn your stripes. Our SRS system ensures you never forget what you've learned.</p>
+                    <p class="text-muted">Our SRS system tracks your strengths and weaknesses to ensure you are ready for your next stripe.</p>
                 </div>
             </div>
         </div>
@@ -95,8 +100,7 @@
     <section class="bg-light py-5 border-top">
         <div class="container text-center py-4">
             <h2 class="fw-bold mb-4">Ready for your next Grading?</h2>
-            <p class="mb-4 text-muted">Join 100+ students already sharpening their Ki-Hap.</p>
-            <a href="https://tkdacademy.app/PWA" target="_blank" class="btn btn-tkd btn-lg shadow">
+            <a href="YOUR_GAS_DEPLOYMENT_URL" target="_blank" class="btn btn-tkd btn-lg shadow">
                 Launch Academy App <i class="bi bi-arrow-right ms-2"></i>
             </a>
         </div>
@@ -106,9 +110,7 @@
         <div class="container text-center">
             <p class="mb-0">&copy; 2026 TKD Academy. All rights reserved.</p>
             <div class="mt-2">
-                <a href="#" class="text-decoration-none mx-2">Privacy</a>
-                <a href="#" class="text-decoration-none mx-2">Terms</a>
-                <a href="#" class="text-decoration-none mx-2">Contact</a>
+                <small>Traditional Taekwondo Theory & Practice</small>
             </div>
         </div>
     </footer>
