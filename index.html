@@ -98,26 +98,22 @@
                             <h2 class="text-center fw-bold mb-3">Club Licensing</h2>
                             <p class="text-center text-muted mb-4">Offer TKD Academy to your students. We provide custom club branding and instructor admin functionality to track student progress.</p>
                             
-                            <form action="https://formspree.io/f/enquiries@tkdacademy.app" method="POST">
+                            <form id="licensingForm">
                                 <div class="row g-3">
                                     <div class="col-md-6">
                                         <label class="form-label small fw-bold">Your Name</label>
-                                        <input type="text" name="name" class="form-control" placeholder="Instructor Name" required>
+                                        <input type="text" id="ins-name" class="form-control" placeholder="Instructor Name" required>
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label small fw-bold">Club Name</label>
-                                        <input type="text" name="club" class="form-control" placeholder="Academy Name" required>
-                                    </div>
-                                    <div class="col-md-12">
-                                        <label class="form-label small fw-bold">Email Address</label>
-                                        <input type="email" name="_replyto" class="form-control" placeholder="instructor@club.com" required>
+                                        <input type="text" id="ins-club" class="form-control" placeholder="Academy Name" required>
                                     </div>
                                     <div class="col-md-12">
                                         <label class="form-label small fw-bold">Message</label>
-                                        <textarea name="message" class="form-control" rows="4" placeholder="How can we help your club?" required></textarea>
+                                        <textarea id="ins-message" class="form-control" rows="4" placeholder="How can we help your club?" required></textarea>
                                     </div>
                                     <div class="col-md-12 d-grid mt-4">
-                                        <button type="submit" class="btn btn-tkd shadow-sm">Send Enquiry</button>
+                                        <button type="button" onclick="sendInquiry()" class="btn btn-tkd shadow-sm">Send Enquiry</button>
                                     </div>
                                 </div>
                             </form>
@@ -175,6 +171,31 @@
                 document.getElementById('page-' + pageId).classList.add('active-page');
             }
             window.scrollTo(0,0);
+        }
+       
+        function sendInquiry() {
+            const contactData = {
+                displayName: document.getElementById('ins-name').value,
+                club: document.getElementById('ins-club').value,
+                message: document.getElementById('ins-message').value,
+                type: "Club Licensing"
+            };
+        
+            if (!contactData.displayName || !contactData.message) {
+                alert("Please provide your name and a message.");
+                return;
+            }
+        
+            // Reuse your existing loading message logic
+            toggleLoad(true, "Breathe in and out..."); 
+        
+            google.script.run.withSuccessHandler(function(res) {
+                toggleLoad(false);
+                if (res.success) {
+                    alert("Thank you! Your enquiry has been sent to our team.");
+                    document.getElementById('licensingForm').reset();
+                }
+            }).submitContact("Web Visitor", contactData);
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
