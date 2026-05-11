@@ -100,7 +100,8 @@ function loginUser(username, password) {
   return { success: false, message: "Invalid credentials" };
 }
 
-function registerUser(displayName, email, gradeValue, password) {
+function registerUser(displayName, email, gradeValue, password, club) {
+
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName("Users");
   const data = sheet.getDataRange().getValues();
@@ -122,18 +123,18 @@ function registerUser(displayName, email, gradeValue, password) {
   // Col A:Username(email) | B:Password | C:BeltLevel | D:LastActive | E:Streak | 
   // F:DisplayName | G:isAdmin | H:FCMToken | I:RegisteredDate | J:SubscriptionDate
   sheet.appendRow([
-    cleanEmail,           // A — username (email)
-    password,             // B — password
-    parseInt(gradeValue), // C — belt level
-    now,                  // D — last active
-    1,                    // E — streak starts at 1
-    displayName.toString().trim(), // F — display name
-    '',                   // G — isAdmin (blank = not admin)
-    '',                   // H — FCMToken (blank until app registers)
-    now,                  // I — RegisteredDate
-    ''                    // J — SubscriptionDate (blank until payment)
+    cleanEmail,
+    password,
+    parseInt(gradeValue),
+    now,
+    1,
+    displayName.toString().trim(),
+    '',
+    '',
+    now,
+    '',
+    club ? club.toString().trim() : ''  // Col K — Club
   ]);
-
   return { success: true };
 }
 
@@ -143,6 +144,7 @@ function getQuizData(username, mode) {
   const pSheet = ss.getSheetByName("UserProgress");
   const cleanUser = username ? username.toString().trim() : "";
   const userGradeLevel = getUserGrade_(username);
+  const userClub = getUserClub_(username);
 
   const qData = qSheet.getDataRange().getValues();
   const pData = pSheet.getDataRange().getValues() || [];
@@ -160,10 +162,13 @@ function getQuizData(username, mode) {
   const now = new Date();
 
   // Base eligibility filter — shared by both modes
-  const eligible = qData.slice(1).filter(row => {
+    const eligible = qData.slice(1).filter(row => {
     if (!row[0] || !row[14]) return false;
     if ((parseInt(row[17]) || 1) > userGradeLevel) return false;
     if (row[16] === "N") return false;
+    // Col X (index 23) — club-restricted questions
+    const questionClub = row[23] ? row[23].toString().trim() : '';
+    if (questionClub && questionClub !== userClub) return false;
     return true;
   });
 
@@ -310,17 +315,20 @@ function getGameData(username, gameType) {
   const qSheet = ss.getSheetByName("Questions");
   
   const userGradeLevel = getUserGrade_(username);
+  const userClub = getUserClub_(username);
 
   const qData = qSheet.getRange(2, 1, qSheet.getLastRow() - 1, qSheet.getLastColumn()).getValues();
   
   const filtered = qData.filter(row => {
     const isLevelMatch = (parseInt(row[17]) || 1) <= userGradeLevel;
     const isNotExcluded = row[16] !== "N";
-    
+    const questionClub = row[23] ? row[23].toString().trim() : '';
+    const isClubMatch = !questionClub || questionClub === userClub;
+
     if (gameType === 'game_match') {
-      return isLevelMatch && isNotExcluded && row[18].toString().trim() !== "";
+      return isLevelMatch && isNotExcluded && isClubMatch && row[18].toString().trim() !== "";
     } else {
-      return isLevelMatch && isNotExcluded && row[19].toString().trim() !== "";
+      return isLevelMatch && isNotExcluded && isClubMatch && row[19].toString().trim() !== "";
     }
   });
 
@@ -456,6 +464,17 @@ function getUserGrade_(username) {
       return parseInt(data[i][2]) || 1;
   }
   return 1;
+}
+
+function getUserClub_(username) {
+  const data = SpreadsheetApp.getActiveSpreadsheet()
+    .getSheetByName("Users").getDataRange().getValues();
+  const clean = username ? username.toString().trim().toLowerCase() : "";
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] && data[i][0].toString().trim().toLowerCase() === clean)
+      return data[i][10] ? data[i][10].toString().trim() : '';
+  }
+  return '';
 }
 
 function getTulTrumpsData(username) {
@@ -656,4 +675,248 @@ function updateSubscriptionDate(email) {
   }
 }
 
+function getAdminPageData(username) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const usersSheet = ss.getSheetByName("Users");
+  const userData = usersSheet.getDataRange().getValues();
+  const cleanCaller = username ? username.toString().trim().toLowerCase() : "";
 
+  // Find caller and verify admin
+  let callerRow = null;
+  for (let i = 1; i < userData.length; i++) {
+    if (userData[i][0] && userData[i][0].toString().trim().toLowerCase() === cleanCaller) {
+      callerRow = userData[i];
+      break;
+    }
+  }
+  if (!callerRow || callerRow[6].toString().trim().toUpperCase() !== 'Y') {
+    return { error: "Unauthorised" };
+  }
+
+  const callerClub = callerRow[10] ? callerRow[10].toString().trim() : '';
+
+  const progressSheet = ss.getSheetByName("UserProgress");
+  const highScoreSheet = ss.getSheetByName("HighScores");
+  const beltsSheet = ss.getSheetByName("Belts");
+  const questionsSheet = ss.getSheetByName("Questions");
+
+  const progressData = progressSheet ? progressSheet.getDataRange().getValues() : [];
+  const highScoreData = highScoreSheet ? highScoreSheet.getDataRange().getValues() : [];
+  const beltData = beltsSheet ? beltsSheet.getDataRange().getValues() : [];
+  const questionData = questionsSheet ? questionsSheet.getDataRange().getValues() : [];
+
+  const beltMap = {};
+  beltData.slice(1).forEach(row => {
+    if (row[0] && row[1]) beltMap[parseInt(row[1])] = row[0].toString().trim();
+  });
+
+  const progressMap = {};
+  progressData.slice(1).forEach(row => {
+    const u = row[0] ? row[0].toString().trim() : "";
+    if (!u) return;
+    if (!progressMap[u]) progressMap[u] = { total: 0, buckets: { 1:0, 2:0, 3:0, 4:0 } };
+    progressMap[u].total++;
+    const b = parseInt(row[3]) || 1;
+    if (progressMap[u].buckets[b] !== undefined) progressMap[u].buckets[b]++;
+  });
+
+  const highScoreMap = {};
+  highScoreData.slice(1).forEach(row => {
+    if (row[0]) highScoreMap[row[0].toString().trim()] = parseInt(row[1]) || 0;
+  });
+
+  const now = new Date();
+
+  const users = userData.slice(1)
+    .filter(row => {
+      if (!row[0]) return false;
+      // Club filter — if admin has a club, only show same club members
+      if (callerClub) {
+        const memberClub = row[10] ? row[10].toString().trim() : '';
+        return memberClub === callerClub;
+      }
+      return true; // Super admin (no club) sees all
+    })
+    .map(row => {
+      const uName = row[0].toString().trim();
+      const lastActive = row[3] ? new Date(row[3]) : null;
+      const daysSince = lastActive ? Math.floor((now - lastActive) / (1000 * 60 * 60 * 24)) : null;
+      const gradeVal = parseInt(row[2]) || 1;
+      const prog = progressMap[uName] || { total: 0, buckets: { 1:0, 2:0, 3:0, 4:0 } };
+      const eligible = questionData.slice(1).filter(q =>
+        q[0] && q[14] && (parseInt(q[17]) || 1) <= gradeVal && q[16] !== "N"
+      ).length;
+
+      const registeredDate = parseSheetDate_(row[8]);
+      const subscriptionDate = parseSheetDate_(row[9]);
+      const TRIAL_DAYS = 7;
+      const SUB_DAYS = 30;
+      let subStatus = 'active';
+      let subEndDate = null;
+
+      if (registeredDate) {
+        const daysSinceReg = (now - registeredDate) / (1000 * 60 * 60 * 24);
+        const daysSinceSub = subscriptionDate ? (now - subscriptionDate) / (1000 * 60 * 60 * 24) : null;
+        if (subscriptionDate && daysSinceSub <= SUB_DAYS) {
+          subStatus = 'subscribed';
+          const endDate = new Date(subscriptionDate);
+          endDate.setDate(endDate.getDate() + SUB_DAYS);
+          subEndDate = endDate.toLocaleDateString('en-GB');
+        } else if (daysSinceReg <= TRIAL_DAYS) {
+          subStatus = 'trial';
+          const endDate = new Date(registeredDate);
+          endDate.setDate(endDate.getDate() + TRIAL_DAYS);
+          subEndDate = endDate.toLocaleDateString('en-GB');
+        } else {
+          subStatus = subscriptionDate ? 'sub_expired' : 'trial_expired';
+        }
+      }
+
+      return {
+        username: uName,
+        displayName: row[5] ? row[5].toString() : uName,
+        grade: gradeVal,
+        gradeName: beltMap[gradeVal] || `Level ${gradeVal}`,
+        streak: parseInt(row[4]) || 0,
+        lastActive: lastActive ? lastActive.toLocaleString('en-GB') : 'Never',
+        daysSince: daysSince,
+        isAdmin: row[6] && row[6].toString().trim().toUpperCase() === 'Y',
+        club: row[10] ? row[10].toString().trim() : '',
+        totalAnswered: prog.total,
+        buckets: prog.buckets,
+        highScore: highScoreMap[uName] || 0,
+        eligible: eligible,
+        subStatus: subStatus,
+        subEndDate: subEndDate
+      };
+    });
+
+  // Belt and category options for question submission
+  const belts = beltData.slice(1)
+    .filter(row => row[0] && row[1])
+    .map(row => ({ label: row[0].toString().trim(), value: parseInt(row[1]) }));
+
+  const categories = [...new Set(
+    questionData.slice(1)
+      .map(row => row[20] ? row[20].toString().trim() : '')
+      .filter(Boolean)
+  )].sort();
+
+  return { users, belts, categories, callerClub };
+}
+
+function submitQuestion(username, questionData) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const usersSheet = ss.getSheetByName("Users");
+  const userData = usersSheet.getDataRange().getValues();
+  const cleanUser = username ? username.toString().trim().toLowerCase() : "";
+
+  // Verify admin
+  let isAdmin = false;
+  let callerClub = '';
+  for (let i = 1; i < userData.length; i++) {
+    if (userData[i][0] && userData[i][0].toString().trim().toLowerCase() === cleanUser) {
+      isAdmin = userData[i][6] && userData[i][6].toString().trim().toUpperCase() === 'Y';
+      callerClub = userData[i][10] ? userData[i][10].toString().trim() : '';
+      break;
+    }
+  }
+  if (!isAdmin) return { success: false, message: "Unauthorised" };
+
+  const qSheet = ss.getSheetByName("Questions");
+  const lastRow = qSheet.getLastRow();
+
+  // Generate a unique qId
+  const qId = 'q_' + Date.now();
+
+  // Build the row — columns A through X (24 cols)
+  // A:Question | E:Opt1 | F:Opt2 | L:CorrectAnswer | O:qId | Q:ExamFlag | R:BeltLevel | U:Category | X:Club
+  const newRow = new Array(24).fill('');
+  newRow[0]  = questionData.question;          // Col A
+  newRow[4]  = questionData.opt1;              // Col E
+  newRow[5]  = questionData.opt2;              // Col F
+  newRow[11] = questionData.correctAnswer;     // Col L
+  newRow[14] = qId;                            // Col O
+  newRow[16] = 'Y';                            // Col Q — exam eligible by default
+  newRow[17] = parseInt(questionData.beltLevel); // Col R
+  newRow[20] = questionData.category;          // Col U
+  newRow[23] = questionData.clubOnly ? callerClub : ''; // Col X
+
+  qSheet.appendRow(newRow);
+  return { success: true, qId: qId };
+}
+
+function submitContact(username, contactData) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // Write to Contact sheet — auto-create if missing
+  let sheet = ss.getSheetByName("Contact");
+  if (!sheet) {
+    sheet = ss.insertSheet("Contact");
+    sheet.appendRow(["Timestamp","Username","DisplayName","Club","Type","Message"]);
+  }
+
+  const now = new Date();
+  sheet.appendRow([
+    now,
+    username,
+    contactData.displayName,
+    contactData.club,
+    contactData.type,
+    contactData.message
+  ]);
+
+  // Send email notification
+  try {
+    MailApp.sendEmail({
+      to: "jonathan_gallucci@hotmail.com",
+      subject: "TKD Academy contact",
+      body: `New contact from TKD Academy app:\n\nName: ${contactData.displayName}\nClub: ${contactData.club || 'N/A'}\nType: ${contactData.type}\n\nMessage:\n${contactData.message}\n\nFrom: ${username}\nTime: ${now.toLocaleString('en-GB')}`
+    });
+  } catch(e) {
+    // Email failure shouldn't block the submission
+    Logger.log("Email failed: " + e.message);
+  }
+
+  return { success: true };
+}
+
+function getAdminFormOptions(username) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const beltData = ss.getSheetByName("Belts").getDataRange().getValues();
+  const qData = ss.getSheetByName("Questions").getDataRange().getValues();
+
+  const belts = beltData.slice(1)
+    .filter(row => row[0] && row[1])
+    .map(row => ({ label: row[0].toString().trim(), value: parseInt(row[1]) }));
+
+  const categories = [...new Set(
+    qData.slice(1)
+      .map(row => row[20] ? row[20].toString().trim() : '')
+      .filter(Boolean)
+  )].sort();
+
+  // Get caller's club
+  const userData = ss.getSheetByName("Users").getDataRange().getValues();
+  const clean = username ? username.toString().trim().toLowerCase() : "";
+  let callerClub = '';
+  for (let i = 1; i < userData.length; i++) {
+    if (userData[i][0] && userData[i][0].toString().trim().toLowerCase() === clean) {
+      callerClub = userData[i][10] ? userData[i][10].toString().trim() : '';
+      break;
+    }
+  }
+
+  return { belts, categories, callerClub };
+}
+
+function getClubOptions() {
+  const data = SpreadsheetApp.getActiveSpreadsheet()
+    .getSheetByName("Users").getDataRange().getValues();
+  const clubs = [...new Set(
+    data.slice(1)
+      .map(row => row[10] ? row[10].toString().trim() : '')
+      .filter(Boolean)
+  )].sort();
+  return clubs;
+}
