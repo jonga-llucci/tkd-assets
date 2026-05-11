@@ -98,22 +98,40 @@
                             <h2 class="text-center fw-bold mb-3">Club Licensing</h2>
                             <p class="text-center text-muted mb-4">Offer TKD Academy to your students. We provide custom club branding and instructor admin functionality to track student progress.</p>
                             
-                            <form id="licensingForm">
+                            <div data-fs-success class="alert alert-success d-none mb-3">
+                                <i class="bi bi-check-circle-fill me-2"></i> Thank you! Your enquiry has been sent to our team.
+                            </div>
+                            <div data-fs-error class="alert alert-danger d-none mb-3">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i> Something went wrong. Please try again.
+                            </div>
+        
+                            <form id="licensing-form">
                                 <div class="row g-3">
                                     <div class="col-md-6">
                                         <label class="form-label small fw-bold">Your Name</label>
-                                        <input type="text" id="ins-name" class="form-control" placeholder="Instructor Name" required>
+                                        <input type="text" name="name" class="form-control" placeholder="Instructor Name" data-fs-field required>
+                                        <div class="text-danger small" data-fs-error="name"></div>
                                     </div>
                                     <div class="col-md-6">
                                         <label class="form-label small fw-bold">Club Name</label>
-                                        <input type="text" id="ins-club" class="form-control" placeholder="Academy Name" required>
+                                        <input type="text" name="club" class="form-control" placeholder="Academy Name" data-fs-field required>
+                                        <div class="text-danger small" data-fs-error="club"></div>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label class="form-label small fw-bold">Email Address</label>
+                                        <input type="email" name="email" class="form-control" placeholder="instructor@club.com" data-fs-field required>
+                                        <div class="text-danger small" data-fs-error="email"></div>
                                     </div>
                                     <div class="col-md-12">
                                         <label class="form-label small fw-bold">Message</label>
-                                        <textarea id="ins-message" class="form-control" rows="4" placeholder="How can we help your club?" required></textarea>
+                                        <textarea name="message" class="form-control" rows="4" placeholder="How can we help your club?" data-fs-field required></textarea>
+                                        <div class="text-danger small" data-fs-error="message"></div>
                                     </div>
+                                    
                                     <div class="col-md-12 d-grid mt-4">
-                                        <button type="button" onclick="sendInquiry()" class="btn btn-tkd shadow-sm">Send Enquiry</button>
+                                        <button type="submit" data-fs-submit-btn class="btn btn-tkd shadow-sm">
+                                            Send Enquiry
+                                        </button>
                                     </div>
                                 </div>
                             </form>
@@ -123,6 +141,21 @@
             </div>
         </section>
     </div>
+    
+        <script>
+          window.formspree = window.formspree || function () { (formspree.q = formspree.q || []).push(arguments); };
+          formspree('initForm', { 
+            formElement: '#licensing-form', 
+            formId: 'mbdwqapy',
+            onSuccess: function() {
+                // Optional: Hide the form on success
+                document.getElementById('licensing-form').classList.add('d-none');
+                document.querySelector('[data-fs-success]').classList.remove('d-none');
+            }
+          });
+        </script>
+        <script src="https://unpkg.com/@formspree/ajax@1" defer></script>
+           
 
     <div id="page-privacy" class="legal-page container">
         <h2 class="fw-bold">Privacy Policy</h2>
