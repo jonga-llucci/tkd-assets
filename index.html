@@ -46,6 +46,13 @@
         @media (min-width: 1200px) {
             .col-xl-3 { width: 25%; }
         }
+        .stripe-badge {
+            opacity: 0.8;
+            transition: opacity 0.3s;
+        }
+        .stripe-badge:hover {
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
@@ -251,6 +258,14 @@
                             </div>
                         </div>
                     </div>
+                </div>
+                <div class="text-center mt-5">
+                    <div class="d-inline-flex align-items-center bg-white px-4 py-2 rounded-pill shadow-sm stripe-badge border">
+                        <i class="bi bi-shield-lock-fill text-success me-2"></i>
+                        <span class="small fw-bold text-muted me-2">Secure payments via</span>
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg" alt="Stripe Logo" style="height: 20px;">
+                    </div>
+                    <p class="extra-small text-muted mt-2">All transactions are encrypted and processed by Stripe. We do not store your card details.</p>
                 </div>
             </div>
         </section>
