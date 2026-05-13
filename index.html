@@ -28,6 +28,24 @@
         .active-page { display: block !important; }
         .footer { background: #212529; color: #aaa; padding: 60px 0 20px; }
         .feature-icon { font-size: 2.5rem; color: var(--tkd-red); margin-bottom: 1rem; }
+
+        /* Gallery Styling */
+        .showcase-img {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        .showcase-img:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 1rem 3rem rgba(0,0,0,0.175) !important;
+        }
+        .app-screenshot-wrapper {
+            padding: 10px;
+        }
+        .extra-small { font-size: 0.75rem; }
+        .italic { font-style: italic; }
+        @media (min-width: 1200px) {
+            .col-xl-3 { width: 25%; }
+        }
     </style>
 </head>
 <body>
@@ -44,6 +62,8 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item"><a class="nav-link" href="#about">Features</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#showcase">App Preview</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#pricing">Pricing</a></li>
                     <li class="nav-item"><a class="nav-link" href="#licensing">Club Licensing</a></li>
                 </ul>
             </div>
@@ -60,204 +80,179 @@
         </header>
 
         <section id="about" class="py-5 bg-light">
-    <div class="container py-5">
-        <div class="row g-4 text-center justify-content-center">
-            
-            <div class="col-md-3">
-                <i class="bi bi-book feature-icon"></i>
-                <h4 class="fw-bold">Theory Mastery</h4>
-                <p class="text-muted small">Interactive quizzes covering Korean terminology, history, and interpretations.</p>
-            </div>
-
-            <div class="col-md-3">
-                <i class="bi bi-journal-check feature-icon"></i>
-                <h4 class="fw-bold">Practice Exams</h4>
-                <p class="text-muted small">Simulate grading conditions with timed mock exams tailored to your specific belt level.</p>
-            </div>
-
-            <div class="col-md-3">
-                <i class="bi bi-trophy feature-icon"></i>
-                <h4 class="fw-bold">Track Progress</h4>
-                <p class="text-muted small">Our SRS system tracks your strengths and weaknesses to ensure you are ready for your next grading.</p>
-            </div>
-
-            <div class="col-md-3">
-                <i class="bi bi-cart2 feature-icon"></i>
-                <h4 class="fw-bold">Flexible Subscriptions</h4>
-                <p class="text-muted small">Regular or one-off subscriptions mean that you can choose your license for when you need it.</p>
-            </div>
-
-        </div>
-    </div>
-</section>
-
-    <section id="showcase" class="py-5 bg-white">
-    <div class="container">
-        <div class="text-center mb-5">
-            <h2 class="fw-bold text-uppercase">The Academy in Action</h2>
-            <p class="text-muted">Explore the intuitive interface built to streamline your theory training.</p>
-        </div>
-
-        <div class="row g-4">
-            <div class="col-6 col-md-3">
-                <div class="app-screenshot-wrapper">
-                    <img src="https://github.com/jonga-llucci/tkd-assets/blob/e6149edef41a4ce3d019bc5f78bdf2b16e86f2e4/images/Screen1.png?raw=true" 
-                         alt="TKD Academy Dashboard" class="img-fluid rounded-4 shadow-lg showcase-img">
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="app-screenshot-wrapper">
-                    <img src="https://github.com/jonga-llucci/tkd-assets/blob/e6149edef41a4ce3d019bc5f78bdf2b16e86f2e4/images/Screen2.png?raw=true" 
-                         alt="Theory Quiz View" class="img-fluid rounded-4 shadow-lg showcase-img">
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="app-screenshot-wrapper">
-                    <img src="https://github.com/jonga-llucci/tkd-assets/blob/e6149edef41a4ce3d019bc5f78bdf2b16e86f2e4/images/Screen3.png?raw=true" 
-                         alt="Progress Tracking" class="img-fluid rounded-4 shadow-lg showcase-img">
-                </div>
-            </div>
-            <div class="col-6 col-md-3">
-                <div class="app-screenshot-wrapper">
-                    <img src="https://github.com/jonga-llucci/tkd-assets/blob/e6149edef41a4ce3d019bc5f78bdf2b16e86f2e4/images/Screen4.png?raw=true" 
-                         alt="Flashcard Engine" class="img-fluid rounded-4 shadow-lg showcase-img">
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<style>
-    .showcase-img {
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-        border: 1px solid rgba(0,0,0,0.05);
-    }
-    .showcase-img:hover {
-        transform: translateY(-10px);
-        box-shadow: 0 1rem 3rem rgba(0,0,0,0.175) !important;
-    }
-    .app-screenshot-wrapper {
-        padding: 10px;
-    }
-</style>
-
-    <section id="pricing" class="py-5 bg-light">
-    <div class="container">
-        <div class="text-center mb-5">
-            <h2 class="fw-bold text-uppercase">Subscription Plans</h2>
-            <p class="text-muted">Flexible options for every stage of your Taekwondo journey.</p>
-        </div>
-
-        <div class="row g-3 justify-content-center">
-            
-            <div class="col-xl-3 col-md-6">
-                <div class="card h-100 border-0 shadow-sm rounded-4">
-                    <div class="card-body p-4 d-flex flex-column">
-                        <div class="mb-3">
-                            <h5 class="fw-bold m-0">Student Pass</h5>
-                            <p class="text-muted small">Pay-as-you-go</p>
-                            <h3 class="fw-bold mt-2">£4.99</h3>
-                            <p class="text-primary small fw-bold">7-Day Free Trial</p>
-                        </div>
-                        <p class="small text-muted mb-4 italic">One-off 30 day access. Perfect for immediate grading prep.</p>
-                        <hr class="mt-auto">
-                        <ul class="list-unstyled mb-0 small">
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>PWA for best device compatibility</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>SRS Learning Engine</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Over 500 Question Sets</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Filtered to your Grading Level</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Flashcards & Games</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Daily Learning Goals</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Performance Tracking</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Mock Exam Practice</li>
-                        </ul>
+            <div class="container py-5">
+                <div class="row g-4 text-center justify-content-center">
+                    <div class="col-md-3">
+                        <i class="bi bi-book feature-icon"></i>
+                        <h4 class="fw-bold">Theory Mastery</h4>
+                        <p class="text-muted small">Interactive quizzes covering Korean terminology, history, and interpretations.</p>
+                    </div>
+                    <div class="col-md-3">
+                        <i class="bi bi-journal-check feature-icon"></i>
+                        <h4 class="fw-bold">Practice Exams</h4>
+                        <p class="text-muted small">Simulate grading conditions with timed mock exams tailored to your specific belt level.</p>
+                    </div>
+                    <div class="col-md-3">
+                        <i class="bi bi-trophy feature-icon"></i>
+                        <h4 class="fw-bold">Track Progress</h4>
+                        <p class="text-muted small">Our SRS system tracks your strengths and weaknesses to ensure you are ready for your next grading.</p>
+                    </div>
+                    <div class="col-md-3">
+                        <i class="bi bi-cart2 feature-icon"></i>
+                        <h4 class="fw-bold">Flexible Subscriptions</h4>
+                        <p class="text-muted small">Regular or one-off subscriptions mean that you can choose your license for when you need it.</p>
                     </div>
                 </div>
             </div>
+        </section>
 
-            <div class="col-xl-3 col-md-6">
-                <div class="card h-100 border-primary border-2 shadow-lg rounded-4 position-relative overflow-hidden">
-                    <div class="bg-primary text-white text-center py-1 fw-bold small">BEST VALUE</div>
-                    <div class="card-body p-4 d-flex flex-column">
-                        <div class="mb-3">
-                            <h5 class="fw-bold m-0 text-primary">Student Monthly</h5>
-                            <p class="text-muted small">Continuous Learning</p>
-                            <h3 class="fw-bold mt-2">£3.99</h3>
-                            <p class="text-primary small fw-bold">7-Day Free Trial</p>
+        <section id="showcase" class="py-5 bg-white">
+            <div class="container">
+                <div class="text-center mb-5">
+                    <h2 class="fw-bold text-uppercase">The Academy in Action</h2>
+                    <p class="text-muted">Explore the intuitive interface built to streamline your theory training.</p>
+                </div>
+
+                <div class="row g-4 justify-content-center">
+                    <div class="col-6 col-md-4 col-lg">
+                        <div class="app-screenshot-wrapper">
+                            <img src="https://github.com/jonga-llucci/tkd-assets/blob/e6149edef41a4ce3d019bc5f78bdf2b16e86f2e4/images/Screen1.png?raw=true" 
+                                 alt="TKD Academy Dashboard" class="img-fluid rounded-4 shadow-lg showcase-img">
                         </div>
-                        <p class="small text-muted mb-4 italic">Uninterrupted Access, Renews Every 30 days</p>
-                        <hr class="mt-auto">
-                        <ul class="list-unstyled mb-0 small">
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>PWA for best device compatibility</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>SRS Learning Engine</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Over 500 Question Sets</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Filtered to your Grading Level</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Flashcards & Games</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Daily Learning Goals</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Performance Tracking</li>
-                            <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Mock Exam Practice</li>
-                        </ul>
-                        <div class="mt-auto">
-                            <a href="https://tkdacademy.app/PWA" class="btn btn-primary w-100 rounded-pill fw-bold">Start Trial</a>
+                    </div>
+                    <div class="col-6 col-md-4 col-lg">
+                        <div class="app-screenshot-wrapper">
+                            <img src="https://github.com/jonga-llucci/tkd-assets/blob/e6149edef41a4ce3d019bc5f78bdf2b16e86f2e4/images/Screen2.png?raw=true" 
+                                 alt="Theory Quiz View" class="img-fluid rounded-4 shadow-lg showcase-img">
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-4 col-lg">
+                        <div class="app-screenshot-wrapper">
+                            <img src="https://github.com/jonga-llucci/tkd-assets/blob/e6149edef41a4ce3d019bc5f78bdf2b16e86f2e4/images/Screen3.png?raw=true" 
+                                 alt="Progress Tracking" class="img-fluid rounded-4 shadow-lg showcase-img">
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-4 col-lg">
+                        <div class="app-screenshot-wrapper">
+                            <img src="https://github.com/jonga-llucci/tkd-assets/blob/e6149edef41a4ce3d019bc5f78bdf2b16e86f2e4/images/Screen4.png?raw=true" 
+                                 alt="Flashcard Engine" class="img-fluid rounded-4 shadow-lg showcase-img">
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-4 col-lg">
+                        <div class="app-screenshot-wrapper">
+                            <img src="https://github.com/jonga-llucci/tkd-assets/blob/0265180c3bc197471f6885c220f40a99f4c8e4b3/images/Screen5.png?raw=true" 
+                                 alt="Exam Mode" class="img-fluid rounded-4 shadow-lg showcase-img">
                         </div>
                     </div>
                 </div>
             </div>
+        </section>
 
-            <div class="col-xl-3 col-md-6">
-                <div class="card h-100 border-0 shadow-sm rounded-4">
-                    <div class="card-body p-4 d-flex flex-column">
-                        <div class="mb-3">
-                            <h5 class="fw-bold m-0">Club License</h5>
-                            <p class="text-muted small">For Instructors</p>
-                            <h3 class="fw-bold mt-2">Enquire</h3>
-                            <p class="text-muted extra-small">Instructor Admin Suite</p>
+        <section id="pricing" class="py-5 bg-light">
+            <div class="container">
+                <div class="text-center mb-5">
+                    <h2 class="fw-bold text-uppercase">Subscription Plans</h2>
+                    <p class="text-muted">Flexible options for every stage of your Taekwondo journey.</p>
+                </div>
+
+                <div class="row g-3 justify-content-center">
+                    <div class="col-xl-3 col-md-6">
+                        <div class="card h-100 border-0 shadow-sm rounded-4">
+                            <div class="card-body p-4 d-flex flex-column">
+                                <div class="mb-3">
+                                    <h5 class="fw-bold m-0">Student Pass</h5>
+                                    <p class="text-muted small">Pay-as-you-go</p>
+                                    <h3 class="fw-bold mt-2">£4.99</h3>
+                                    <p class="text-primary small fw-bold">7-Day Free Trial</p>
+                                </div>
+                                <p class="small text-muted mb-4 italic">One-off 30 day access. Perfect for immediate grading prep.</p>
+                                <hr class="mt-auto">
+                                <ul class="list-unstyled mb-0 small">
+                                    <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>PWA for best device compatibility</li>
+                                    <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>SRS Learning Engine</li>
+                                    <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Over 500 Question Sets</li>
+                                    <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Filtered to your Grading Level</li>
+                                    <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Flashcards & Games</li>
+                                    <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Daily Learning Goals</li>
+                                    <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Performance Tracking</li>
+                                    <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Mock Exam Practice</li>
+                                </ul>
+                            </div>
                         </div>
-                        <ul class="list-unstyled mb-4 small text-muted">
-                            <li class="mb-2 fw-bold text-dark"><i class="bi bi-plus-lg text-primary me-2"></i>Everything in Student</li>
-                            <li class="mb-2"><i class="bi bi-check2 me-2"></i>Club Branding</li>
-                            <li class="mb-2"><i class="bi bi-check2 me-2"></i>Club Admin module</li>
-                            <li class="mb-2"><i class="bi bi-check2 me-2"></i>Custom Questions</li>
-                            <li class="mb-2"><i class="bi bi-check2 me-2"></i>Student Analytics</li>
-                        </ul>
-                        <div class="mt-auto">
-                            <a href="#licensing" class="btn btn-outline-dark w-100 rounded-pill fw-bold">Contact Us</a>
+                    </div>
+
+                    <div class="col-xl-3 col-md-6">
+                        <div class="card h-100 border-primary border-2 shadow-lg rounded-4 position-relative overflow-hidden">
+                            <div class="bg-primary text-white text-center py-1 fw-bold small">BEST VALUE</div>
+                            <div class="card-body p-4 d-flex flex-column">
+                                <div class="mb-3">
+                                    <h5 class="fw-bold m-0 text-primary">Student Monthly</h5>
+                                    <p class="text-muted small">Continuous Learning</p>
+                                    <h3 class="fw-bold mt-2">£3.99</h3>
+                                    <p class="text-primary small fw-bold">7-Day Free Trial</p>
+                                </div>
+                                <p class="small text-muted mb-4 italic">Uninterrupted Access, Renews Every 30 days</p>
+                                <hr class="mt-auto">
+                                <ul class="list-unstyled mb-0 small">
+                                    <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>PWA for best device compatibility</li>
+                                    <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>SRS Learning Engine</li>
+                                    <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Over 500 Question Sets</li>
+                                    <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Filtered to your Grading Level</li>
+                                    <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Flashcards & Games</li>
+                                    <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Daily Learning Goals</li>
+                                    <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Performance Tracking</li>
+                                    <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Mock Exam Practice</li>
+                                </ul>
+                                <div class="mt-auto">
+                                    <a href="https://tkdacademy.app/PWA" class="btn btn-primary w-100 rounded-pill fw-bold">Start Trial</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-3 col-md-6">
+                        <div class="card h-100 border-0 shadow-sm rounded-4">
+                            <div class="card-body p-4 d-flex flex-column">
+                                <div class="mb-3">
+                                    <h5 class="fw-bold m-0">Club License</h5>
+                                    <p class="text-muted small">For Instructors</p>
+                                    <h3 class="fw-bold mt-2">Enquire</h3>
+                                    <p class="text-muted extra-small">Instructor Admin Suite</p>
+                                </div>
+                                <ul class="list-unstyled mb-4 small text-muted">
+                                    <li class="mb-2 fw-bold text-dark"><i class="bi bi-plus-lg text-primary me-2"></i>Everything in Student</li>
+                                    <li class="mb-2"><i class="bi bi-check2 me-2"></i>Club Branding</li>
+                                    <li class="mb-2"><i class="bi bi-check2 me-2"></i>Club Admin module</li>
+                                    <li class="mb-2"><i class="bi bi-check2 me-2"></i>Custom Questions</li>
+                                    <li class="mb-2"><i class="bi bi-check2 me-2"></i>Student Analytics</li>
+                                </ul>
+                                <div class="mt-auto">
+                                    <a href="#licensing" class="btn btn-outline-dark w-100 rounded-pill fw-bold">Contact Us</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-xl-3 col-md-6">
+                        <div class="card h-100 border-0 shadow-sm rounded-4">
+                            <div class="card-body p-4 d-flex flex-column">
+                                <div class="mb-3">
+                                    <h5 class="fw-bold m-0">Grading Pack</h5>
+                                    <p class="text-muted small">For Licensed Clubs</p>
+                                    <h3 class="fw-bold mt-2">Exam</h3>
+                                    <p class="text-muted extra-small">Digital Assessment</p>
+                                </div>
+                                <ul class="list-unstyled mb-4 small text-muted">
+                                    <li class="mb-2"><i class="bi bi-check2 me-2"></i>Dynamic or Static Exam Sets</li>
+                                    <li class="mb-2"><i class="bi bi-check2 me-2"></i>Instant Results</li>
+                                    <li class="mb-2"><i class="bi bi-check2 me-2"></i>Completed Exam Emails</li>
+                                </ul>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <div class="col-xl-3 col-md-6">
-                <div class="card h-100 border-0 shadow-sm rounded-4">
-                    <div class="card-body p-4 d-flex flex-column">
-                        <div class="mb-3">
-                            <h5 class="fw-bold m-0">Grading Pack</h5>
-                            <p class="text-muted small">For Licensed Clubs</p>
-                            <h3 class="fw-bold mt-2">Exam</h3>
-                            <p class="text-muted extra-small">Digital Assessment</p>
-                        </div>
-                        <ul class="list-unstyled mb-4 small text-muted">
-                            <li class="mb-2"><i class="bi bi-check2 me-2"></i>Dynamic or Static Exam Sets</li>
-                            <li class="mb-2"><i class="bi bi-check2 me-2"></i>Instant Results</li>
-                            <li class="mb-2"><i class="bi bi-check2 me-2"></i>Completed Exam Emails</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-    </div>
-</section>
-
-<style>
-    .extra-small { font-size: 0.75rem; }
-    .italic { font-style: italic; }
-    /* Ensure cards stack well on smaller desktops */
-    @media (min-width: 1200px) {
-        .col-xl-3 { width: 25%; }
-    }
-</style>
-
+        </section>
 
         <section id="licensing" class="bg-light py-5">
             <div class="container py-4">
@@ -311,21 +306,6 @@
         </section>
     </div>
     
-        <script>
-          window.formspree = window.formspree || function () { (formspree.q = formspree.q || []).push(arguments); };
-          formspree('initForm', { 
-            formElement: '#licensing-form', 
-            formId: 'mbdwqapy',
-            onSuccess: function() {
-                // Optional: Hide the form on success
-                document.getElementById('licensing-form').classList.add('d-none');
-                document.querySelector('[data-fs-success]').classList.remove('d-none');
-            }
-          });
-        </script>
-        <script src="https://unpkg.com/@formspree/ajax@1" defer></script>
-           
-
     <div id="page-privacy" class="legal-page container">
         <h2 class="fw-bold">Privacy Policy</h2>
         <hr>
@@ -356,17 +336,25 @@
     </footer>
 
     <script>
-        function showPage(pageId) {
+      window.formspree = window.formspree || function () { (formspree.q = formspree.q || []).push(arguments); };
+      formspree('initForm', { 
+        formElement: '#licensing-form', 
+        formId: 'mbdwqapy',
+        onSuccess: function() {
+            document.getElementById('licensing-form').classList.add('d-none');
+            document.querySelector('[data-fs-success]').classList.remove('d-none');
+        }
+      });
+
+      function showPage(pageId) {
             const main = document.getElementById('page-main');
             const privacy = document.getElementById('page-privacy');
             const terms = document.getElementById('page-terms');
 
-            // Reset
             main.style.display = 'none';
             privacy.classList.remove('active-page');
             terms.classList.remove('active-page');
             
-            // Show target
             if(pageId === 'main') {
                 main.style.display = 'block';
             } else {
@@ -374,8 +362,8 @@
             }
             window.scrollTo(0,0);
         }
-       
     </script>
+    <script src="https://unpkg.com/@formspree/ajax@1" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
