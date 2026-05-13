@@ -13,13 +13,21 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     
     <style>
+        html {
+            scroll-padding-top: 70px; /* Height of your navbar */
+        }
         :root { --tkd-blue: #0d6efd; --tkd-red: #dc3545; }
         body { font-family: 'Segoe UI', sans-serif; color: #333; scroll-behavior: smooth; }
         .hero {
-            background: linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), 
-                        url('https://images.unsplash.com/photo-1555597673-b21d5c935865?auto=format&fit=crop&q=80&w=1600');
-            background-size: cover; background-position: center; height: 60vh;
-            display: flex; align-items: center; color: white; text-align: center;
+            background: linear-gradient(rgba(0,0,0,0.65), rgba(0,0,0,0.65)), 
+                        url('photo-1555597673-b21d5c935865?auto=format&fit=crop&q=80&w=1600');
+            background-size: cover; 
+            background-position: center; 
+            min-height: 85vh; /* Increased from 60vh */
+            display: flex; 
+            align-items: center; 
+            color: white; 
+            text-align: center;
         }
         .btn-tkd { background-color: var(--tkd-blue); color: white; border-radius: 50px; font-weight: 600; padding: 12px 40px; text-decoration: none; border: none; }
         .btn-tkd:hover { background-color: #0a58ca; transform: translateY(-2px); color: white; }
@@ -28,6 +36,13 @@
         .active-page { display: block !important; }
         .footer { background: #212529; color: #aaa; padding: 60px 0 20px; }
         .feature-icon { font-size: 2.5rem; color: var(--tkd-red); margin-bottom: 1rem; }
+        
+        @media (min-width: 992px) {
+            .pricing-featured {
+                transform: scale(1.05);
+                z-index: 10;
+            }
+        }
     </style>
 </head>
 <body>
@@ -43,8 +58,13 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link" href="#about">Features</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#licensing">Club Licensing</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#about" onclick="showPage('main')">Features</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#showcase" onclick="showPage('main')">Showcase</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#pricing" onclick="showPage('main')">Pricing</a></li>
+                    <li class="nav-item"><a class="nav-link" href="#licensing" onclick="showPage('main')">Club Licensing</a></li>
+                    <li class="nav-item ms-lg-3">
+                        <a class="btn btn-tkd btn-sm rounded-pill px-4" href="https://tkdacademy.app/PWA">Launch App</a>
+                    </li>
                 </ul>
             </div>
         </div>
@@ -59,30 +79,30 @@
             </div>
         </header>
 
-        <section id="about" class="py-5">
+        <section id="about" class="py-5 bg-white">
     <div class="container py-5">
         <div class="row g-4 text-center justify-content-center">
             
-            <div class="col-md-3">
-                <i class="bi bi-book feature-icon"></i>
+            <div class="feature-icon-box">
+                <i class="bi bi-book feature-icon m-0"></i>
                 <h4 class="fw-bold">Theory Mastery</h4>
                 <p class="text-muted small">Interactive quizzes covering Korean terminology, history, and interpretations.</p>
             </div>
 
-            <div class="col-md-3">
-                <i class="bi bi-journal-check feature-icon"></i>
+            <div class="feature-icon-box">
+                <i class="bi bi-journal-check feature-icon m-0"></i>
                 <h4 class="fw-bold">Practice Exams</h4>
                 <p class="text-muted small">Simulate grading conditions with timed mock exams tailored to your specific belt level.</p>
             </div>
 
-            <div class="col-md-3">
-                <i class="bi bi-trophy feature-icon"></i>
+            <div class="feature-icon-box">
+                <i class="bi bi-trophy feature-icon m-0"></i>
                 <h4 class="fw-bold">Track Progress</h4>
                 <p class="text-muted small">Our SRS system tracks your strengths and weaknesses to ensure you are ready for your next grading.</p>
             </div>
 
-            <div class="col-md-3">
-                <i class="bi bi-cart2 feature-icon"></i>
+            <div class="feature-icon-box">
+                <i class="bi bi-cart2 feature-icon m-0"></i>
                 <h4 class="fw-bold">Flexible Subscriptions</h4>
                 <p class="text-muted small">Regular or one-off subscriptions mean that you can choose your license for when you need it.</p>
             </div>
@@ -91,7 +111,7 @@
     </div>
 </section>
 
-    <section id="showcase" class="py-5 bg-white">
+    <section id="showcase" class="py-5 bg-light">
     <div class="container">
         <div class="text-center mb-5">
             <h2 class="fw-bold text-uppercase">The Academy in Action</h2>
@@ -139,6 +159,16 @@
     .app-screenshot-wrapper {
         padding: 10px;
     }
+    .feature-icon-box {
+    width: 80px;
+    height: 80px;
+    background: rgba(220, 53, 69, 0.1); /* Light red tint */
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+}
 </style>
 
     <section id="pricing" class="py-5 bg-light">
@@ -151,7 +181,7 @@
         <div class="row g-3 justify-content-center">
             
             <div class="col-xl-3 col-md-6">
-                <div class="card h-100 border-0 shadow-sm rounded-4">
+                <div class="card mt-auto border-0 shadow-sm rounded-4">
                     <div class="card-body p-4 d-flex flex-column">
                         <div class="mb-3">
                             <h5 class="fw-bold m-0">Student Pass</h5>
@@ -176,7 +206,7 @@
             </div>
 
             <div class="col-xl-3 col-md-6">
-                <div class="card h-100 border-primary border-2 shadow-lg rounded-4 position-relative overflow-hidden">
+                <div class=" pricing-featured card mt-auto border-primary border-2 shadow-lg rounded-4 position-relative overflow-hidden">
                     <div class="bg-primary text-white text-center py-1 fw-bold small">BEST VALUE</div>
                     <div class="card-body p-4 d-flex flex-column">
                         <div class="mb-3">
@@ -198,14 +228,14 @@
                             <li class="mb-2"><i class="bi bi-check-circle-fill text-primary me-2"></i>Mock Exam Practice</li>
                         </ul>
                         <div class="mt-auto">
-                            <a href="https://tkdacademy.app/PWA" class="btn btn-primary w-100 rounded-pill fw-bold">Start Trial</a>
+                            <a href="https://tkdacademy.app/PWA" class="btn btn-tkd w-100 rounded-pill fw-bold">Start Trial</a>
                         </div>
                     </div>
                 </div>
             </div>
 
             <div class="col-xl-3 col-md-6">
-                <div class="card h-100 border-0 shadow-sm rounded-4">
+                <div class="card mt-auto border-0 shadow-sm rounded-4">
                     <div class="card-body p-4 d-flex flex-column">
                         <div class="mb-3">
                             <h5 class="fw-bold m-0">Club License</h5>
@@ -228,7 +258,7 @@
             </div>
 
             <div class="col-xl-3 col-md-6">
-                <div class="card h-100 border-0 shadow-sm rounded-4">
+                <div class="card mt-auto border-0 shadow-sm rounded-4">
                     <div class="card-body p-4 d-flex flex-column">
                         <div class="mb-3">
                             <h5 class="fw-bold m-0">Grading Pack</h5>
@@ -374,31 +404,7 @@
             }
             window.scrollTo(0,0);
         }
-       
-        function sendInquiry() {
-            const contactData = {
-                displayName: document.getElementById('ins-name').value,
-                club: document.getElementById('ins-club').value,
-                message: document.getElementById('ins-message').value,
-                type: "Club Licensing"
-            };
-        
-            if (!contactData.displayName || !contactData.message) {
-                alert("Please provide your name and a message.");
-                return;
-            }
-        
-            // Reuse your existing loading message logic
-            toggleLoad(true, "Breathe in and out..."); 
-        
-            google.script.run.withSuccessHandler(function(res) {
-                toggleLoad(false);
-                if (res.success) {
-                    alert("Thank you! Your enquiry has been sent to our team.");
-                    document.getElementById('licensingForm').reset();
-                }
-            }).submitContact("Web Visitor", contactData);
-        }
+
     </script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
