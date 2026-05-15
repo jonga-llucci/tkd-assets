@@ -2,11 +2,11 @@ importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js
 importScripts('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js');
 
 firebase.initializeApp({
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyAqOSZ48vyNI0zjcROZt0BRTbUWFxX5tHM",
+  authDomain: "tkd-academy-191b0.firebaseapp.com",
+  projectId: "tkd-academy-191b0",
+  messagingSenderId: "411724666950",
+  appId: "1:411724666950:web:e3e36a9b95831c9258d247"
 });
 
 const messaging = firebase.messaging();
