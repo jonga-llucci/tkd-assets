@@ -1,0 +1,25 @@
+{
+  "name": "TKD Academy",
+  "short_name": "TKD Academy",
+  "description": "Taekwondo theory training app",
+  "start_url": "https://script.google.com/macros/s/AKfycbzezenrer7hJ48Bq2xWSb9TpC3oEkU2q3mcjMT6EWqC0iKGUaiRt1NK0QsGqj1GIwZiNA/exec",
+  "scope": "https://script.google.com/macros/s/AKfycbzezenrer7hJ48Bq2xWSb9TpC3oEkU2q3mcjMT6EWqC0iKGUaiRt1NK0QsGqj1GIwZiNA/exec",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#0d6efd",
+  "icons": [
+    {
+      "src": "https://github.com/jonga-llucci/tkd-assets/blob/89c3508f49db6586d0321ceac4e929b0bd4dd166/PWA/%E2%80%94Pngtree%E2%80%94taekwondo%20pintura_192.png?raw=true",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://github.com/jonga-llucci/tkd-assets/blob/89c3508f49db6586d0321ceac4e929b0bd4dd166/PWA/%E2%80%94Pngtree%E2%80%94taekwondo%20pintura_512.png?raw=true",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
