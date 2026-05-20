@@ -80,21 +80,14 @@
   </div>
 
   <iframe
-    
+    src = "https://script.google.com/macros/s/AKfycbzezenrer7hJ48Bq2xWSb9TpC3oEkU2q3mcjMT6EWqC0iKGUaiRt1NK0QsGqj1GIwZiNA/exec"
     allow="fullscreen"
     loading="eager"
     id="appFrame">
   </iframe>
 
   <script>
-    
-  const brand = window.location.pathname.replace("/", "") || "default";
-
-document.getElementById("appFrame").src =
-  "https://script.google.com/macros/s/AKfycbzezenrer7hJ48Bq2xWSb9TpC3oEkU2q3mcjMT6EWqC0iKGUaiRt1NK0QsGqj1GIwZiNA/exec?brand="
-  + encodeURIComponent(brand);
-
-  
+      
     let deferredPrompt = null;
 
     function isIos() {
