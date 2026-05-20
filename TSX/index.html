@@ -82,10 +82,21 @@
   <iframe
     src="https://script.google.com/macros/s/AKfycbzezenrer7hJ48Bq2xWSb9TpC3oEkU2q3mcjMT6EWqC0iKGUaiRt1NK0QsGqj1GIwZiNA/exec"
     allow="fullscreen"
-    loading="eager">
+    loading="eager"
+    id="appFrame">
   </iframe>
 
   <script>
+    
+  const path = window.location.pathname.replace("/", "");
+
+  const iframe = document.getElementById("appFrame");
+
+  iframe.src =
+    "https://script.google.com/macros/s/XXXXX/exec?brand=" +
+    encodeURIComponent(path);
+
+  
     let deferredPrompt = null;
 
     function isIos() {
