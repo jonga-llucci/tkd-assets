@@ -80,7 +80,7 @@
   </div>
 
   <iframe
-    src="https://script.google.com/macros/s/AKfycbzezenrer7hJ48Bq2xWSb9TpC3oEkU2q3mcjMT6EWqC0iKGUaiRt1NK0QsGqj1GIwZiNA/exec"
+    
     allow="fullscreen"
     loading="eager"
     id="appFrame">
@@ -88,13 +88,11 @@
 
   <script>
     
-  const path = window.location.pathname.replace("/", "");
+  const brand = window.location.pathname.replace("/", "") || "default";
 
-  const iframe = document.getElementById("appFrame");
-
-  iframe.src =
-    "https://script.google.com/macros/s/XXXXX/exec?brand=" +
-    encodeURIComponent(path);
+document.getElementById("appFrame").src =
+  "https://script.google.com/macros/s/AKfycbzezenrer7hJ48Bq2xWSb9TpC3oEkU2q3mcjMT6EWqC0iKGUaiRt1NK0QsGqj1GIwZiNA/exec?brand="
+  + encodeURIComponent(brand);
 
   
     let deferredPrompt = null;
