@@ -1,0 +1,2302 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script async src="https://js.stripe.com/v3/pricing-table.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+  <style>
+    :root { --tkd-blue: #0d6efd; --tkd-red: #dc3545; --tkd-green: #198754; }
+    body { background-color: #f8f9fa; padding-top: 90px; padding-bottom: 110px; font-family: 'Segoe UI', sans-serif; overflow-x: hidden; overscroll-behavior-y: contain; }
+    .view-container { max-width: 500px; margin: 15px auto; padding: 15px; display: none; opacity: 0; transform: translateY(10px); transition: all 0.3s ease-out; }
+    .active-view { display: block; opacity: 1; transform: translateY(0); }
+    .quiz-card { background: white; padding: 25px; border-radius: 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.05); border: none; }
+    .option-btn { width: 100%; margin-bottom: 12px; text-align: left; padding: 18px; border-radius: 12px; border: 2px solid #f0f0f0; background: white; font-weight: 500; }
+    .progress-wrapper { height: 6px; background: #eee; border-radius: 10px; overflow: hidden; margin-bottom: 20px; }
+    #progress-bar { width: 0%; height: 100%; background: var(--tkd-blue); transition: width 0.4s ease; }
+    .game-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .game-card { background: #f8f9fa; border: 2px solid #eee; border-radius: 15px; padding: 20px; text-align: center; cursor: pointer; }
+    .game-card i { font-size: 2rem; color: var(--tkd-blue); display: block; margin-bottom: 8px; }
+    .match-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .match-btn { padding: 12px; border-radius: 12px; border: 2px solid #eee; background: white; font-size: 0.85rem; min-height: 80px; display: flex; align-items: center; justify-content: center; text-align: center; cursor: pointer; }
+    .match-btn.selected { border-color: var(--tkd-blue); background-color: #e7f1ff; border-width: 3px; }
+    .match-btn.matched { visibility: hidden; pointer-events: none; }
+    .footer-container { position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000; background: white; border-top: 1px solid #eee; }
+    .bottom-nav { height: 85px; display: flex; align-items: center; justify-content: space-around; padding-bottom: 10px; }
+    .nav-item { flex: 1; border: none; background: none; color: #aaa; font-size: 0.8rem; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .nav-item i { font-size: 1.6rem; margin-bottom: 2px; }
+    .nav-item.active { color: var(--tkd-blue); font-weight: bold; }
+    .hidden { display: none !important; }
+    #loading-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(255,255,255,0.9); z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center; }
+    #view-admin .quiz-card { min-height: unset; overflow: visible; }
+    .copyright-text { text-align: center; font-size: 0.65rem; color: #bbb; padding: 4px; background: #fff; }
+    .result-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); align-items: center; justify-content: center; z-index: 9999; transition: opacity 0.3s ease; }
+    .result-overlay:not(.hidden) { display: flex; }
+    .result-box { background: white; padding: 40px; border-radius: 20px; text-align: center; max-width: 85%; width: 400px; animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    .result-box .btn { transition: transform 0.2s ease; font-weight: 600; }
+    .result-box .btn:active { transform: scale(0.95); }
+    .display-5 { font-size: 2.5rem; letter-spacing: -1px; }
+    @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .text-win { color: #198754; } .text-loss { color: #dc3545; } .text-draw { color: #6c757d; }
+    @keyframes confetti { 0% { transform: translateY(0) rotate(0); opacity: 1; } 100% { transform: translateY(100vh) rotate(720deg); opacity: 0; } }
+    .confetti { position: fixed; width: 10px; height: 10px; animation: confetti 3s ease-out forwards; z-index: 9999; pointer-events: none; }
+    #question-timer-wrap { display: flex; align-items: center; justify-content: center; margin-bottom: 12px; height: 48px; transition: opacity 0.2s ease; }
+    .q-timer-ring { position: relative; width: 48px; height: 48px; }
+    .q-timer-ring svg { transform: rotate(-90deg); width: 48px; height: 48px; }
+    .q-timer-ring circle { fill: none; stroke-width: 4; }
+    .q-timer-ring .track { stroke: #eee; }
+    .q-timer-ring .fill { stroke: var(--tkd-blue); stroke-linecap: round; transition: stroke-dashoffset 0.9s linear, stroke 0.3s; }
+    .q-timer-label { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.8rem; font-weight: 700; color: var(--tkd-blue); }
+    #grade-banner { position: fixed; top: 0; left: 0; right: 0; height: 60px; z-index: 1100; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    #grade-banner .bar { flex: 1; width: 100%; }
+    #grade-banner .banner-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; }
+    #grade-banner .banner-title { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) translateY(-2px); font-size: 2rem; letter-spacing: 0.08em; text-align: center; white-space: nowrap; }
+    #grade-banner .dan-numeral { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-family: 'Georgia', 'Times New Roman', serif; font-size: 2rem; font-weight: 700; color: #FFD700; padding-left: 12px; min-width: 56px; }
+    /* ── Flashcard ── */
+    .fc-scene { perspective: 1000px; width: 100%; min-height: 220px; cursor: pointer; margin-bottom: 16px; -webkit-tap-highlight-color: transparent; transition: min-height 0.5s ease-in-out; }
+    .fc-card { position: relative; width: 100%; min-height: 220px; transform-style: preserve-3d; transition: transform 0.45s cubic-bezier(0.4, 0, 0.2, 1), min-height 0.3s ease-in-out; border-radius: 20px; }
+    .fc-card.flipped { transform: rotateY(180deg); }
+    .fc-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 20px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
+    .fc-front { background: white; border: 2px solid #f0f0f0; }
+    .fc-back { background: #0d6efd; transform: rotateY(180deg); color: white; }
+    .fc-category-badge { position: absolute; top: 14px; right: 14px; font-size: 0.65rem; font-weight: 700; padding: 3px 9px; border-radius: 20px; background: #f0f4ff; color: #0d6efd; letter-spacing: 0.04em; text-transform: uppercase; }
+    .fc-term { font-size: 1.6rem; font-weight: 700; text-align: center; color: #1a1a2e; line-height: 1.2; margin-bottom: 8px; }
+    .fc-hint { font-size: 0.75rem; color: #adb5bd; letter-spacing: 0.05em; text-transform: uppercase; }
+    .fc-meaning { font-size: 1.1rem; font-weight: 600; text-align: center; color: white; line-height: 1.4; }
+    .is-pattern .fc-meaning { font-size: 0.95rem; font-weight: 500; margin-top: 5px; margin-bottom: 5px; line-height: 1.2; padding: 0 10px; }
+    .fc-meta { font-size: 0.78rem; color: rgba(255,255,255,0.8); margin-top: 10px; text-align: center; line-height: 1.6; width: 100%; }
+    .fc-detail-list { width: 100%; margin-top: 15px; margin-bottom: 15px; background: rgba(255,255,255,0.1); border-radius: 12px; overflow: hidden; }
+    .fc-detail-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.15); }
+    .fc-detail-row:last-child { border-bottom: none; }
+    .col-label { flex: 0 0 50%; font-size: 1rem; font-weight: 700; text-transform: uppercase; text-align: left; }
+    .col-val-en { flex: 0 0 25%; font-size: 1rem; font-weight: 700; text-align: center; }
+    .col-val-ko { flex: 0 0 25%; font-size: 1rem; font-weight: 700; text-align: right; font-style: italic; }
+    .fc-detail-row.full-width { flex-direction: column; align-items: flex-start; }
+    .ready-container { margin-top: 5px; width: 100%; }
+    .ready-en { font-size: 1rem; font-weight: 700; text-align: right; }
+    .ready-ko { font-size: 1rem; font-weight: 700; text-align: right; font-style: italic; }
+    .fc-dots { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; min-height: 10px; }
+    .fc-dot { width: 8px; height: 8px; border-radius: 50%; background: #dee2e6; transition: background 0.2s, transform 0.2s; flex-shrink: 0; }
+    .fc-dot.active { background: #0d6efd; transform: scale(1.4); }
+    .fc-dot.seen { background: #adb5bd; }
+    .fc-nav { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .fc-nav-btn { flex-shrink: 0; width: 48px; height: 48px; border-radius: 50%; border: 2px solid #e9ecef; background: white; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: #495057; cursor: pointer; transition: all 0.2s; -webkit-tap-highlight-color: transparent; }
+    .fc-nav-btn:active { background: #e9ecef; transform: scale(0.92); }
+    .fc-nav-btn:disabled { opacity: 0.3; cursor: default; }
+    .fc-counter { flex: 1; text-align: center; font-weight: 700; color: #495057; font-size: 0.9rem; }
+    .fc-filter-bar { display: flex; gap: 10px; margin-bottom: 16px; width: 100%; }
+    #fc-belt-filter, #fc-category-filter { flex: 1; width: 50%; min-width: 0; }
+    .fc-filter-bar select { width: 100%; font-size: 0.82rem; padding: 10px 28px 10px 12px; border-radius: 12px; border: 1.5px solid #e9ecef; background: white; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23adb5bd' stroke-width='1.5' fill='none'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
+    .fc-scene.is-pattern, .fc-scene.is-pattern .fc-card, .fc-scene.is-pattern .fc-face { min-height: 750px; }
+    .fc-pattern-img { width: 100%; max-height: 140px; object-fit: contain; border-radius: 10px; margin-bottom: 12px; background: #f8f9fa; display: none; }
+    .is-pattern .fc-pattern-img { max-height: 280px; display: block; }
+    /* ── Admin member flip cards ── */
+    .member-scene { width: 100%; margin-bottom: 12px; }
+    .member-card-wrap { position: relative; width: 100%; }
+    .member-front { width: 100%; border-radius: 16px; padding: 14px; background: white; border: 1px solid #eee; box-shadow: 0 2px 8px rgba(0,0,0,0.06); cursor: pointer; }
+    .member-front.hidden-face { display: none; }
+    .member-back { display: none; border-radius: 16px; padding: 16px; background: white; border: 1px solid #dee2e6; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .member-back.visible-face { display: block; }
+    @keyframes fc-shuffle { 0% { transform: translateX(0); } 30% { transform: translateX(-30px) rotate(-5deg); } 60% { transform: translateX(30px) rotate(5deg); } 100% { transform: translateX(0); } }
+    /* ── Notification bell ── */
+    #notif-bell-wrap { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); z-index: 1200; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+    #notif-bell-wrap i { font-size: 1.5rem; color: #FFD700; }
+    #notif-badge { position: absolute; top: -4px; right: -4px; background: #dc3545; color: white; font-size: 0.6rem; font-weight: 700; min-width: 16px; height: 16px; border-radius: 8px; display: flex; align-items: center; justify-content: center; padding: 0 3px; }
+    /* ── Notifications view ── */
+    .notif-item { padding: 14px; border-radius: 12px; margin-bottom: 10px; border: 1.5px solid #eee; background: white; }
+    .notif-item.unread { border-color: #0d6efd44; background: #f0f7ff; }
+    .notif-item .notif-msg { font-size: 0.9rem; font-weight: 500; margin-bottom: 4px; }
+    .notif-item .notif-time { font-size: 0.72rem; color: #adb5bd; }
+    /* ── Club pending state ── */
+    .club-pending-btn { opacity: 0.6; pointer-events: none; }
+    /* ── Action centre pending card ── */
+    .pending-card { background: white; border: 1.5px solid #ffc10744; border-radius: 14px; padding: 14px; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+
+<div id="grade-banner" class="hidden">
+  <div class="bar" id="banner-bar-1"></div>
+  <div class="bar" id="banner-bar-2"></div>
+  <div class="bar" id="banner-bar-3"></div>
+  <div class="banner-overlay">
+    <span class="dan-numeral hidden" id="banner-dan"></span>
+    <span class="banner-title fw-bold" id="banner-title">TKD Academy</span>
+    <div id="notif-bell-wrap" class="hidden" onclick="handleNavigation('view-notifications')">
+      <i class="bi bi-bell-fill"></i>
+      <div id="notif-badge" class="hidden"></div>
+    </div>
+  </div>
+</div>
+
+<div id="loading-overlay">
+  <div class="spinner-border text-primary mb-3"></div>
+  <div id="loading-msg" class="fw-bold text-primary small px-4 text-center"></div>
+</div>
+
+<!-- ── Views ── -->
+<div id="view-login" class="view-container active-view">
+  <div class="quiz-card text-center shadow-lg">
+    <h2 class="fw-bold mb-4">TKD Academy</h2>
+    <input type="text"     id="user-input" class="form-control mb-3 p-3" placeholder="Email Address">
+    <input type="password" id="pass-input" class="form-control mb-3 p-3" placeholder="Password">
+    <div id="login-error" class="text-danger small mt-1 mb-2" style="display:none; min-height:1.2em;"></div>
+    <button class="btn btn-primary w-100 btn-lg mb-3" onclick="handleLogin()">Login</button>
+    <button class="btn btn-outline-secondary w-100" onclick="showRegister()">New User? Register Here</button>
+    <div class="copyright-text mt-3">(C) J Gallucci 2026</div>
+  </div>
+</div>
+
+<div id="view-register" class="view-container">
+  <div class="quiz-card shadow-lg">
+    <h2 class="fw-bold mb-1 text-center">Create Account</h2>
+    <p class="text-muted small text-center mb-4">Join TKD Academy</p>
+    <label class="small fw-bold text-muted">Full Name</label>
+    <input type="text"     id="reg-name"  class="form-control mb-3 p-3" placeholder="Your name">
+    <label class="small fw-bold text-muted">Email Address</label>
+    <input type="email"    id="reg-email" class="form-control mb-3 p-3" placeholder="you@example.com">
+    <label class="small fw-bold text-muted">Grading For (next belt)</label>
+    <select id="reg-grade" class="form-select mb-3 p-3"><option value="">Loading grades...</option></select>
+    <label class="small fw-bold text-muted">Club</label>
+    <select id="reg-club" class="form-select mb-3 p-3" onchange="handleClubSelectChange()"><option value="">No club / not sure yet</option><option value="OTHER">Other (my club isn't listed)</option></select>
+      <div id="reg-other-club-wrap" class="hidden">
+        <label class="small fw-bold text-muted">Club name &amp; details</label>
+        <textarea id="reg-other-club" class="form-control mb-3 p-2" rows="2" placeholder="Club name, location, instructor name (optional)"></textarea>
+      </div>
+    <label class="small fw-bold text-muted">Password</label>
+    <input type="password" id="reg-pass"  class="form-control mb-2 p-3" placeholder="Password">
+    <p class="text-muted small mb-3">Must be 5+ characters with uppercase, lowercase, number and special character (!@#$%^&*)</p>
+    <button class="btn btn-primary w-100 btn-lg mb-3" onclick="handleRegister()">Create Account</button>
+    <button class="btn btn-outline-secondary w-100" onclick="switchView('view-login')">Back to Login</button>
+  </div>
+</div>
+
+<div id="view-subscribe" class="view-container">
+  <div class="quiz-card">
+    <h3 class="fw-bold mb-1 text-center">Choose Your Plan</h3>
+    <p class="text-muted small text-center mb-4">Unlock full access to TKD Academy</p>
+    <stripe-pricing-table pricing-table-id="prctbl_1TVXr2IhbHRF9H9L5qvOKkop"
+      publishable-key="pk_live_51TVS4MIhbHRF9H9L9n9LGASdbn3WNxABBQrPgbnj8C56fE2F2hEnuclGwj3etFq6ev8jMjQMkuMQgJGOvhUPIVLB00Ji3crTT9">
+    </stripe-pricing-table>
+    <div class="mt-3 text-center">
+      <button class="btn btn-outline-secondary rounded-pill" onclick="switchView('view-login')">Back to Login</button>
+    </div>
+  </div>
+</div>
+
+<div id="view-modes" class="view-container">
+  <div class="quiz-card">
+    <div class="d-flex justify-content-between mb-4">
+      <div><h3 class="mb-0">Hi <span id="user-welcome"></span></h3><small id="user-streak" class="text-primary fw-bold"></small></div>
+      <i class="bi bi-person-circle fs-1 text-primary"></i>
+    </div>
+    <!-- Grading countdown — hidden until a grading date is set by admin -->
+    <div id="grading-countdown" class="hidden mb-3 p-3 rounded-3 d-flex align-items-center justify-content-between"
+         style="background:linear-gradient(135deg,#0d6efd18,#0d6efd08);border:1.5px solid #0d6efd44;min-height:56px;">
+      <div>
+        <div class="small fw-bold text-primary mb-0"><i class="bi bi-award me-1"></i>Next Grading</div>
+        <div id="grading-countdown-date" class="small text-muted" style="font-size:0.72rem;"></div>
+      </div>
+      <div id="grading-countdown-text" class="fw-bold ms-3 text-end" style="font-size:1rem;white-space:nowrap;"></div>
+    </div>
+    <button class="btn btn-primary w-100 mb-3 p-3 text-start border-0 shadow-sm" onclick="startApp('game_flashcards')" style="position:relative;">
+      <!-- <span style="position:absolute;top:8px;right:8px;background:#dc3545;color:white;font-size:0.65rem;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:0.05em;">NEW</span> -->
+      <div class="d-flex align-items-center"><i class="bi bi-card-text me-3 fs-3"></i><div><strong>Flash Cards</strong><br><small>Learn by Belt or Category</small></div></div>
+    </button>
+    <button class="btn btn-warning w-100 mb-3 p-3 text-start border-0 shadow-sm" onclick="handleNavigation('view-game-center')">
+      <div class="d-flex align-items-center"><i class="bi bi-controller me-3 fs-3"></i><div><strong>Game Centre</strong><br><small>Interactive Challenges</small></div></div>
+    </button>
+    <button class="btn btn-primary w-100 mb-3 p-3 text-start shadow-sm" onclick="startApp('practice')">
+      <div class="d-flex align-items-center"><i class="bi bi-lightning me-3 fs-3"></i><div><strong>Daily Practice</strong><br><small>10 Questions</small></div></div>
+    </button>
+    <button class="btn btn-outline-danger w-100 p-3 text-start" onclick="startApp('test')">
+      <div class="d-flex align-items-center"><i class="bi bi-stopwatch me-3 fs-3"></i><div><strong>Mock Grading</strong><br><small id="mock-grading-subtitle">Full Test</small></div></div>
+    </button>
+    <div id="subscription-banner" class="hidden mt-3 p-3 rounded-3 text-center" style="border:1.5px solid #fd7e14;background:#fff8f0;">
+      <div id="subscription-banner-msg" class="small fw-bold mb-2" style="color:#fd7e14;"></div>
+      <button class="btn btn-sm btn-warning rounded-pill px-4 fw-bold" onclick="showSubscribePage(activeUser)">View Plans</button>
+    </div>
+  </div>
+</div>
+
+<div id="view-game-center" class="view-container">
+  <div class="quiz-card text-center">
+    <h4 class="fw-bold mb-4">Game Centre</h4>
+    <div class="game-grid">
+      <div class="game-card" onclick="startApp('game_match')"><i class="bi bi-grid-3x3-gap"></i><strong>Matching Pairs</strong></div>
+      <div class="game-card" onclick="startApp('game_swipe')"><i class="bi bi-check-circle"></i><strong>True or False</strong></div>
+      <div class="game-card" onclick="startApp('game_tuls')"><i class="bi bi-stack"></i><strong>Tul Trumps</strong></div>
+      <div class="game-card" onclick="startApp('game_infinite')" style="position:relative;"><i class="bi bi-infinity"></i><strong>Infinite Warrior</strong></div>
+    </div>
+  </div>
+</div>
+
+<div id="view-trumps" class="view-container">
+  <div class="quiz-card text-center">
+    <div id="trumps-content-wrapper" style="transition:opacity 0.3s ease;">
+      <div class="d-flex justify-content-between mb-3 fw-bold">
+        <span class="text-primary"><i class="bi bi-person-fill me-1"></i> <span id="player-card-count">0</span> Cards</span>
+        <span class="text-danger"><i class="bi bi-robot me-1"></i> <span id="cpu-card-count">0</span> Cards <small id="cpu-card-name" class="ms-1 opacity-75"></small></span>
+      </div>
+      <div class="card shadow-sm mb-4">
+        <img id="tul-card-img" src="" class="card-img-top p-3" style="max-height:100%;object-fit:contain;">
+        <div class="card-body">
+          <h3 id="tul-card-name" class="fw-bold">---</h3>
+          <span id="tul-card-ready" class="badge bg-primary mb-2">---</span>
+          <p id="tul-card-meaning" class="small text-muted"></p>
+          <div class="list-group list-group-flush text-start shadow-sm rounded-3">
+            <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3" onclick="playTurn('movements')">
+              <span><i class="bi bi-arrows-move me-2 text-primary"></i>Movements</span><span id="val-movements" class="fw-bold fs-5">0</span>
+            </button>
+            <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3" onclick="playTurn('stances')">
+              <span><i class="bi bi-person-walking me-2 text-primary"></i>Stances</span><span id="val-stances" class="fw-bold fs-5">0</span>
+            </button>
+            <button type="button" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center py-3" onclick="playTurn('difficulty')">
+              <span><i class="bi bi-bar-chart me-2 text-primary"></i>Difficulty</span><span id="val-difficulty" class="fw-bold fs-5">0</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="view-quiz" class="view-container">
+  <div class="progress-wrapper"><div id="progress-bar"></div></div>
+  <div id="difficulty-selector" class="hidden d-flex gap-2 mb-3">
+    <button id="diff-easy"   class="btn btn-sm btn-outline-secondary rounded-pill flex-fill" onclick="setPracticeDifficulty('easy')">⏱ Easy</button>
+    <button id="diff-medium" class="btn btn-sm btn-secondary rounded-pill flex-fill"         onclick="setPracticeDifficulty('medium')">⏱ Medium</button>
+    <button id="diff-hard"   class="btn btn-sm btn-outline-secondary rounded-pill flex-fill" onclick="setPracticeDifficulty('hard')">⏱ Hard</button>
+  </div>
+  <div class="quiz-card">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <span id="q-count" class="badge bg-light text-dark border"></span>
+      <div id="infinite-score-display" class="hidden w-100">
+        <div class="d-flex justify-content-between align-items-center w-100 px-1">
+          <span class="small text-muted">Best: <span id="infinite-high-score" class="fw-bold text-warning">0</span></span>
+          <span class="fw-bold text-primary fs-5"><span id="infinite-current-score">0</span></span>
+          <span class="small text-muted">All Time: <span id="infinite-all-time" class="fw-bold text-danger">0</span></span>
+        </div>
+      </div>
+      <span id="timer-display" class="hidden text-danger fw-bold"></span>
+    </div>
+    <div id="question-timer-wrap" style="opacity:0;">
+      <div class="q-timer-ring">
+        <svg viewBox="0 0 48 48">
+          <circle class="track" cx="24" cy="24" r="20"/>
+          <circle class="fill" id="q-timer-fill" cx="24" cy="24" r="20" stroke-dasharray="125.6" stroke-dashoffset="0"/>
+        </svg>
+        <div class="q-timer-label" id="q-timer-label">5</div>
+      </div>
+    </div>
+    <div id="ui-standard" class="hidden">
+      <h4 id="question-text" class="mb-4 fw-bold"></h4>
+      <div id="options-container"></div>
+      <button id="next-btn" class="btn btn-dark w-100 mt-3 p-3 hidden" onclick="nextQuestion()">Next Question</button>
+      <div id="exam-nav" class="hidden mt-3">
+        <div class="d-flex gap-2 mb-2">
+          <button class="btn btn-outline-secondary w-50 p-3 rounded-pill" onclick="examNav(-1)"><i class="bi bi-chevron-left me-1"></i>Back</button>
+          <button class="btn btn-outline-secondary w-50 p-3 rounded-pill" onclick="examNav(1)">Next<i class="bi bi-chevron-right ms-1"></i></button>
+        </div>
+        <button id="exam-submit-btn" class="btn btn-success w-100 p-3 rounded-pill hidden" onclick="submitExam()"><i class="bi bi-check2-circle me-2"></i>Submit Exam</button>
+      </div>
+    </div>
+    <div id="ui-match" class="hidden"><div class="match-grid" id="match-grid"></div></div>
+    <div id="ui-swipe" class="hidden text-center">
+      <div class="p-4 border rounded-4 mb-4 bg-light">
+        <h3 id="swipe-term" class="fw-bold"></h3>
+        <p class="text-muted my-2">IS THIS...</p>
+        <h4 id="swipe-def" class="text-primary fw-bold"></h4>
+      </div>
+      <div class="d-flex gap-3">
+        <button class="btn btn-danger btn-lg w-50 py-3"  onclick="handleSwipe(false)">FALSE</button>
+        <button class="btn btn-success btn-lg w-50 py-3" onclick="handleSwipe(true)">TRUE</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="view-flashcards" class="view-container">
+  <div class="quiz-card">
+    <div class="fc-filter-bar">
+      <select id="fc-belt-filter"     onchange="applyFlashcardFilters()"><option value="">All Belts</option></select>
+      <select id="fc-category-filter" onchange="applyFlashcardFilters()"><option value="">All Categories</option></select>
+    </div>
+    <div class="fc-dots" id="fc-dots"></div>
+    <div class="fc-scene" id="fc-scene" onclick="flipFlashcard()">
+      <div class="fc-card" id="fc-card">
+        <div class="fc-face fc-front">
+          <span class="fc-category-badge" id="fc-badge"></span>
+          <div class="fc-hint mb-2">Korean / Term</div>
+          <div class="fc-term" id="fc-term"></div>
+        </div>
+        <div class="fc-face fc-back">
+          <img id="fc-img" class="fc-pattern-img hidden" src="" alt="Pattern diagram">
+          <div class="fc-meaning" id="fc-meaning"></div>
+          <div class="fc-meta"    id="fc-meta"></div>
+        </div>
+      </div>
+    </div>
+    <div class="fc-nav">
+      <button class="fc-nav-btn" id="fc-prev" onclick="navFlashcard(-1)"><i class="bi bi-chevron-left"></i></button>
+      <div class="fc-counter" id="fc-counter">1 / 1</div>
+      <button class="fc-nav-btn" id="fc-next" onclick="navFlashcard(1)"><i class="bi bi-chevron-right"></i></button>
+    </div>
+    <div id="fc-empty" class="fc-empty hidden"><i class="bi bi-search fs-1 mb-2 d-block"></i>No cards match your filters</div>
+    <div class="mt-3 text-center">
+      <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="shuffleFlashcards()">
+        <i class="bi bi-shuffle me-1"></i>Shuffle
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="view-results" class="view-container text-center">
+  <div class="quiz-card">
+    <h2 id="res-title"   class="fw-bold"></h2>
+    <h1 id="res-percent" class="display-1 fw-bold text-primary my-3"></h1>
+    <p  id="res-score"   class="fw-bold text-muted"></p>
+    <div id="review-section" class="text-start mb-4">
+      <h6 class="fw-bold">Mistakes Review:</h6>
+      <div id="review-list" style="max-height:200px;overflow-y:auto;" class="small"></div>
+    </div>
+    <button class="btn btn-primary w-100 p-3 rounded-pill" onclick="handleNavigation('view-modes')">Finish Session</button>
+  </div>
+</div>
+
+<div id="view-notifications" class="view-container">
+  <div class="quiz-card">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h3 class="fw-bold mb-0">Notifications</h3>
+      <button class="btn btn-sm btn-outline-secondary rounded-pill" onclick="markAllRead()">Mark all read</button>
+    </div>
+    <div id="notif-list"><div class="text-center text-muted small py-4">No notifications yet.</div></div>
+  </div>
+</div>
+
+<div id="result-overlay" class="result-overlay hidden">
+  <div class="result-box shadow-lg border-0">
+    <h2 id="result-text"    class="fw-bold mb-3"></h2>
+    <hr>
+    <p  id="result-details" class="fs-5 mt-3"></p>
+  </div>
+</div>
+
+<div id="view-account" class="view-container">
+  <div class="quiz-card">
+    <h3 class="mb-4">Account Profile</h3>
+    <div class="mb-4">
+      <label class="small fw-bold text-muted">Grading for (next belt):</label>
+      <select id="grade-selector" class="form-select  mb-2" onchange="saveGrade()"></select>
+    </div>
+    <div class="mb-2">
+      <label class="small fw-bold text-muted d-block mb-1">Next Grading Date:</label>
+      <p class="text-muted small mb-1">Set to show a countdown on your home screen.</p>
+      <input type="date" id="account-grading-date" class="form-control mb-1" onchange="saveGradingDate()">
+      <div class="text-end">
+        <button class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="clearGradingDate()">
+          <i class="bi bi-x-circle me-1"></i>Clear (hide countdown)
+        </button>
+      </div>
+    </div>
+    <div class="mb-4">
+      <label class="small fw-bold text-muted d-block mb-1">Club Membership:</label>
+      <div id="account-club-status-wrap">
+        <!-- populated by loadAccountView() -->
+      </div>
+    </div>
+    <div class="mb-4">
+      <div class="d-flex justify-content-between align-items-baseline mb-1">
+        <label class="small fw-bold text-muted">Daily Learning Goal:</label>
+        <span id="about-learning-goal" class="small text-primary fw-bold">Not set</span>
+      </div>
+      <button class="btn btn-outline-secondary w-100  mb-2" onclick="showLearningGoalSetup()">
+        <i class="bi bi-target me-2"></i>Change Daily Goal
+      </button>
+    </div>
+    <div class="mb-4">
+      <label class="small fw-bold text-muted d-block mb-2">Learning Progress:</label>
+      <div id="srs-stats-wrap"><div class="text-center text-muted small py-2">Loading...</div></div>
+    </div>
+    <div class="mb-4">
+      <label class="small fw-bold text-muted">Change Password:</label>
+      <input type="password" id="new-pass" class="form-control mb-2" placeholder="New Password">
+      <button class="btn btn-primary w-100  mb-2" onclick="updatePass()">Update Password</button>
+    </div>
+    <div class="mb-4">
+      <label class="small fw-bold text-muted">Subscription:</label>
+      <button class="btn btn-outline-primary w-100 p-3 mt-1"
+        onclick="window.open('https://billing.stripe.com/p/login/00w14n9yj2UcfMNcsAg3600','_blank')">
+        <i class="bi bi-credit-card me-2"></i>Manage My Subscription
+      </button>
+    </div>
+    <div class="mb-4">
+      <button class="btn btn-outline-danger w-100 p-3" onclick="handleLogout()">
+        <i class="bi bi-box-arrow-right me-2"></i>Log Out
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="view-about" class="view-container text-center">
+  <div class="quiz-card">
+    <h4 class="text-primary mb-3">TKD Theory App</h4>
+    <p>Created by Jonathan for</p>
+    <h5 class="fw-bold">Jacob Gallucci</h5>
+    <p class="text-muted">1st Dan • Age 11</p>
+    <hr>
+    <p class="mb-1">Club:</p><p class="fw-bold">TSX Martial Arts, Bingley</p>
+    <hr>
+    <p class="text-muted small">Spaced Repetition (SRS): Uses the Leitner System to optimise memory retention.</p>
+    <p class="text-muted small">Mock Exams: Follows grade-based question limits, 15–60 minute time limits, pass mark 75%</p>
+    <hr>
+    <p class="text-muted mt-3" style="font-size:0.7rem;">v1.16.0</p>
+  </div>
+</div>
+
+<!-- ── Admin hub (tile menu, same pattern as Game Centre) ── -->
+<div id="view-admin" class="view-container">
+  <div class="quiz-card text-center">
+    <h4 class="fw-bold mb-4">Admin</h4>
+    <div class="game-grid">
+      <div class="game-card" onclick="openAdminSection('members')" style="position:relative;">
+        <span id="admin-pending-badge" class="hidden" style="position:absolute;top:6px;right:6px;background:#dc3545;color:white;font-size:0.65rem;font-weight:700;padding:2px 7px;border-radius:20px;"></span>
+        <i class="bi bi-people"></i><strong>Members</strong>
+      </div>
+      <div class="game-card" onclick="openAdminSection('questions')" style="position:relative;">
+        <i class="bi bi-question-circle"></i><strong>Questions</strong>
+      </div>
+      <div class="game-card" onclick="openAdminSection('action-centre')" style="position:relative;">
+        <span id="admin-requests-badge" class="hidden" style="position:absolute;top:6px;right:6px;background:#fd7e14;color:white;font-size:0.65rem;font-weight:700;padding:2px 7px;border-radius:20px;"></span>
+        <i class="bi bi-inbox"></i><strong>Requests</strong>
+      </div>
+      <div class="game-card" onclick="openAdminSection('contact')" style="position:relative;">
+        <i class="bi bi-envelope"></i><strong>Contact</strong>
+      </div>
+      <div class="game-card" onclick="showAdminGradingLocked()" style="position:relative;opacity:0.5;cursor:pointer;">
+        <span style="position:absolute;top:6px;right:6px;"><i class="bi bi-lock-fill" style="font-size:1rem;color:#adb5bd;"></i></span>
+        <i class="bi bi-award" style="color:#adb5bd;"></i><strong style="color:#adb5bd;">Grading</strong>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Admin: Members sub-view ── -->
+<div id="view-admin-members" class="view-container">
+  <div class="quiz-card">
+    <h4 class="fw-bold mb-4">Members</h4>
+    <div class="d-flex gap-2 mb-3 align-items-center">
+      <select id="admin-club-filter" class="form-select form-select-sm" onchange="filterAdminMembers()"><option value="">All Clubs</option></select>
+      <span id="admin-member-count" class="text-muted small text-nowrap"></span>
+    </div>
+    <div id="admin-user-list"><div class="text-center text-muted small py-3">Loading...</div></div>
+  </div>
+</div>
+
+<!-- ── Admin: Questions sub-view ── -->
+<div id="view-admin-questions" class="view-container">
+  <div class="quiz-card">
+    <h4 class="fw-bold mb-4">Questions</h4>
+    <div class="d-flex gap-2 mb-3">
+      <button id="qtab-view"   class="btn btn-sm btn-primary rounded-pill flex-fill"         onclick="showQuestionsSubTab('view')"><i class="bi bi-list-ul me-1"></i>View</button>
+      <button id="qtab-submit" class="btn btn-sm btn-outline-primary rounded-pill flex-fill" onclick="showQuestionsSubTab('submit')"><i class="bi bi-plus-circle me-1"></i>Submit</button>
+    </div>
+    <div id="admin-qtab-view">
+      <div style="position:sticky;top:0;background:white;z-index:10;padding-bottom:8px;">
+        <div class="row g-2 mb-2">
+          <div class="col-6"><select id="qf-belt"     class="form-select form-select-sm" onchange="filterAdminQuestions()"><option value="">All Belts</option></select></div>
+          <div class="col-6"><select id="qf-category" class="form-select form-select-sm" onchange="filterAdminQuestions()"><option value="">All Categories</option></select></div>
+          <div class="col-6" id="qf-club-wrap"><select id="qf-club" class="form-select form-select-sm" onchange="filterAdminQuestions()"><option value="">All Clubs</option><option value="__none__">No Club</option></select></div>
+          <div class="col-6" id="qf-mine-wrap"><select id="qf-mine" class="form-select form-select-sm" onchange="filterAdminQuestions()"><option value="">All Questions</option><option value="mine">Added by Me</option></select></div>
+          <div class="col-12" id="qf-club-questions-wrap" style="display:none;">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="qf-club-questions" onchange="filterAdminQuestions()">
+              <label class="form-check-label small fw-bold" for="qf-club-questions" id="qf-club-questions-label">Club questions only</label>
+            </div>
+          </div>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span id="q-count-label" class="text-muted small"></span>
+          <div class="d-flex gap-2">
+            <button class="btn btn-sm btn-outline-secondary rounded-pill" onclick="clearQuestionFilters()"><i class="bi bi-x-circle me-1"></i>Clear</button>
+            <button class="btn btn-sm btn-outline-secondary rounded-pill" onclick="loadAdminQuestions()"><i class="bi bi-arrow-clockwise me-1"></i>Refresh</button>
+          </div>
+        </div>
+      </div>
+      <div id="admin-question-list">
+        <div class="text-center text-muted small py-3">
+          <button class="btn btn-outline-primary btn-sm rounded-pill" onclick="loadAdminQuestions()">Load Questions</button>
+        </div>
+      </div>
+    </div>
+    <div id="admin-qtab-submit" class="hidden">
+      <h6 class="fw-bold mb-3">Submit New Question</h6>
+      <label class="small fw-bold text-muted">Question</label>
+      <textarea id="aq-question" class="form-control mb-3 p-2" rows="3" placeholder="Enter the question text"></textarea>
+      <label class="small fw-bold text-muted">Correct Answer</label>
+      <input type="text" id="aq-correct"  class="form-control mb-3 p-2" placeholder="Correct answer">
+      <label class="small fw-bold text-muted">Incorrect Option 1</label>
+      <input type="text" id="aq-opt1"     class="form-control mb-3 p-2" placeholder="Wrong answer 1">
+      <label class="small fw-bold text-muted">Incorrect Option 2</label>
+      <input type="text" id="aq-opt2"     class="form-control mb-3 p-2" placeholder="Wrong answer 2">
+      <label class="small fw-bold text-muted">Incorrect Option 3 <span class="text-muted fw-normal">(optional)</span></label>
+      <input type="text" id="aq-opt3"     class="form-control mb-3 p-2" placeholder="Wrong answer 3 (optional)">
+      <label class="small fw-bold text-muted">Belt Level</label>
+      <select id="aq-belt"     class="form-select mb-3 p-2"><option value="">Loading...</option></select>
+      <label class="small fw-bold text-muted">Category</label>
+      <select id="aq-category" class="form-select mb-3 p-2"><option value="">Loading...</option></select>
+      <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" id="aq-club-only">
+        <label class="form-check-label small" for="aq-club-only" id="aq-club-label">Club questions only</label>
+      </div>
+      <button class="btn btn-primary w-100 rounded-pill" onclick="submitAdminQuestion()">Submit Question</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Admin: Contact sub-view ── -->
+<div id="view-admin-contact" class="view-container">
+  <div class="quiz-card">
+    <h4 class="fw-bold mb-4">Contact</h4>
+    <label class="small fw-bold text-muted">Type of Request</label>
+    <select id="contact-type" class="form-select mb-3 p-2">
+      <option value="Issue">Report an Issue</option>
+      <option value="Feature Request">Feature Request</option>
+      <option value="Licensing &amp; Packages">Licensing &amp; Grading Packs</option>
+      <option value="Other">Other</option>
+    </select>
+    <label class="small fw-bold text-muted">Message</label>
+    <textarea id="contact-message" class="form-control mb-3 p-2" rows="5" placeholder="Describe your issue or request..."></textarea>
+    <button class="btn btn-primary w-100 rounded-pill" onclick="submitAdminContact()">Send Message</button>
+  </div>
+</div>
+
+<div id="view-admin-action-centre" class="view-container">
+  <div class="quiz-card">
+    <h4 class="fw-bold mb-4">Pending Club Requests</h4>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <span id="pending-count-label" class="text-muted small"></span>
+      <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-outline-success rounded-pill" onclick="bulkAction('approve')"><i class="bi bi-check2-all me-1"></i>Approve All</button>
+        <button class="btn btn-sm btn-outline-danger rounded-pill"  onclick="bulkAction('decline')"><i class="bi bi-x-circle me-1"></i>Decline All</button>
+      </div>
+    </div>
+    <div id="pending-requests-list"><div class="text-center text-muted small py-3">Loading...</div></div>
+  </div>
+</div>
+
+<div class="footer-container hidden" id="navbar">
+  <nav class="bottom-nav">
+    <button class="nav-item active" id="nav-modes"   onclick="handleNavigation('view-modes')"><i class="bi bi-house-door"></i>Home</button>
+    <button class="nav-item"        id="nav-account" onclick="handleNavigation('view-account')"><i class="bi bi-person"></i>Account</button>
+    <button class="nav-item"        id="nav-about"   onclick="handleNavigation('view-about')"><i class="bi bi-info-circle"></i>About</button>
+    <button class="nav-item hidden" id="nav-admin"   onclick="handleNavigation('view-admin')"><i class="bi bi-door-closed"></i>Admin</button>
+  </nav>
+  <div class="copyright-text">(C) J Gallucci 2026</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+
+  // ── Touch scroll lock ────────────────────────────────────────────────────────
+  document.addEventListener('touchstart', function(e) { if (e.touches.length > 1) return; this.startY = e.touches[0].pageY; }, { passive: false });
+  document.addEventListener('touchmove',  function(e) { const top = window.pageYOffset || document.documentElement.scrollTop; if (top <= 0 && e.touches[0].pageY > this.startY) e.preventDefault(); }, { passive: false });
+
+  // ── State ────────────────────────────────────────────────────────────────────
+  let playerHand = [], cpuHand = [], isProcessing = false;
+  let quizData = [], currentIndex = 0, score = 0, activeUser = '', activeUserGrade = 1;
+  let timerInterval = null, questionTimerInterval = null, timeLeft = 0;
+  let isQuizActive = false, currentMode = '', questionsAnswered = 0, missedQuestions = [];
+  let infiniteHighScore = 0, infiniteAllTimeHigh = 0, practiceDifficulty = 'medium';
+  let learningGoalMins = 0, activePlaySeconds = 0, playTimerInterval = null;
+  let goalMetToday = false, pendingGoalMet = false;
+  let matchSelected = { qId: null, aId: null, qEl: null, aEl: null }, matchesFound = 0, setsCleared = 0, swipeCorrect = false;
+  let examAnswers = {};  // stores { [qIndex]: selectedAnswer } for mock exam
+  let roundTimeout = null;
+  let notificationCount = 0;
+  let userClubStatus    = '';
+  let userPendingClub   = '';
+
+  // Flashcard state
+  let _fcAllCards = [], _fcFiltered = [], _fcIndex = 0, _fcSeen = new Set();
+
+  // ── Global loader ─────────────────────────────────────────────────────────────
+  // Call with no second arg (or null/undefined) → random belt meaning shown
+  // Call with a string                           → that string shown  (Tul Trumps ONLY: "Shuffling deck...")
+  const LOAD_MSGS = [
+    'White signifies innocence, as that of a beginning student who has no previous knowledge of Tae Kwon-Do',
+    'Yellow signifies the Earth, from which a plant sprouts and takes root, as the Tae Kwon-Do foundation is being laid.',
+    'Green signifies the plant\'s growth as Tae Kwon-Do skills begin to develop.',
+    'Blue signifies Heaven, towards which the plant matures into a towering tree, as training in Tae Kwon-Do progresses.',
+    'Red signifies danger, cautioning the student to exercise control and warning the opponent to stay away.',
+    'Black is opposite to white, signifying maturity and proficiency in Tae Kwon-Do, and the wearer\'s imperviousness to darkness and fear.'
+  ];
+
+  function toggleLoad(show, customMsg) {
+    const loader = document.getElementById('loading-overlay');
+    const msgEl  = document.getElementById('loading-msg');
+    if (!loader) return;
+    if (show) {
+      msgEl.innerText = (typeof customMsg === 'string' && customMsg.length)
+        ? customMsg
+        : LOAD_MSGS[Math.floor(Math.random() * LOAD_MSGS.length)];
+      loader.style.display = 'flex';
+    } else {
+      loader.style.display = 'none';
+    }
+  }
+
+  // ── Navigation ───────────────────────────────────────────────────────────────
+  function handleNavigation(targetView) {
+    try {
+      if (isQuizActive && currentMode === 'game_flashcards') {
+        isQuizActive = false; currentMode = ''; stopPlayTimer();
+        if (targetView === 'view-account') loadAccountView();
+        if (targetView === 'view-admin')   loadAdminView();
+        if (targetView === 'view-notifications') loadNotifications();
+        switchView(targetView);
+      } else if (isQuizActive) {
+        showUniversalWarning(targetView, (playerHand && playerHand.length > 0) ? 'trumps' : 'exam');
+      } else {
+        if (targetView === 'view-account')       loadAccountView();
+        if (targetView === 'view-admin')         loadAdminView();
+        if (targetView === 'view-notifications') loadNotifications();
+        switchView(targetView);
+      }
+    } catch(e) { console.error('handleNavigation error:', e); }
+  }
+
+  function showUniversalWarning(targetView, mode) {
+    if (roundTimeout) clearInterval(roundTimeout);
+    isProcessing = true;
+    document.getElementById('result-text').innerText = 'QUIT SESSION?';
+    document.getElementById('result-text').className = 'fw-bold text-dark';
+    document.getElementById('result-details').innerHTML = `
+      <p class="mb-4">${mode === 'trumps' ? 'Your progress in this match will be lost.' : 'You will see your current grade for answered questions before leaving.'}</p>
+      <div class="d-grid gap-2">
+        <button class="btn btn-primary btn-lg rounded-pill py-3" onclick="closeWarning()">Stay &amp; Play</button>
+        <button class="btn btn-outline-secondary rounded-pill py-2" onclick="confirmExit('${targetView}','${mode}')">Exit Session</button>
+      </div>`;
+    document.getElementById('result-overlay').classList.remove('hidden');
+  }
+
+  function closeWarning() { document.getElementById('result-overlay').classList.add('hidden'); isProcessing = false; }
+
+  function showOverlayMessage(title, titleClass, body, btnText, btnCallback) {
+    document.getElementById('result-text').innerText = title;
+    document.getElementById('result-text').className = `fw-bold ${titleClass}`;
+    const cb = btnCallback ? `(${btnCallback.toString()})()` : '';
+    document.getElementById('result-details').innerHTML =
+      `<p class="mb-4">${body}</p><div class="d-grid"><button class="btn btn-primary rounded-pill" onclick="closeWarning();${cb}">${btnText}</button></div>`;
+    document.getElementById('result-overlay').classList.remove('hidden');
+  }
+
+  function confirmExit(targetView, mode) {
+    if (mode === 'exam') endQuiz();
+    isQuizActive = false; stopPlayTimer(); isProcessing = false; playerHand = []; cpuHand = [];
+    document.getElementById('result-overlay').classList.add('hidden');
+    if (mode !== 'exam') { if (targetView === 'login') handleLogout(); else switchView(targetView); }
+  }
+
+  function switchView(targetView) {
+    ['view-login','view-register','view-subscribe','view-modes','view-game-center',
+     'view-trumps','view-quiz','view-results','view-account','view-about','view-admin',
+     'view-admin-members','view-admin-questions','view-admin-contact',
+     'view-admin-action-centre','view-flashcards','view-notifications']
+      .forEach(id => { const el = document.getElementById(id); if (el) { el.classList.add('hidden'); el.classList.remove('active-view'); } });
+    const t = document.getElementById(targetView);
+    if (t) { t.classList.remove('hidden'); t.classList.add('active-view'); }
+    updateNavIcons(targetView);
+    const restingViews = ['view-modes','view-results','view-account','view-about',
+                          'view-admin','view-admin-members','view-admin-questions',
+                          'view-admin-contact','view-admin-action-centre','view-game-center',
+                          'view-notifications'];
+    if (pendingGoalMet &&
+        restingViews.includes(targetView) &&
+        document.getElementById('result-overlay').classList.contains('hidden')) {
+      pendingGoalMet = false;
+      setTimeout(() => showGoalMetOverlay(), 400);
+    }
+  }
+
+  function updateNavIcons(activeView) {
+    const navMap = {
+      'view-modes':    'nav-modes',
+      'view-account':  'nav-account',
+      'view-about':    'nav-about',
+      'view-admin':    'nav-admin'
+    };
+    document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+    const b = document.getElementById(navMap[activeView]);
+    if (b) b.classList.add('active');
+  }
+
+  // ── Auth ─────────────────────────────────────────────────────────────────────
+  function handleLogin() {
+    const u = document.getElementById('user-input').value;
+    const p = document.getElementById('pass-input').value;
+    if (!u || !p) return;
+    document.getElementById('login-error').style.display = 'none';
+    toggleLoad(true);
+    google.script.run.withSuccessHandler(res => {
+      toggleLoad(false);
+      if (!res || !res.success) {
+        const e = document.getElementById('login-error'); e.innerText = 'Incorrect username or password.'; e.style.display = 'block'; return;
+      }
+
+      // Hard locked — beyond grace period
+      if (res.accessStatus === 'trial_hard_locked') {
+        document.getElementById('result-text').innerText = 'TRIAL ENDED';
+        document.getElementById('result-text').className = 'fw-bold text-danger';
+        document.getElementById('result-details').innerHTML =
+          `<p class="mb-2">Your free trial has ended and the grace period has also passed.</p>
+           <p class="text-muted small mb-4">Subscribe to continue, or speak to your club administrator if you believe this is an error.</p>
+           <div class="d-grid gap-2">
+             <button class="btn btn-primary btn-lg rounded-pill fw-bold" onclick="showSubscribePage('${res.username}')">View Plans</button>
+             <button class="btn btn-outline-secondary rounded-pill" onclick="closeWarning()">Close</button>
+           </div>`;
+        document.getElementById('result-overlay').classList.remove('hidden'); return;
+      }
+
+      // Trial expired but within grace period — allow in with warning
+      if (res.accessStatus === 'trial_expired') {
+        // Let login proceed, but queue a warning overlay after view loads
+        window._pendingTrialExpiredWarning = { username: res.username, graceDaysRemaining: res.graceDaysRemaining };
+      }
+
+      if (res.accessStatus === 'subscription_expired') {
+        document.getElementById('result-text').innerText = 'SUBSCRIPTION EXPIRED';
+        document.getElementById('result-text').className = 'fw-bold text-danger';
+        document.getElementById('result-details').innerHTML =
+          `<p class="mb-2">Your subscription has lapsed.</p><p class="text-muted small mb-4">Renew now to get back to training.</p>
+           <div class="d-grid gap-2">
+             <button class="btn btn-danger btn-lg rounded-pill fw-bold" onclick="showSubscribePage('${res.username}')">View Plans</button>
+             <button class="btn btn-outline-secondary rounded-pill" onclick="closeWarning()">Maybe Later</button>
+           </div>`;
+        document.getElementById('result-overlay').classList.remove('hidden'); return;
+      }
+
+      // Set global club state
+      userClubStatus  = res.clubStatus  || '';
+      userPendingClub = res.pendingClub || '';
+
+      // Notifications
+      notificationCount = res.unreadCount || 0;
+      updateNotifBell();
+
+      activeUser = res.username; activeUserGrade = res.gradeValue;
+      updateGradeBanner(res.gradeValue);
+      if (res.isAdmin) {
+        document.getElementById('nav-admin').classList.remove('hidden');
+        // Show admin pending badge if there are requests — loaded lazily, updated after admin data fetch
+      }
+      document.getElementById('user-welcome').innerText = res.displayName.split(' ')[0];
+      document.getElementById('user-streak').innerHTML  = `<i class="bi bi-fire"></i> ${res.streak} Day Streak`;
+      document.getElementById('navbar').classList.remove('hidden');
+      document.getElementById('notif-bell-wrap').classList.remove('hidden');
+
+      const banner = document.getElementById('subscription-banner');
+      const bannerMsg = document.getElementById('subscription-banner-msg');
+      if (res.accessStatus === 'trial' && res.daysRemaining !== null) {
+        bannerMsg.innerText = `⏳ Free trial expires in ${res.daysRemaining} day${res.daysRemaining !== 1 ? 's' : ''}`;
+        bannerMsg.style.color = '#fd7e14'; banner.style.borderColor = '#fd7e14'; banner.style.background = '#fff8f0';
+        banner.querySelector('button').classList.remove('hidden'); banner.classList.remove('hidden');
+      } else if (res.accessStatus === 'trial_expired' && res.graceDaysRemaining !== null) {
+        bannerMsg.innerText = `⚠️ Trial ended — ${res.graceDaysRemaining} day${res.graceDaysRemaining !== 1 ? 's' : ''} remaining before access is locked`;
+        bannerMsg.style.color = '#dc3545'; banner.style.borderColor = '#dc3545'; banner.style.background = '#fff5f5';
+        banner.querySelector('button').classList.remove('hidden'); banner.classList.remove('hidden');
+      } else if (res.accessStatus === 'subscribed' && res.daysRemaining !== null) {
+        bannerMsg.innerText = `✓ ${res.daysRemaining} day${res.daysRemaining !== 1 ? 's' : ''} left in subscription`;
+        bannerMsg.style.color = '#198754'; banner.style.borderColor = '#198754'; banner.style.background = '#f0fff4';
+        banner.querySelector('button').classList.add('hidden'); banner.classList.remove('hidden');
+      } else { banner.classList.add('hidden'); }
+
+      window.BOOTSTRAP = res.bootstrap || {};
+      switchView('view-modes');
+      learningGoalMins = res.learningGoalMins || 0;
+      const goalEl = document.getElementById('about-learning-goal');
+      if (goalEl) goalEl.innerText = learningGoalMins > 0 ? `${learningGoalMins} minutes` : 'Not set';
+      renderGradingCountdown(res.gradingDate || '');
+      window._userGradingDate = res.gradingDate || '';
+      goalMetToday = false; pendingGoalMet = false; activePlaySeconds = 0; _sessionStartSeconds = 0;
+      if (!learningGoalMins) setTimeout(() => showLearningGoalSetup(), 500);
+
+      // Show trial expired grace warning after view settles
+      if (window._pendingTrialExpiredWarning) {
+        const w = window._pendingTrialExpiredWarning; window._pendingTrialExpiredWarning = null;
+        setTimeout(() => {
+          document.getElementById('result-text').innerText = 'FREE TRIAL ENDED';
+          document.getElementById('result-text').className = 'fw-bold text-warning';
+          document.getElementById('result-details').innerHTML =
+            `<p class="mb-2">Your 7-day free trial has ended.</p>
+             <p class="text-muted small mb-3">You have <strong>${w.graceDaysRemaining} day${w.graceDaysRemaining !== 1 ? 's' : ''}</strong> before access is locked. Subscribe to continue uninterrupted, or speak to your club administrator.</p>
+             <div class="d-grid gap-2">
+               <button class="btn btn-warning btn-lg rounded-pill fw-bold" onclick="showSubscribePage('${w.username}')">View Plans</button>
+               <button class="btn btn-outline-secondary rounded-pill" onclick="closeWarning()">Continue for now</button>
+             </div>`;
+          document.getElementById('result-overlay').classList.remove('hidden');
+        }, 600);
+      }
+    }).loginUser(u, p);
+  }
+
+  function showSubscribePage(email) {
+    const table = document.querySelector('stripe-pricing-table');
+    if (table && email) table.setAttribute('customer-email', email);
+    closeWarning(); switchView('view-subscribe');
+  }
+
+  function showRegister() {
+    switchView('view-register');
+    const bs = window.BOOTSTRAP || {};
+
+    // Use bootstrap data if available — avoids two round trips
+    if (bs.belts && bs.belts.length) {
+      const sel = document.getElementById('reg-grade');
+      sel.innerHTML = '<option value="">Select your next belt...</option>';
+      bs.belts.forEach(b => sel.innerHTML += `<option value="${b.value}">${b.label}</option>`);
+    }
+    if (bs.clubs) {
+      const sel = document.getElementById('reg-club');
+      sel.innerHTML = '<option value="">Select your club (optional)</option>';
+      bs.clubs.forEach(c => sel.innerHTML += `<option value="${c}">${c}</option>`);
+    }
+
+    // Only fetch from server if bootstrap data is missing (e.g. page refresh edge case)
+    if (!bs.belts || !bs.clubs) {
+      toggleLoad(true);
+      let beltsLoaded = !(!bs.belts), clubsLoaded = !(!bs.clubs);
+      const checkDone = () => { if (beltsLoaded && clubsLoaded) toggleLoad(false); };
+      if (!bs.belts) {
+        google.script.run.withSuccessHandler(belts => {
+          const sel = document.getElementById('reg-grade');
+          sel.innerHTML = '<option value="">Select your next belt...</option>';
+          belts.forEach(b => sel.innerHTML += `<option value="${b.value}">${b.label}</option>`);
+          beltsLoaded = true; checkDone();
+        }).getBeltOptions();
+      }
+      if (!bs.clubs) {
+        google.script.run.withSuccessHandler(clubs => {
+          const sel = document.getElementById('reg-club');
+          sel.innerHTML = '<option value="">Select your club (optional)</option>';
+          clubs.forEach(c => sel.innerHTML += `<option value="${c}">${c}</option>`);
+          clubsLoaded = true; checkDone();
+        }).getClubOptions();
+      }
+    }
+  }
+
+  function handleRegister() {
+    const name    = document.getElementById('reg-name').value.trim();
+    const email   = document.getElementById('reg-email').value.trim();
+    const grade   = document.getElementById('reg-grade').value;
+    const pass    = document.getElementById('reg-pass').value;
+    const club    = document.getElementById('reg-club').value;
+    const other   = document.getElementById('reg-other-club') ? document.getElementById('reg-other-club').value.trim() : '';
+    if (!name || !email || !grade || !pass) { showOverlayMessage('MISSING DETAILS','text-danger','Please fill in all fields before registering.','Try Again'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showOverlayMessage('INVALID EMAIL','text-danger','Please enter a valid email address.','Try Again'); return; }
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*]).{5,}$/.test(pass)) { showOverlayMessage('WEAK PASSWORD','text-danger','Must be 5+ characters with uppercase, lowercase, number and special character (!@#$%^&*).','Try Again'); return; }
+    toggleLoad(true);
+    google.script.run
+      .withSuccessHandler(res => {
+        toggleLoad(false);
+        if (res.success) {
+          showOverlayMessage('WELCOME!','text-success',`Account created, ${name.split(' ')[0]}. You can now log in.`,'Go to Login',() => switchView('view-login'));
+          ['reg-name','reg-email','reg-pass'].forEach(id => document.getElementById(id).value = '');
+          document.getElementById('reg-grade').value = '';
+          document.getElementById('reg-club').value = '';
+          document.getElementById('reg-other-club-wrap').classList.add('hidden');
+        } else showOverlayMessage('REGISTRATION FAILED','text-danger',res.message,'Try Again');
+      })
+      .withFailureHandler(() => { toggleLoad(false); showOverlayMessage('SERVER ERROR','text-danger','Could not connect. Please try again.','Close'); })
+      .registerUser(name, email, grade, pass, club, other);
+  }
+
+  function handleClubSelectChange() {
+    const val  = document.getElementById('reg-club').value;
+    const wrap = document.getElementById('reg-other-club-wrap');
+    if (wrap) wrap.classList.toggle('hidden', val !== 'OTHER');
+  }
+
+  function handleLogout() {
+    if (playTimerInterval) stopPlayTimer();
+    isQuizActive = false; activeUser = '';
+    activePlaySeconds = 0; _sessionStartSeconds = 0;
+    goalMetToday = false; pendingGoalMet = false; learningGoalMins = 0;
+    notificationCount = 0; userClubStatus = ''; userPendingClub = '';
+    if (playTimerInterval) { clearInterval(playTimerInterval); playTimerInterval = null; }
+    window._adminFormData = null; window._adminAllUsers = null;
+    window._adminAllQuestions = null; window._adminQCallerClub = null;
+    window.BOOTSTRAP = null;
+    document.getElementById('nav-admin').classList.add('hidden');
+    document.getElementById('navbar').classList.add('hidden');
+    document.getElementById('notif-bell-wrap').classList.add('hidden');
+    switchView('view-login');
+  }
+
+  // ── App entry point ───────────────────────────────────────────────────────────
+  function startApp(mode) {
+    // Flashcards are NOT a quiz session — handle separately
+    if (mode === 'game_flashcards') { isQuizActive = true; startPlayTimer(); initFlashcards(); return; }
+
+    isQuizActive = true; startPlayTimer();
+    currentMode = mode; questionsAnswered = 0; score = 0; currentIndex = 0; missedQuestions = []; setsCleared = 0; examAnswers = {};
+    if (timerInterval) clearInterval(timerInterval);
+    if (questionTimerInterval) clearInterval(questionTimerInterval);
+    document.querySelectorAll('#view-quiz [id^="ui-"]').forEach(el => el.classList.add('hidden'));
+    ['difficulty-selector','timer-display','next-btn','infinite-score-display'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
+    document.getElementById('q-count').classList.remove('hidden');
+
+    // Tul Trumps — specific "Shuffling deck..." message (the ONE exception to the global belt-meaning rule)
+    if (mode === 'game_tuls') {
+      switchView('view-trumps');
+      toggleLoad(true, 'Shuffling deck...');
+      google.script.run.withSuccessHandler(data => {
+        toggleLoad(false);
+        if (data.error) { isQuizActive = false; alert(data.error); return; }
+        playerHand = data.playerHand; cpuHand = data.cpuHand; updateGameUI();
+      }).getTulTrumpsData(activeUser);
+      return;
+    }
+
+    if (mode === 'game_infinite') {
+      infiniteHighScore = 0; infiniteAllTimeHigh = 0;
+      toggleLoad(true); // global belt meaning
+      document.getElementById('q-count').classList.add('hidden');
+      // Both personal best and all-time need live fetches
+      // (high score is no longer in bootstrap to keep login fast)
+      infiniteHighScore = 0; infiniteAllTimeHigh = 0;
+      let personalLoaded = false, allTimeLoaded = false;
+      const checkReady = () => {
+        if (!personalLoaded || !allTimeLoaded) return;
+        document.getElementById('infinite-high-score').innerText    = infiniteHighScore;
+        document.getElementById('infinite-all-time').innerText      = infiniteAllTimeHigh;
+        document.getElementById('infinite-current-score').innerText = '0';
+        document.getElementById('infinite-score-display').classList.remove('hidden');
+        const bar = document.getElementById('progress-bar'); bar.style.width = '0%'; bar.style.background = 'var(--tkd-blue)';
+        loadInfiniteBatch();
+      };
+      google.script.run.withSuccessHandler(h => { infiniteHighScore   = h; personalLoaded = true; checkReady(); }).getHighScore(activeUser);
+      google.script.run.withSuccessHandler(h => { infiniteAllTimeHigh = h; allTimeLoaded  = true; checkReady(); }).getAllTimeHighScore();
+      return;
+    }
+
+    toggleLoad(true); // global belt meaning
+    if (mode.startsWith('game_')) {
+      google.script.run.withSuccessHandler(data => {
+        toggleLoad(false); quizData = data; switchView('view-quiz');
+        if (mode === 'game_match') setupMatch(); else if (mode === 'game_swipe') setupSwipe();
+      }).getGameData(activeUser, mode);
+    } else {
+      google.script.run.withSuccessHandler(data => {
+        toggleLoad(false); quizData = data;
+        if (mode === 'test') {
+          let examMins, examQs;
+          if (activeUserGrade >= 11) { examMins = 60; examQs = 50; }
+          else if (activeUserGrade >= 7) { examMins = 30; examQs = 20; }
+          else { examMins = 15; examQs = 10; }
+          timeLeft = examMins * 60;
+          document.getElementById('timer-display')?.classList.remove('hidden'); updateTimerUI();
+          timerInterval = setInterval(() => { timeLeft--; updateTimerUI(); if (timeLeft <= 0) endQuiz(); }, 1000);
+          const sub = document.getElementById('mock-grading-subtitle');
+          if (sub) sub.innerText = `Full Test (${examMins}m · ${examQs}Q)`;
+        }
+        switchView('view-quiz'); showQuestion();
+      }).getQuizData(activeUser, mode === 'test' ? 'test' : 'practice');
+    }
+  }
+
+  function setPracticeDifficulty(level) {
+    practiceDifficulty = level;
+    ['easy','medium','hard'].forEach(l =>
+      document.getElementById(`diff-${l}`).className =
+        `btn btn-sm rounded-pill flex-fill ${l === level ? 'btn-secondary' : 'btn-outline-secondary'}`);
+  }
+
+  // ── Tul Trumps ────────────────────────────────────────────────────────────────
+  function updateGameUI() {
+    if (!playerHand || !playerHand.length) { isProcessing = false; toggleLoad(false); return; }
+    const wrapper = document.getElementById('trumps-content-wrapper');
+    const card = playerHand[0], cpuCard = cpuHand[0], imgEl = document.getElementById('tul-card-img');
+    if (wrapper) wrapper.style.opacity = '0';
+    document.getElementById('player-card-count').innerText = playerHand.length;
+    document.getElementById('cpu-card-count').innerText    = cpuHand.length;
+    const cn = document.getElementById('cpu-card-name'); if (cpuCard && cn) cn.innerText = `(${cpuCard.name})`;
+    document.getElementById('tul-card-name').innerText    = card.name;
+    document.getElementById('tul-card-ready').innerText   = 'Ready: ' + card.readyStance;
+    document.getElementById('tul-card-meaning').innerText = card.meaning;
+    document.getElementById('val-movements').innerText    = card.movements;
+    document.getElementById('val-stances').innerText      = card.stances;
+    document.getElementById('val-difficulty').innerText   = card.difficulty;
+    imgEl.onload  = () => { if (wrapper) wrapper.style.opacity = '1'; toggleLoad(false); isProcessing = false; };
+    imgEl.onerror = () => { toggleLoad(false); isProcessing = false; };
+    imgEl.src = card.img;
+  }
+
+  function playTurn(stat) {
+    if (isProcessing || !playerHand.length || !cpuHand.length) return;
+    isProcessing = true;
+    const pCard = playerHand[0], cCard = cpuHand[0];
+    const pVal = parseInt(pCard[stat]) || 0, cVal = parseInt(cCard[stat]) || 0;
+    let statusText, cls, msg;
+    if (pVal > cVal) {
+      statusText = 'ROUND WON!'; cls = 'fw-bold text-win';
+      msg = `Your ${pCard.name} (${pVal}) beat ${cCard.name} (${cVal}).`;
+      playerHand.push(playerHand.shift(), cpuHand.shift());
+    } else if (cVal > pVal) {
+      statusText = 'ROUND LOST'; cls = 'fw-bold text-loss';
+      msg = `CPU's ${cCard.name} (${cVal}) beat your ${pCard.name} (${pVal}).`;
+      cpuHand.push(cpuHand.shift(), playerHand.shift());
+    } else {
+      statusText = 'DRAW'; cls = 'fw-bold text-draw';
+      msg = `Both patterns have ${pVal} ${stat}.`;
+      playerHand.push(playerHand.shift()); cpuHand.push(cpuHand.shift());
+    }
+    document.getElementById('result-text').innerText = statusText;
+    document.getElementById('result-text').className = cls;
+    document.getElementById('result-details').innerHTML =
+      `<p class="mb-4">${msg}</p><div class="d-grid"><button id="next-round-btn" class="btn btn-primary btn-lg rounded-pill py-3" onclick="manualNextRound()">Next Round (3s)</button></div>`;
+    document.getElementById('result-overlay').classList.remove('hidden');
+    let count = 3;
+    roundTimeout = setInterval(() => {
+      count--;
+      const b = document.getElementById('next-round-btn'); if (b) b.innerText = `Next Round (${count}s)`;
+      if (count <= 0) manualNextRound();
+    }, 1000);
+  }
+
+  function manualNextRound() {
+    clearInterval(roundTimeout);
+    const overlay = document.getElementById('result-overlay');
+    if (playerHand.length > 0) {
+      const ni = new Image();
+      ni.onload = () => { overlay.classList.add('hidden'); if (!checkGameOver()) { isProcessing = false; updateGameUI(); } };
+      ni.src = playerHand[0].img || '';
+    } else { overlay.classList.add('hidden'); checkGameOver(); }
+  }
+
+  function checkGameOver() {
+    if (playerHand.length === 0 || cpuHand.length === 0) {
+      const isWin = cpuHand.length === 0; isQuizActive = false; stopPlayTimer();
+      const rt = document.getElementById('result-text'), rd = document.getElementById('result-details');
+      if (isWin) { triggerConfetti(); rt.innerText = 'VICTORY!'; rt.className = 'fw-bold text-win display-5'; }
+      else        { rt.innerText = 'GAME OVER'; rt.className = 'fw-bold text-loss display-5'; }
+      rd.innerHTML = `<p>${isWin ? 'Amazing! You have captured all the patterns.' : 'The CPU took your deck.'}</p>
+        <div class="d-grid gap-2 mt-4">
+          <button class="btn btn-primary btn-lg rounded-pill" onclick="restartGame()">Play Again</button>
+          <button class="btn btn-outline-secondary rounded-pill" onclick="goHome()">Return Home</button>
+        </div>`;
+      document.getElementById('result-overlay').classList.remove('hidden'); return true;
+    }
+    return false;
+  }
+
+  function restartGame() {
+    document.getElementById('result-overlay').classList.add('hidden');
+    isProcessing = false; playerHand = []; cpuHand = [];
+    toggleLoad(true, 'Shuffling deck...'); // Tul Trumps restart — specific message only
+    google.script.run.withSuccessHandler(data => {
+      toggleLoad(false);
+      if (data.error) { alert(data.error); return; }
+      playerHand = data.playerHand; cpuHand = data.cpuHand; updateGameUI();
+    }).getTulTrumpsData(activeUser);
+  }
+
+  function goHome() {
+    document.getElementById('result-overlay').classList.add('hidden');
+    isProcessing = false; isQuizActive = false; playerHand = []; cpuHand = [];
+    handleNavigation('view-modes');
+  }
+
+  function showTulLockedMessage() {
+    showOverlayMessage('Locked','text-secondary',
+      '<i class="bi bi-lock-fill fs-1 text-secondary"></i><br><br>Unlock this game in real life — you can play Tul Trumps when you reach 6th Kup.',
+      'OK');
+  }
+
+  // ── Quiz ──────────────────────────────────────────────────────────────────────
+  function showQuestion() {
+    clearInterval(questionTimerInterval);
+    document.getElementById('question-timer-wrap').style.opacity = '0';
+    if (currentMode !== 'game_infinite')
+      document.getElementById('progress-bar').style.width = ((currentIndex / quizData.length) * 100) + '%';
+    document.getElementById('ui-standard').classList.remove('hidden');
+    document.getElementById('difficulty-selector')?.classList.toggle('hidden', currentMode !== 'practice');
+
+    const q = quizData[currentIndex];
+    document.getElementById('q-count').innerText       = currentMode === 'game_infinite' ? `Q${score + 1}` : `Q${currentIndex + 1}/${quizData.length}`;
+    document.getElementById('question-text').innerText = q.question;
+
+    // ── Exam nav buttons (Back / Next / Submit) ───────────────────────────────
+    const examNav    = document.getElementById('exam-nav');
+    const submitBtn  = document.getElementById('exam-submit-btn');
+    if (currentMode === 'test') {
+      examNav.classList.remove('hidden');
+      document.getElementById('next-btn').classList.add('hidden');
+      const allAnswered = quizData.every((_, i) => examAnswers[i] !== undefined);
+      submitBtn.classList.toggle('hidden', !allAnswered);
+    } else {
+      examNav?.classList.add('hidden');
+    }
+
+    // ── Options ───────────────────────────────────────────────────────────────
+    const optCont = document.getElementById('options-container'); optCont.innerHTML = '';
+    q.options.forEach(opt => {
+      const b = document.createElement('button'); b.className = 'option-btn'; b.innerText = opt;
+
+      // Restore previously selected answer for this question in exam mode
+      if (currentMode === 'test' && examAnswers[currentIndex] === opt) {
+        b.style.background  = '#cfe2ff';
+        b.style.borderColor = 'var(--tkd-blue)';
+      }
+
+      b.onclick = () => {
+        clearInterval(questionTimerInterval);
+        document.getElementById('question-timer-wrap').style.opacity = '0';
+        const isCorrect = opt === q.answer;
+
+        if (currentMode === 'game_infinite') {
+          document.querySelectorAll('.option-btn').forEach(x => x.disabled = true);
+          if (isCorrect) {
+            score++; b.style.background = '#d1e7dd';
+            document.getElementById('infinite-current-score').innerText = score;
+            const target = infiniteHighScore + 1, pct = Math.min(Math.round((score / target) * 100), 100);
+            const bar = document.getElementById('progress-bar');
+            bar.style.width = pct + '%'; bar.style.background = score >= target ? '#FFD700' : 'var(--tkd-blue)';
+            google.script.run.updateQuestionScore(activeUser, q.qId, true); currentIndex++;
+            setTimeout(() => { if (currentIndex >= quizData.length) { toggleLoad(true); loadInfiniteBatch(); } else showQuestion(); }, 600);
+          } else {
+            b.style.background = '#f8d7da';
+            google.script.run.updateQuestionScore(activeUser, q.qId, false);
+            setTimeout(() => endInfiniteWarrior({ q: q.question, a: q.answer }), 800);
+          }
+          return;
+        }
+
+        if (currentMode === 'test') {
+          // Store answer — allows changing before submit
+          examAnswers[currentIndex] = opt;
+          document.querySelectorAll('.option-btn').forEach(x => {
+            x.style.background  = '';
+            x.style.borderColor = '';
+          });
+          b.style.background  = '#cfe2ff';
+          b.style.borderColor = 'var(--tkd-blue)';
+          // Show submit if all questions now answered
+          const allAnswered = quizData.every((_, i) => examAnswers[i] !== undefined);
+          document.getElementById('exam-submit-btn').classList.toggle('hidden', !allAnswered);
+          return;
+        }
+
+        // Practice mode
+        document.querySelectorAll('.option-btn').forEach(x => x.disabled = true);
+        questionsAnswered++;
+        if (isCorrect) score++; else missedQuestions.push({ q: q.question, a: q.answer });
+        google.script.run.updateQuestionScore(activeUser, q.qId, isCorrect);
+        b.style.background = isCorrect ? '#d1e7dd' : '#f8d7da';
+        document.getElementById('next-btn').classList.remove('hidden');
+      };
+      optCont.appendChild(b);
+    });
+
+    if (currentMode === 'practice') startQuestionTimer({ easy: 15, medium: 10, hard: 5 }[practiceDifficulty] || 10);
+  }
+
+  function loadInfiniteBatch() {
+    google.script.run.withSuccessHandler(data => {
+      quizData = data; currentIndex = 0; switchView('view-quiz'); toggleLoad(false); showQuestion();
+    }).getQuizData(activeUser, 'practice');
+  }
+
+  function endInfiniteWarrior(wrongQuestion) {
+    clearInterval(questionTimerInterval); isQuizActive = false; stopPlayTimer();
+    const isNewHigh = score > infiniteHighScore;
+    if (isNewHigh) {
+      infiniteHighScore = score;
+      if (score > infiniteAllTimeHigh) infiniteAllTimeHigh = score;
+      google.script.run.saveHighScore(activeUser, score);
+      // Keep bootstrap in sync so account view and next session start are correct
+      if (window.BOOTSTRAP) window.BOOTSTRAP.highScore = score;
+    }
+    const rt = document.getElementById('result-text'), rd = document.getElementById('result-details');
+    rt.innerText = isNewHigh ? 'NEW HIGH SCORE!' : 'WARRIOR DOWN!';
+    rt.className = isNewHigh ? 'fw-bold text-warning' : 'fw-bold text-danger';
+    const rev = wrongQuestion
+      ? `<div class="text-start bg-light border-start border-danger rounded p-2 mb-3 small">
+           <div class="fw-bold mb-1">${wrongQuestion.q}</div>
+           <div class="text-success">✓ ${wrongQuestion.a}</div>
+         </div>` : '';
+    rd.innerHTML = `<p class="mb-1">Score: <strong>${score}</strong></p>
+      <p class="text-muted small mb-1">Your Best: ${infiniteHighScore}</p>
+      <p class="text-muted small mb-3">All Time: ${infiniteAllTimeHigh}</p>
+      ${rev}
+      <div class="d-grid gap-2">
+        <button class="btn btn-primary btn-lg rounded-pill" onclick="closeWarning();startApp('game_infinite');">Play Again</button>
+        <button class="btn btn-outline-secondary rounded-pill" onclick="closeWarning();handleNavigation('view-modes');">Return Home</button>
+      </div>`;
+    document.getElementById('result-overlay').classList.remove('hidden');
+    if (isNewHigh) triggerConfetti();
+  }
+
+  function setupMatch() {
+    document.getElementById('progress-bar').style.width = ((setsCleared / 2) * 100) + '%';
+    document.getElementById('ui-match').classList.remove('hidden');
+    document.getElementById('q-count').innerText = `Board ${setsCleared + 1}/2`;
+    const batch = quizData.slice(setsCleared * 5, (setsCleared + 1) * 5);
+    matchesFound = 0;
+    const grid = document.getElementById('match-grid'); grid.innerHTML = '';
+    [...batch.map(x => ({ t: x.matchingTerm,  id: x.qId, type: 'q' })),
+     ...batch.map(x => ({ t: x.correctAnswer, id: x.qId, type: 'a' }))]
+      .sort(() => Math.random() - 0.5)
+      .forEach(item => {
+        const d = document.createElement('div'); d.className = 'match-btn shadow-sm'; d.innerText = item.t;
+        d.onclick = () => {
+          if (d.classList.contains('selected') || d.classList.contains('matched')) return;
+          if (item.type === 'q') { if (matchSelected.qEl) matchSelected.qEl.classList.remove('selected'); matchSelected.qId = item.id; matchSelected.qEl = d; }
+          else                   { if (matchSelected.aEl) matchSelected.aEl.classList.remove('selected'); matchSelected.aId = item.id; matchSelected.aEl = d; }
+          d.classList.add('selected');
+          if (matchSelected.qId && matchSelected.aId) {
+            if (matchSelected.qId === matchSelected.aId) {
+              const q = matchSelected.qEl, a = matchSelected.aEl;
+              setTimeout(() => {
+                q.classList.add('matched'); a.classList.add('matched'); matchesFound++;
+                if (matchesFound === 5) {
+                  setsCleared++;
+                  if (setsCleared >= 2) { isQuizActive = false; stopPlayTimer(); document.getElementById('progress-bar').style.width = '100%'; triggerConfetti(); setTimeout(() => switchView('view-modes'), 2500); }
+                  else setupMatch();
+                }
+              }, 200);
+            } else {
+              const q = matchSelected.qEl, a = matchSelected.aEl;
+              setTimeout(() => { q.classList.remove('selected'); a.classList.remove('selected'); }, 400);
+            }
+            matchSelected = { qId: null, aId: null, qEl: null, aEl: null };
+          }
+        };
+        grid.appendChild(d);
+      });
+  }
+
+  function setupSwipe() {
+    document.getElementById('progress-bar').style.width = ((currentIndex / quizData.length) * 100) + '%';
+    document.getElementById('ui-swipe').classList.remove('hidden');
+    const q = quizData[currentIndex];
+    document.getElementById('q-count').innerText   = `Q${currentIndex + 1}/${quizData.length}`;
+    // Randomly show correct answer (true) or the sheet's own wrong answer (false)
+    const isLying = Math.random() > 0.5; swipeCorrect = !isLying;
+    document.getElementById('swipe-term').innerText = q.simplifiedDef;
+    document.getElementById('swipe-def').innerText  = isLying
+      ? (q.decoys && q.decoys.length ? q.decoys[0] : q.correctAnswer)
+      : q.correctAnswer;
+  }
+
+  function handleSwipe(userAnswer) {
+    const q = quizData[currentIndex], isCorrect = userAnswer === swipeCorrect;
+    if (isCorrect) score++; else missedQuestions.push({ q: q.simplifiedDef, a: q.correctAnswer });
+    google.script.run.updateQuestionScore(activeUser, q.qId, isCorrect);
+    questionsAnswered++; currentIndex++;
+    if (currentIndex >= quizData.length) endQuiz(); else setupSwipe();
+  }
+
+  function nextQuestion() { (currentIndex < quizData.length - 1) ? (currentIndex++, showQuestion()) : endQuiz(); }
+
+  function examNav(dir) {
+    // Loops: next on last goes to Q1, back on Q1 goes to last
+    currentIndex = (currentIndex + dir + quizData.length) % quizData.length;
+    showQuestion();
+  }
+
+  function submitExam() {
+    clearInterval(timerInterval); clearInterval(questionTimerInterval);
+    isQuizActive = false; stopPlayTimer();
+    // Calculate score and missed questions from stored answers
+    score = 0; missedQuestions = []; questionsAnswered = quizData.length;
+    quizData.forEach((q, i) => {
+      const selected  = examAnswers[i];
+      const isCorrect = selected === q.answer;
+      if (isCorrect) score++; else missedQuestions.push({ q: q.question, a: q.answer });
+      google.script.run.updateQuestionScore(activeUser, q.qId, isCorrect);
+    });
+    examAnswers = {}; // reset for next session
+    const p = Math.round((score / questionsAnswered) * 100);
+    if (p >= 75) triggerConfetti();
+    document.getElementById('res-title').innerText   = p >= 75 ? 'GREAT JOB!' : 'KEEP PRACTISING!';
+    document.getElementById('res-percent').innerText = p + '%';
+    document.getElementById('res-score').innerText   = `${score}/${questionsAnswered} Correct`;
+    const rList = document.getElementById('review-list'); rList.innerHTML = '';
+    if (missedQuestions.length)
+      missedQuestions.forEach(m => { rList.innerHTML += `<div class="mb-2 p-2 bg-light border-start border-danger"><b>${m.q}</b><br><span class="text-success">${m.a}</span></div>`; });
+    else rList.innerHTML = '<div class="text-success p-2">Perfect! No mistakes to review.</div>';
+    switchView('view-results');
+  }
+
+  function endQuiz() {
+    clearInterval(timerInterval); clearInterval(questionTimerInterval); isQuizActive = false; stopPlayTimer();
+    // Exam ends via submitExam() only; flashcards have no results screen
+    if (questionsAnswered === 0 || currentMode === 'game_flashcards' || currentMode === 'test') { switchView('view-modes'); return; }
+    const p = Math.round((score / questionsAnswered) * 100);
+    if (p >= 75) triggerConfetti();
+    document.getElementById('res-title').innerText   = p >= 75 ? 'GREAT JOB!' : 'KEEP PRACTISING!';
+    document.getElementById('res-percent').innerText = p + '%';
+    document.getElementById('res-score').innerText   = `${score}/${questionsAnswered} Correct`;
+    const rList = document.getElementById('review-list'); rList.innerHTML = '';
+    if (missedQuestions.length)
+      missedQuestions.forEach(m => { rList.innerHTML += `<div class="mb-2 p-2 bg-light border-start border-danger"><b>${m.q}</b><br><span class="text-success">${m.a}</span></div>`; });
+    else rList.innerHTML = '<div class="text-success p-2">Perfect! No mistakes to review.</div>';
+    switchView('view-results');
+  }
+
+  function updateTimerUI() {
+    const m = Math.floor(timeLeft / 60), s = timeLeft % 60;
+    document.getElementById('timer-display').innerText = `${m}:${s < 10 ? '0' : ''}${s}`;
+  }
+
+  function startQuestionTimer(seconds) {
+    clearInterval(questionTimerInterval);
+    const fill  = document.getElementById('q-timer-fill');
+    const label = document.getElementById('q-timer-label');
+    const wrap  = document.getElementById('question-timer-wrap');
+    let remaining = seconds;
+    label.innerText = remaining; fill.style.stroke = 'var(--tkd-blue)'; fill.style.strokeDashoffset = '0'; wrap.style.opacity = '1';
+    questionTimerInterval = setInterval(() => {
+      remaining--; label.innerText = remaining;
+      fill.style.strokeDashoffset = ((seconds - remaining) / seconds) * 125.6;
+      if (remaining <= 2) fill.style.stroke = 'var(--tkd-red)';
+      if (remaining <= 0) {
+        clearInterval(questionTimerInterval);
+        const q = quizData[currentIndex]; questionsAnswered++; missedQuestions.push({ q: q.question, a: q.answer });
+        google.script.run.updateQuestionScore(activeUser, q.qId, false);
+        document.querySelectorAll('.option-btn').forEach(btn => { btn.disabled = true; if (btn.innerText === q.answer) btn.style.background = '#d1e7dd'; });
+        wrap.style.opacity = '0'; document.getElementById('next-btn').classList.remove('hidden');
+      }
+    }, 1000);
+  }
+
+  // ── Play timer — only counts seconds spent inside an active quiz/game ─────────
+  // activePlaySeconds is the running TOTAL for the login session, used to detect
+  // when the daily goal has been reached across multiple short sessions.
+  // logPlayTime receives only the DELTA for each session (sessionSeconds), not the total.
+  let _sessionStartSeconds = 0; // snapshot of activePlaySeconds when this session started
+
+  function startPlayTimer() {
+    if (playTimerInterval) return; // already running — shouldn't happen but guard anyway
+    _sessionStartSeconds = activePlaySeconds; // record where we started
+    playTimerInterval = setInterval(() => {
+      if (!isQuizActive) return; // idle guard: never count time on home/menu screens
+      activePlaySeconds++;
+
+      // Check whether the daily goal has been reached for the first time today
+      if (!goalMetToday && !pendingGoalMet && learningGoalMins > 0 && activePlaySeconds >= learningGoalMins * 60) {
+        pendingGoalMet = true;
+        goalMetToday = true; // set immediately so the interval never fires this block again
+        google.script.run.withSuccessHandler(res => {
+          if (res && res.success && !res.alreadyDone) {
+            const el = document.getElementById('user-streak');
+            if (el) el.innerHTML = `<i class="bi bi-fire"></i> ${res.streak} Day Streak`;
+          }
+          // Try to show the popup immediately if we're already on a resting screen.
+          // Without this, the popup only fires on the NEXT navigation — so if the user
+          // meets their goal on the last question and stays on view-results, they see nothing.
+          const activeViewEl = document.querySelector('.view-container.active-view');
+          const currentView  = activeViewEl ? activeViewEl.id : '';
+          const restingViews = ['view-modes','view-results','view-account','view-about',
+                                'view-admin','view-admin-members','view-admin-questions',
+                                'view-admin-contact','view-game-center'];
+          if (restingViews.includes(currentView) &&
+              document.getElementById('result-overlay').classList.contains('hidden')) {
+            pendingGoalMet = false;
+            showGoalMetOverlay();
+          }
+          // If still mid-game, pendingGoalMet stays true and switchView will fire it on next navigate
+        }).incrementStreak(activeUser);
+      }
+    }, 1000);
+  }
+
+  function stopPlayTimer() {
+    clearInterval(playTimerInterval);
+    playTimerInterval = null; // MUST null this — otherwise startPlayTimer's guard fires on next session
+
+    // Log only the delta seconds for THIS session, not the ever-growing total
+    const sessionSeconds = activePlaySeconds - _sessionStartSeconds;
+    if (sessionSeconds > 0 && activeUser) google.script.run.logPlayTime(activeUser, sessionSeconds);
+    // Do NOT reset activePlaySeconds — it accumulates so goal can be met across short sessions
+  }
+
+  function triggerConfetti() {
+    for (let i = 0; i < 70; i++) {
+      const c = document.createElement('div'); c.className = 'confetti';
+      c.style.left = Math.random() * 100 + 'vw'; c.style.top = '-20px';
+      c.style.backgroundColor = ['#0d6efd','#ffc107','#dc3545','#198754','#ffffff'][Math.floor(Math.random() * 5)];
+      c.style.animationDuration = (Math.random() * 2 + 1.5) + 's';
+      c.style.animationDelay   = Math.random() + 's';
+      document.body.appendChild(c); setTimeout(() => c.remove(), 4000);
+    }
+  }
+
+  // ── Account ───────────────────────────────────────────────────────────────────
+  function saveGrade() {
+    activeUserGrade = parseInt(document.getElementById('grade-selector').value);
+    updateGradeBanner(activeUserGrade);
+    google.script.run.saveGrade(activeUser, activeUserGrade);
+  }
+
+  function updatePass() {
+    const newPass = document.getElementById('new-pass').value;
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*]).{5,}$/.test(newPass)) {
+      showOverlayMessage('WEAK PASSWORD','text-danger','Must be 5+ characters with Uppercase, Lowercase, Number, and Special Characters (!@#$%^&*)','Try Again'); return;
+    }
+    toggleLoad(true, 'Securing account...');
+    google.script.run
+      .withSuccessHandler(() => { toggleLoad(false); showOverlayMessage('UPDATED!','text-success','Your new password has been saved successfully.','Great'); document.getElementById('new-pass').value = ''; })
+      .withFailureHandler(err => { toggleLoad(false); showOverlayMessage('SERVER ERROR','text-danger', err, 'Close'); })
+      .updatePass(activeUser, newPass);
+  }
+
+  function loadAccountView() {
+    const bs  = window.BOOTSTRAP || {};
+    const sel = document.getElementById('grade-selector');
+    sel.innerHTML = '';
+    (bs.belts || []).forEach(b => sel.innerHTML += `<option value="${b.value}" ${b.value == activeUserGrade ? 'selected' : ''}>${b.label}</option>`);
+
+    const dateInput = document.getElementById('account-grading-date');
+    if (dateInput) dateInput.value = window._userGradingDate || '';
+
+    // Club membership status block
+    const clubWrap = document.getElementById('account-club-status-wrap');
+    if (clubWrap) {
+      if (userClubStatus === 'member') {
+        clubWrap.innerHTML = `<div class="p-3 rounded-3 bg-light border text-center small fw-bold text-success"><i class="bi bi-patch-check-fill me-1"></i>Club member — no subscription required</div>`;
+      } else if (userClubStatus === 'pending') {
+        clubWrap.innerHTML = `<div class="p-3 rounded-3 border border-warning text-center small fw-bold text-warning club-pending-btn"><i class="bi bi-hourglass-split me-1"></i>Pending: ${userPendingClub}</div>`;
+      } else {
+        // Show Join a Club button
+        const clubs = bs.clubs || [];
+        const opts  = clubs.map(c => `<option value="${c}">${c}</option>`).join('');
+        clubWrap.innerHTML = `
+          <select id="account-club-select" class="form-select mb-2 form-select-sm">
+            <option value="">Select a club to join...</option>
+            ${opts}
+            <option value="OTHER">Other (my club isn't listed)</option>
+          </select>
+          <div id="account-other-club-wrap" class="hidden mb-2">
+            <textarea id="account-other-club" class="form-control form-control-sm" rows="2" placeholder="Club name, location, instructor (optional)"></textarea>
+          </div>
+          <button class="btn btn-outline-primary w-100 btn-sm rounded-pill" onclick="submitClubJoinRequest()">
+            <i class="bi bi-building-add me-1"></i>Request to Join Club
+          </button>`;
+        document.getElementById('account-club-select').addEventListener('change', function() {
+          const w = document.getElementById('account-other-club-wrap');
+          if (w) w.classList.toggle('hidden', this.value !== 'OTHER');
+        });
+      }
+    }
+
+    toggleLoad(true);
+    google.script.run
+      .withSuccessHandler(stats => { toggleLoad(false); renderSrsStats(stats); })
+      .withFailureHandler(() => { toggleLoad(false); document.getElementById('srs-stats-wrap').innerHTML = '<div class="text-muted small">Could not load stats.</div>'; })
+      .getSrsStats(activeUser);
+  }
+
+  function submitClubJoinRequest() {
+    const clubVal = document.getElementById('account-club-select').value;
+    const other   = document.getElementById('account-other-club') ? document.getElementById('account-other-club').value.trim() : '';
+    if (!clubVal) { showOverlayMessage('SELECT A CLUB','text-danger','Please select a club from the list.','OK'); return; }
+    toggleLoad(true);
+    google.script.run.withSuccessHandler(res => {
+      toggleLoad(false);
+      if (res.success) {
+        userClubStatus  = clubVal === 'OTHER' ? 'pending_other' : 'pending';
+        userPendingClub = clubVal === 'OTHER' ? '' : clubVal;
+        showOverlayMessage('REQUEST SENT','text-success',
+          clubVal === 'OTHER'
+            ? 'Your club details have been submitted. We\'ll be in touch.'
+            : `Your request to join ${clubVal} has been sent. You\'ll be notified when it\'s reviewed.`,
+          'OK');
+        loadAccountView(); // re-render club block to show pending state
+      } else {
+        showOverlayMessage('REQUEST FAILED','text-danger', res.message, 'OK');
+      }
+    }).withFailureHandler(() => { toggleLoad(false); showOverlayMessage('ERROR','text-danger','Could not send request.','OK'); })
+    .requestClubJoin(activeUser, clubVal, other);
+  }
+
+  function saveGradingDate() {
+    const dateStr = document.getElementById('account-grading-date').value || '';
+    window._userGradingDate = dateStr;
+    renderGradingCountdown(dateStr);
+    google.script.run.withFailureHandler(() =>
+      showOverlayMessage('ERROR','text-danger','Could not save grading date.','OK')
+    ).saveUserGradingDate(activeUser, dateStr);
+  }
+
+  function clearGradingDate() {
+    document.getElementById('account-grading-date').value = '';
+    window._userGradingDate = '';
+    renderGradingCountdown('');
+    google.script.run.withFailureHandler(() =>
+      showOverlayMessage('ERROR','text-danger','Could not clear grading date.','OK')
+    ).saveUserGradingDate(activeUser, '');
+  }
+
+  function renderSrsStats(stats) {
+    const { buckets, unseen, eligible } = stats;
+    const labels = {
+      unseen: { text:'New',       color:'#adb5bd', desc:'Not yet attempted' },
+      1:      { text:'Learning',  color:'#dc3545', desc:'Review every session' },
+      2:      { text:'Familiar',  color:'#fd7e14', desc:'Review after 2 days' },
+      3:      { text:'Confident', color:'#0d6efd', desc:'Review after 4 days' },
+      4:      { text:'Mastered',  color:'#198754', desc:'Review after 5 days' }
+    };
+    const counts = { unseen, 1: buckets[1], 2: buckets[2], 3: buckets[3], 4: buckets[4] };
+    let html = `<div class="small text-muted mb-2 text-end">${eligible} questions at your grade</div>`;
+    for (const key of ['unseen',1,2,3,4]) {
+      const count = counts[key], pct = eligible > 0 ? Math.round((count / eligible) * 100) : 0;
+      const { text, color, desc } = labels[key];
+      html += `<div class="mb-2">
+        <div class="d-flex justify-content-between small mb-1"><span style="color:${color}" class="fw-bold">${text}</span><span class="text-muted">${count} &nbsp;·&nbsp; ${pct}%</span></div>
+        <div style="height:10px;background:#f0f0f0;border-radius:10px;overflow:hidden;"><div style="width:${pct}%;height:100%;background:${color};border-radius:10px;transition:width 0.6s ease;"></div></div>
+        <div class="text-muted" style="font-size:0.7rem;">${desc}</div>
+      </div>`;
+    }
+    document.getElementById('srs-stats-wrap').innerHTML = html;
+  }
+
+  // ── Grade banner ──────────────────────────────────────────────────────────────
+  function updateGradeBanner(grade) {
+    const cfgMap = {
+      1: ['#ffffff','#ffffff','#ffffff','#000000',''],  2: ['#ffffff','#f5c518','#ffffff','#000000',''],
+      3: ['#f5c518','#f5c518','#f5c518','#000000',''],  4: ['#f5c518','#198754','#f5c518','#ffffff',''],
+      5: ['#198754','#198754','#198754','#ffffff',''],  6: ['#198754','#0d6efd','#198754','#ffffff',''],
+      7: ['#0d6efd','#0d6efd','#0d6efd','#ffffff',''],  8: ['#0d6efd','#dc3545','#0d6efd','#ffffff',''],
+      9: ['#dc3545','#dc3545','#dc3545','#ffffff',''], 10: ['#dc3545','#111111','#dc3545','#ffffff',''],
+      11:['#111111','#111111','#111111','#FFD700','I'],  12:['#111111','#111111','#111111','#FFD700','II'],
+      13:['#111111','#111111','#111111','#FFD700','III'],14:['#111111','#111111','#111111','#FFD700','IV'],
+      15:['#111111','#111111','#111111','#FFD700','V'],  16:['#111111','#111111','#111111','#FFD700','VI'],
+      17:['#111111','#111111','#111111','#FFD700','VII'],18:['#111111','#111111','#111111','#FFD700','VIII'],
+      19:['#111111','#111111','#111111','#FFD700','IX']
+    };
+    const cfg = cfgMap[grade] || cfgMap[1];
+    [1,2,3].forEach(i => document.getElementById(`banner-bar-${i}`).style.background = cfg[i - 1]);
+    document.getElementById('banner-title').style.color = cfg[3];
+    const dan = document.getElementById('banner-dan');
+    dan.innerText = cfg[4]; dan.classList.toggle('hidden', !cfg[4]);
+    document.getElementById('grade-banner').classList.remove('hidden');
+
+    const tulCard = document.querySelector('#view-game-center .game-card:nth-child(3)');
+    if (tulCard) {
+      const ex = tulCard.querySelector('.tul-lock-badge'); if (ex) ex.remove();
+      if (grade <= 5) {
+        tulCard.style.opacity = '0.5'; tulCard.querySelector('i').style.color = '#adb5bd'; tulCard.style.position = 'relative';
+        const b = document.createElement('span'); b.className = 'tul-lock-badge';
+        b.style.cssText = 'position:absolute;top:6px;right:6px;';
+        b.innerHTML = '<i class="bi bi-lock-fill" style="font-size:1rem;color:#adb5bd;"></i>';
+        tulCard.appendChild(b); tulCard.onclick = () => showTulLockedMessage();
+      } else if (grade === 6) {
+        tulCard.style.opacity = '1'; tulCard.querySelector('i').style.color = ''; tulCard.style.position = 'relative';
+        const b = document.createElement('span'); b.className = 'tul-lock-badge';
+        b.style.cssText = 'position:absolute;top:6px;right:6px;';
+        b.innerHTML = '<i class="bi bi-unlock-fill" style="font-size:1rem;color:#198754;"></i>';
+        tulCard.appendChild(b); tulCard.onclick = () => startApp('game_tuls');
+      } else {
+        tulCard.style.opacity = '1'; tulCard.querySelector('i').style.color = '';
+        tulCard.onclick = () => startApp('game_tuls');
+      }
+    }
+  }
+
+  // ── Goal / streak ─────────────────────────────────────────────────────────────
+  function showGoalMetOverlay() {
+    document.getElementById('result-text').innerText = '🎯 GOAL MET!';
+    document.getElementById('result-text').className = 'fw-bold text-success';
+    document.getElementById('result-details').innerHTML =
+      `<p class="mb-2">You've reached your daily learning goal of <strong>${learningGoalMins} minutes</strong>!</p>
+       <p class="text-muted small mb-4">Your streak has been updated. Keep it up!</p>
+       <div class="d-grid"><button class="btn btn-success btn-lg rounded-pill fw-bold" onclick="closeWarning()">🔥 Awesome!</button></div>`;
+    document.getElementById('result-overlay').classList.remove('hidden'); triggerConfetti();
+  }
+
+  function showLearningGoalSetup() {
+    document.getElementById('result-text').innerText = 'Set Your Daily Goal';
+    document.getElementById('result-text').className = 'fw-bold text-primary';
+    document.getElementById('result-details').innerHTML =
+      `<p class="text-muted small mb-3">How many minutes do you want to practise each day?</p>
+       <div class="d-grid gap-2">
+         ${[5,10,20,30].map(m => `<button class="btn btn-outline-primary rounded-pill" onclick="saveLearningGoal(${m})">${m} minutes</button>`).join('')}
+         <button class="btn btn-outline-secondary rounded-pill mt-1" onclick="closeWarning()">Skip for now</button>
+       </div>`;
+    document.getElementById('result-overlay').classList.remove('hidden');
+  }
+
+  function saveLearningGoal(mins) {
+    learningGoalMins = mins; closeWarning();
+    google.script.run.withSuccessHandler(() => {
+      showOverlayMessage('GOAL SET!','text-success',`Your daily goal is ${mins} minutes of active practice. We'll celebrate when you hit it!`,"Let's Go!");
+    }).saveLearningGoal(activeUser, mins);
+    const el = document.getElementById('about-learning-goal'); if (el) el.innerText = `${mins} minutes`;
+  }
+
+  // ── Notification bell ──────────────────────────────────────────────────────
+  function updateNotifBell() {
+    const badge = document.getElementById('notif-badge');
+    const wrap  = document.getElementById('notif-bell-wrap');
+    if (!badge || !wrap) return;
+    if (notificationCount > 0) {
+      badge.innerText = notificationCount > 9 ? '9+' : notificationCount;
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
+  }
+
+  function loadNotifications() {
+    toggleLoad(true);
+    google.script.run.withSuccessHandler(res => {
+      toggleLoad(false);
+      const list = document.getElementById('notif-list');
+      if (!res || !res.notifications || !res.notifications.length) {
+        list.innerHTML = '<div class="text-center text-muted small py-4">No notifications yet.</div>'; return;
+      }
+      list.innerHTML = res.notifications.map(n => `
+        <div class="notif-item ${n.isRead ? '' : 'unread'}">
+          <div class="notif-msg">${n.message}</div>
+          <div class="notif-time">${n.timestamp}</div>
+        </div>`).join('');
+      // Mark all read on open
+      notificationCount = 0; updateNotifBell();
+      google.script.run.markNotificationsRead(activeUser);
+    }).withFailureHandler(() => { toggleLoad(false); }).getNotifications(activeUser);
+  }
+
+  function markAllRead() {
+    notificationCount = 0; updateNotifBell();
+    google.script.run.markNotificationsRead(activeUser);
+    document.querySelectorAll('.notif-item').forEach(el => el.classList.remove('unread'));
+  }
+
+  function renderGradingCountdown(dateStr) {
+    const banner = document.getElementById('grading-countdown');
+    const text   = document.getElementById('grading-countdown-text');
+    const sub    = document.getElementById('grading-countdown-date');
+    if (!banner) return;
+    if (!dateStr) { banner.classList.add('hidden'); return; }
+
+    const grading = new Date(dateStr);
+    if (isNaN(grading.getTime())) { banner.classList.add('hidden'); return; }
+
+    const now = new Date();
+    now.setHours(0, 0, 0, 0); grading.setHours(0, 0, 0, 0);
+    const days = Math.round((grading - now) / (1000 * 60 * 60 * 24));
+
+    if (days < 0) { banner.classList.add('hidden'); return; }
+
+    banner.classList.remove('hidden');
+    sub.innerText = grading.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short', year:'numeric' });
+
+    if      (days === 0)  text.innerText = 'Today! 🥋';
+    else if (days === 1)  text.innerText = 'Tomorrow! 🥋';
+    else if (days <= 30)  text.innerText = `${days} days`;
+    else                  text.innerText = `${Math.round(days / 7)} weeks`;
+
+    const colour = days <= 7 ? '#dc3545' : days <= 14 ? '#fd7e14' : '#0d6efd';
+    text.style.color        = colour;
+    banner.style.borderColor = colour + '55';
+    banner.style.background  = colour + '0d';
+  }
+
+  // ── Flashcards — SINGLE server call ───────────────────────────────────────────
+  // getFlashcardData returns beltLevels as [{value, label}] — no separate getBeltOptions call needed
+  function initFlashcards() {
+    toggleLoad(true); // global belt meaning
+    google.script.run
+      .withSuccessHandler(data => {
+        toggleLoad(false);
+        if (data.error) { showOverlayMessage('ERROR','text-danger',data.error,'OK'); handleNavigation('view-game-center'); return; }
+        _fcAllCards = data.cards || []; _fcSeen = new Set(); _fcIndex = 0;
+        const beltSel = document.getElementById('fc-belt-filter');
+        const catSel  = document.getElementById('fc-category-filter');
+        beltSel.innerHTML = '<option value="">All Belts</option>';
+        (data.beltLevels || []).forEach(b => beltSel.innerHTML += `<option value="${b.value}">${b.label}</option>`);
+        catSel.innerHTML = '<option value="">All Categories</option>';
+        (data.categories || []).forEach(c => catSel.innerHTML += `<option value="${c}">${c}</option>`);
+        beltSel.value = ''; catSel.value = '';
+        applyFlashcardFilters(); switchView('view-flashcards');
+      })
+      .withFailureHandler(() => {
+        toggleLoad(false);
+        isQuizActive = false; stopPlayTimer();
+        showOverlayMessage('ERROR','text-danger','Could not load flash cards.','OK');
+      })
+      .getFlashcardData(activeUser);
+  }
+
+  function applyFlashcardFilters() {
+    const bv = document.getElementById('fc-belt-filter').value;
+    const cv = document.getElementById('fc-category-filter').value;
+    _fcFiltered = _fcAllCards.filter(c => (!bv || c.beltLevel.toString() === bv) && (!cv || c.category === cv));
+    _fcIndex = 0; _fcSeen = new Set();
+    const card = document.getElementById('fc-card');
+    card.style.transition = 'none'; card.classList.remove('flipped');
+    requestAnimationFrame(() => { card.style.transition = ''; renderFlashcard(); });
+  }
+
+  function navFlashcard(dir) {
+    const ni = _fcIndex + dir;
+    if (ni >= 0 && ni < _fcFiltered.length) {
+      _fcIndex = ni;
+      const card = document.getElementById('fc-card');
+      if (card.classList.contains('flipped')) { card.classList.remove('flipped'); setTimeout(() => renderFlashcard(), 250); }
+      else renderFlashcard();
+    }
+  }
+
+  function flipFlashcard() { document.getElementById('fc-card').classList.toggle('flipped'); }
+
+  function renderFlashcard() {
+    const scene   = document.getElementById('fc-scene');
+    const empty   = document.getElementById('fc-empty');
+    const dots    = document.getElementById('fc-dots');
+    const counter = document.getElementById('fc-counter');
+    const prevBtn = document.getElementById('fc-prev');
+    const nextBtn = document.getElementById('fc-next');
+    const img     = document.getElementById('fc-img');
+    const meta    = document.getElementById('fc-meta');
+
+    if (!_fcFiltered || !_fcFiltered.length) {
+      scene.classList.add('hidden'); dots.innerHTML = ''; counter.innerText = '0 / 0';
+      prevBtn.disabled = nextBtn.disabled = true; empty.classList.remove('hidden'); return;
+    }
+    scene.classList.remove('hidden'); empty.classList.add('hidden'); _fcSeen.add(_fcIndex);
+    const c = _fcFiltered[_fcIndex];
+
+    document.getElementById('fc-term').innerText    = c.term     || '—';
+    document.getElementById('fc-badge').innerText   = c.category || '';
+    document.getElementById('fc-meaning').innerText = c.meaning  || '—';
+
+    if (c.category === 'Patterns') {
+      scene.classList.add('is-pattern');
+      if (c.img) {
+        const finalImg = c.img.replace('github.com','raw.githubusercontent.com').replace('/blob/','/');
+        img.src = finalImg; img.classList.remove('hidden');
+      } else { img.classList.add('hidden'); }
+      meta.innerHTML = `
+        <div class="fc-detail-list">
+          <div class="fc-detail-row">
+            <div class="col-label"><i class="bi bi-arrows-move me-1"></i> Movements</div>
+            <div class="col-val-en">${c.movesNum    || '—'}</div>
+            <div class="col-val-ko">${c.movesKorean || ''}</div>
+          </div>
+          <div class="fc-detail-row">
+            <div class="col-label"><i class="bi bi-person-walking me-1"></i> Stances</div>
+            <div class="col-val-en">${c.stancesNum    || '—'}</div>
+            <div class="col-val-ko">${c.stancesKorean || ''}</div>
+          </div>
+          <div class="fc-detail-row full-width">
+            <div class="col-label"><i class="bi bi-info-circle me-1"></i> Starting Position</div>
+            <div class="ready-container">
+              <div class="ready-en">${c.readyEn || '—'}</div>
+              <div class="ready-ko">${c.readyKo || ''}</div>
+            </div>
+          </div>
+        </div>`;
+    } else {
+      scene.classList.remove('is-pattern'); img.classList.add('hidden'); meta.innerHTML = '';
+    }
+
+    counter.innerText = `${_fcIndex + 1} / ${_fcFiltered.length}`;
+    prevBtn.disabled  = (_fcIndex === 0);
+    nextBtn.disabled  = (_fcIndex === _fcFiltered.length - 1);
+    dots.innerHTML    = (_fcFiltered.length <= 15)
+      ? _fcFiltered.map((_, i) => `<div class="fc-dot${i === _fcIndex ? ' active' : _fcSeen.has(i) ? ' seen' : ''}"></div>`).join('')
+      : '';
+  }
+
+  function shuffleFlashcards() {
+    if (!_fcFiltered.length) return;
+    const scene = document.getElementById('fc-scene'), card = document.getElementById('fc-card');
+    card.classList.remove('flipped'); scene.classList.add('fc-shuffling');
+    setTimeout(() => {
+      scene.classList.remove('fc-shuffling');
+      for (let i = _fcFiltered.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [_fcFiltered[i], _fcFiltered[j]] = [_fcFiltered[j], _fcFiltered[i]];
+      }
+      _fcIndex = 0; _fcSeen = new Set(); renderFlashcard();
+    }, 420);
+  }
+
+  // ── Admin ─────────────────────────────────────────────────────────────────────
+  // ── Admin navigation ─────────────────────────────────────────────────────────
+  // Admin now uses a tile hub (view-admin) with lazy-loaded sub-views.
+  // Data is fetched only when a section is first opened, then cached in _adminFormData.
+
+  function loadAdminView() {
+    // Tile hub itself needs no data — sub-views load lazily when tapped.
+    // Nothing to do here; keeping the function for the handleNavigation hook.
+  }
+
+  function openAdminSection(section) {
+    if (section === 'action-centre') {
+      loadAdminActionCentre(); return;
+    }
+    if (window._adminFormData) {
+      switchView(`view-admin-${section}`);
+      return;
+    }
+    toggleLoad(true);
+    google.script.run.withSuccessHandler(data => {
+      toggleLoad(false);
+      if (data.error) { showOverlayMessage('ERROR','text-danger',data.error,'OK'); return; }
+      window._adminFormData = data; window._adminAllUsers = data.users;
+
+      // Member count
+      const countEl = document.getElementById('admin-member-count');
+      if (countEl) countEl.innerText = `${data.memberCount} member${data.memberCount !== 1 ? 's' : ''}`;
+
+      // Pending badge on admin hub tiles
+      updateAdminPendingBadge(data.pendingCount);
+
+      const clubs = [...new Set(data.users.map(u => u.club).filter(Boolean))].sort();
+      const sel = document.getElementById('admin-club-filter');
+      sel.innerHTML = '<option value="">All Clubs</option>';
+      clubs.forEach(c => sel.innerHTML += `<option value="${c}">${c}</option>`);
+      if (data.callerClub) sel.closest('.d-flex')?.classList.add('hidden');
+
+      renderAdminView(data.users); updateAdminMemberCount(); populateAdminQuestionForm(data);
+      google.script.run.withSuccessHandler(qData => { if (!qData.error) initAdminQuestionFilters(qData); }).getAdminQuestions(activeUser);
+      switchView(`view-admin-${section}`);
+    }).withFailureHandler(() => { toggleLoad(false); showOverlayMessage('ERROR','text-danger','Failed to load admin data.','OK'); })
+    .getAdminPageData(activeUser);
+  }
+
+  function updateAdminPendingBadge(count) {
+    ['admin-pending-badge','admin-requests-badge'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (count > 0) { el.innerText = count; el.classList.remove('hidden'); }
+      else { el.classList.add('hidden'); }
+    });
+  }
+
+  function loadAdminActionCentre() {
+    switchView('view-admin-action-centre');
+    toggleLoad(true);
+    google.script.run.withSuccessHandler(res => {
+      toggleLoad(false);
+      if (res.error) { document.getElementById('pending-requests-list').innerHTML = `<div class="alert alert-danger small">${res.error}</div>`; return; }
+      renderPendingRequests(res.requests);
+    }).withFailureHandler(() => { toggleLoad(false); }).getClubRequests(activeUser);
+  }
+
+  function renderPendingRequests(requests) {
+    const label = document.getElementById('pending-count-label');
+    label.innerText = `${requests.length} pending request${requests.length !== 1 ? 's' : ''}`;
+    updateAdminPendingBadge(requests.length);
+    if (!requests.length) {
+      document.getElementById('pending-requests-list').innerHTML = '<p class="text-muted small text-center py-3">No pending requests.</p>';
+      return;
+    }
+    document.getElementById('pending-requests-list').innerHTML = requests.map(r => `
+      <div class="pending-card" id="pending-${r.username.replace('@','_').replace('.','_')}">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <div>
+            <div class="fw-bold">${r.displayName}</div>
+            <div class="small text-muted">${r.gradeName} &nbsp;·&nbsp; Registered ${r.registeredDate}</div>
+            <div class="small text-primary fw-bold mt-1"><i class="bi bi-building me-1"></i>${r.pendingClub}</div>
+          </div>
+        </div>
+        <div class="d-flex gap-2 mt-2">
+          <button class="btn btn-sm btn-success rounded-pill flex-fill" onclick="handleClubRequest('approve','${r.username}','${r.pendingClub}')"><i class="bi bi-check2 me-1"></i>Approve</button>
+          <button class="btn btn-sm btn-outline-danger rounded-pill flex-fill" onclick="handleClubRequest('decline','${r.username}','${r.pendingClub}')"><i class="bi bi-x me-1"></i>Decline</button>
+        </div>
+      </div>`).join('');
+  }
+
+  function handleClubRequest(action, targetUsername, clubName) {
+    toggleLoad(true);
+    const fn = action === 'approve' ? 'approveClubRequest' : 'declineClubRequest';
+    google.script.run.withSuccessHandler(res => {
+      toggleLoad(false);
+      if (!res.success) { showOverlayMessage('ERROR','text-danger', res.message || 'Could not process request.','OK'); return; }
+      // Remove from DOM
+      const card = document.getElementById(`pending-${targetUsername.replace('@','_').replace('.','_')}`);
+      if (card) card.remove();
+      // Update count
+      const remaining = document.querySelectorAll('#pending-requests-list .pending-card').length;
+      document.getElementById('pending-count-label').innerText = `${remaining} pending request${remaining !== 1 ? 's' : ''}`;
+      updateAdminPendingBadge(remaining);
+      if (!remaining) document.getElementById('pending-requests-list').innerHTML = '<p class="text-muted small text-center py-3">No pending requests.</p>';
+      // Update admin user list if loaded
+      if (window._adminAllUsers && action === 'approve') {
+        const u = window._adminAllUsers.find(x => x.username === targetUsername);
+        if (u) { u.clubStatus = 'member'; u.clubMember = true; u.club = clubName; }
+        renderAdminView(window._adminAllUsers);
+      }
+    }).withFailureHandler(() => { toggleLoad(false); showOverlayMessage('ERROR','text-danger','Could not connect.','OK'); })
+    [fn](activeUser, targetUsername);
+  }
+
+  function bulkAction(action) {
+    const cards = document.querySelectorAll('#pending-requests-list .pending-card');
+    if (!cards.length) return;
+    const label = action === 'approve' ? 'Approve' : 'Decline';
+    document.getElementById('result-text').innerText = `${label.toUpperCase()} ALL?`;
+    document.getElementById('result-text').className = action === 'approve' ? 'fw-bold text-success' : 'fw-bold text-danger';
+    document.getElementById('result-details').innerHTML = `
+      <p class="mb-4">${label} all ${cards.length} pending request${cards.length !== 1 ? 's' : ''}?</p>
+      <div class="d-grid gap-2">
+        <button class="btn btn-${action === 'approve' ? 'success' : 'danger'} rounded-pill" onclick="closeWarning();executeBulkAction('${action}')">Yes, ${label} All</button>
+        <button class="btn btn-outline-secondary rounded-pill" onclick="closeWarning()">Cancel</button>
+      </div>`;
+    document.getElementById('result-overlay').classList.remove('hidden');
+  }
+
+  function executeBulkAction(action) {
+    const cards = [...document.querySelectorAll('#pending-requests-list .pending-card')];
+    let remaining = cards.length;
+    if (!remaining) return;
+    toggleLoad(true);
+    const fn = action === 'approve' ? 'approveClubRequest' : 'declineClubRequest';
+    cards.forEach(card => {
+      // Extract username from card id: pending-user_example_com
+      const btnEl = card.querySelector('button');
+      if (!btnEl) return;
+      const onclickStr = btnEl.getAttribute('onclick') || '';
+      const match = onclickStr.match(/'[^']*','([^']*@[^']*)'/);
+      if (!match) return;
+      const targetUsername = match[1];
+      google.script.run.withSuccessHandler(() => {
+        remaining--;
+        if (remaining === 0) { toggleLoad(false); loadAdminActionCentre(); }
+      })[fn](activeUser, targetUsername);
+    });
+  }
+
+  function showAdminGradingLocked() {
+    document.getElementById('result-text').innerText = 'Grading Packs';
+    document.getElementById('result-text').className = 'fw-bold text-primary';
+    document.getElementById('result-details').innerHTML = `
+      <i class="bi bi-award fs-1 text-primary d-block mb-3"></i>
+      <p class="mb-2">Add-on grading management for your club.</p>
+      <p class="text-muted small mb-4">Grading packs let you configure & set student grading dates, progress and results all in one place.</p>
+      <div class="d-grid gap-2">
+        <button class="btn btn-primary rounded-pill" onclick="closeWarning(); openAdminSection('contact');">
+          <i class="bi bi-envelope me-2"></i>Enquire About Grading Packs
+        </button>
+        <button class="btn btn-outline-secondary rounded-pill" onclick="closeWarning()">Maybe Later</button>
+      </div>`;
+    document.getElementById('result-overlay').classList.remove('hidden');
+  }
+
+  function renderAdminView(users) {
+    // Build belt options for the edit panel dropdowns — use bootstrap if available
+    const beltOpts = (window.BOOTSTRAP && window.BOOTSTRAP.belts || [])
+      .map(b => `<option value="${b.value}">${b.label}</option>`).join('');
+
+    let html = `<div class="d-flex justify-content-between mb-3 px-1" style="font-size:0.7rem;">
+      <span style="color:#adb5bd;" class="fw-bold">New</span>
+      <span style="color:#dc3545;" class="fw-bold">Learning</span>
+      <span style="color:#fd7e14;" class="fw-bold">Familiar</span>
+      <span style="color:#0d6efd;" class="fw-bold">Confident</span>
+      <span style="color:#198754;" class="fw-bold">Mastered</span>
+    </div>`;
+
+    users.forEach((u, idx) => {
+      const inactive    = u.daysSince !== null && u.daysSince >= 7;
+      const masteredPct = u.totalAnswered > 0 ? Math.round((u.buckets[4] / u.totalAnswered) * 100) : 0;
+      // Replace the subBadge object inside renderAdminView:
+      const subBadge = {
+        trial:         `<span class="badge bg-warning text-dark">Trial · ends ${u.subEndDate}</span>`,
+        trial_grace:   `<span class="badge bg-danger">Trial Grace Period</span>`,
+        subscribed:    `<span class="badge bg-success">Subscribed · ends ${u.subEndDate}</span>`,
+        trial_expired: `<span class="badge bg-danger">Trial Expired</span>`,
+        sub_expired:   `<span class="badge bg-danger">Sub Expired</span>`,
+        active:        `<span class="badge bg-secondary">Club Member</span>`,
+        club_member:   `<span class="badge bg-secondary">Club Member</span>`,
+      }[u.subStatus] || '<span class="badge bg-secondary">Club Member</span>';
+      const dailyMins   = Math.round((u.dailyPlaySeconds   || 0) / 60);
+      const monthlyMins = Math.round((u.monthlyPlaySeconds || 0) / 60);
+      const goalDisplay = u.learningGoalMins > 0 ? `${u.learningGoalMins}m goal` : 'No goal';
+
+      const seen    = u.buckets[1] + u.buckets[2] + u.buckets[3] + u.buckets[4];
+      const unseen  = Math.max(0, u.eligible - seen);
+      const gt      = u.eligible > 0 ? u.eligible : 1;
+      const colours = ['#adb5bd','#dc3545','#fd7e14','#0d6efd','#198754'];
+      const counts  = [unseen, u.buckets[1], u.buckets[2], u.buckets[3], u.buckets[4]];
+      const barSegs = counts.map((c, i) => {
+        const pct = (c / gt) * 100;
+        return pct > 0
+          ? `<div title="${['New','Learning','Familiar','Confident','Mastered'][i]}: ${c}" style="width:${pct}%;height:100%;background:${colours[i]};flex-shrink:0;"></div>`
+          : '';
+      }).join('');
+
+      const cardId = `mc-${idx}`;
+
+      html += `
+        <div class="member-scene" id="scene-${cardId}">
+          <div class="member-card-wrap">
+
+            <!-- ── FRONT: stats view ── -->
+            <div class="member-front" id="front-${cardId}" onclick="flipMemberCard('${cardId}')">
+              <div class="d-flex justify-content-between align-items-start mb-1">
+                <div>
+                  <span class="fw-bold">${u.displayName}</span>
+
+                  ${u.isAdmin   ? '<span class="badge bg-secondary ms-1" style="font-size:0.6rem;">ADMIN</span>' : ''}
+                  ${u.club      ? `<span class="badge bg-light text-dark border ms-1" style="font-size:0.6rem;">${u.club}</span>` : ''}
+                </div>
+                <div class="d-flex align-items-center gap-1">
+                  <span class="badge bg-primary" style="font-size:0.7rem;">${u.gradeName}</span>
+                  <i class="bi bi-pencil-square text-muted" style="font-size:0.85rem;"></i>
+                </div>
+              </div>
+              <div class="d-flex gap-3 small text-muted mb-2 flex-wrap">
+                <span><i class="bi bi-fire text-warning"></i> ${u.streak}d streak</span>
+                <span><i class="bi bi-infinity text-primary"></i> Best: ${u.highScore}</span>
+                <span><i class="bi bi-patch-check text-success"></i> ${masteredPct}% mastered</span>
+              </div>
+              <div class="d-flex gap-3 small text-muted mb-2">
+                <span><i class="bi bi-clock-history text-secondary"></i> Today: ${dailyMins}m</span>
+                <span><i class="bi bi-calendar text-secondary"></i> Month: ${monthlyMins}m</span>
+                <span><i class="bi bi-bullseye text-secondary"></i> ${goalDisplay}</span>
+              </div>
+              <div class="d-flex gap-1 mb-2" style="height:8px;background:#eee;border-radius:4px;overflow:hidden;">${barSegs}</div>
+              <div class="d-flex justify-content-between align-items-center">
+                <div class="small ${inactive ? 'text-danger fw-bold' : 'text-muted'}">
+                  <i class="bi bi-clock"></i> ${u.lastActive}${inactive ? ` (${u.daysSince}d ago)` : ''}
+                </div>
+                <div>${subBadge}</div>
+              </div>
+            </div><!-- end front -->
+
+            <!-- ── BACK: edit panel — compact 2-col layout to match front height ── -->
+            <div class="member-back" id="back-${cardId}">
+              <div class="fw-bold mb-3">${u.displayName}</div>
+
+              <!-- Each row: label (40%) + control (60%) on one line -->
+              <div class="d-flex align-items-center mb-2 gap-2">
+                <span class="small fw-bold text-muted" style="flex:0 0 38%;white-space:nowrap;">Next Belt</span>
+                <select id="edit-grade-${cardId}" class="form-select form-select-sm" style="flex:1;">
+                  ${beltOpts.replace(`value="${u.grade}"`, `value="${u.grade}" selected`)}
+                </select>
+              </div>
+
+              <div class="d-flex align-items-center mb-2 gap-2">
+                <span class="small fw-bold text-muted" style="flex:0 0 38%;white-space:nowrap;">Grading Date</span>
+                <input type="date" id="edit-grading-${cardId}" class="form-control form-control-sm" style="flex:1;"
+                  value="${u.gradingDate || ''}">
+              </div>
+
+              <div class="d-flex align-items-center mb-3 gap-2">
+                <span class="small fw-bold text-muted" style="flex:0 0 38%;white-space:nowrap;">Club Member</span>
+                <div class="form-check form-switch" style="flex:1;">
+                  <input class="form-check-input" type="checkbox" id="edit-clubmember-${cardId}" ${u.clubMember ? 'checked' : ''}>
+                  <label class="form-check-label small" for="edit-clubmember-${cardId}">${u.clubMember ? 'Active member' : 'Not a club member'}</label>
+                </div>
+              </div>
+
+              <button class="btn btn-primary w-100 btn-sm rounded-pill"
+                onclick="saveUserConfig('${cardId}','${u.username}')">
+                <i class="bi bi-check2 me-1"></i>Save Changes
+              </button>
+            </div><!-- end back -->
+
+          </div><!-- end member-card-wrap -->
+        </div><!-- end member-scene -->`;
+    });
+
+    document.getElementById('admin-user-list').innerHTML = html || '<p class="text-muted small">No users found.</p>';
+  }
+
+  function flipMemberCard(cardId) {
+    const front = document.getElementById(`front-${cardId}`);
+    const back  = document.getElementById(`back-${cardId}`);
+    if (!front || !back) return;
+    const isShowing = !back.classList.contains('visible-face');
+    front.classList.toggle('hidden-face', isShowing);
+    back.classList.toggle('visible-face', isShowing);
+  }
+
+  function saveUserConfig(cardId, username) {
+    const grade       = parseInt(document.getElementById(`edit-grade-${cardId}`).value) || 1;
+    const grading     = document.getElementById(`edit-grading-${cardId}`).value || '';
+    const clubMember  = document.getElementById(`edit-clubmember-${cardId}`).checked;
+
+    toggleLoad(true);
+    google.script.run
+      .withSuccessHandler(res => {
+        toggleLoad(false);
+        if (!res.success) { showOverlayMessage('ERROR','text-danger', res.message || 'Could not save.','OK'); return; }
+        const allUsers = window._adminAllUsers || [];
+        const u = allUsers.find(x => x.username === username);
+        if (u) {
+          u.grade      = grade;
+          u.gradeName  = (window.BOOTSTRAP && window.BOOTSTRAP.belts || []).find(b => b.value === grade)?.label || `Level ${grade}`;
+          u.gradingDate = grading;
+          u.clubMember = clubMember;
+          u.clubStatus = clubMember ? 'member' : '';
+          if (!clubMember) u.club = '';
+        }
+        if (username === activeUser) renderGradingCountdown(grading);
+        flipMemberCard(cardId);
+        setTimeout(() => { renderAdminView(window._adminAllUsers || []); updateAdminMemberCount(); }, 150);
+      })
+      .withFailureHandler(() => { toggleLoad(false); showOverlayMessage('ERROR','text-danger','Could not connect.','OK'); })
+      .updateUserConfig(activeUser, username, { grade, gradingDate: grading, clubMember });
+  }
+
+  function filterAdminMembers() {
+    const formData = window._adminFormData || {};
+    if (formData.callerClub) return;
+    const club = document.getElementById('admin-club-filter').value;
+    const all  = window._adminAllUsers || [];
+    renderAdminView(club ? all.filter(u => u.club === club) : all);
+    updateAdminMemberCount();
+  }
+
+  function updateAdminMemberCount() {
+    const list  = document.getElementById('admin-user-list');
+    const count = list.querySelectorAll('.member-scene').length;
+    document.getElementById('admin-member-count').innerText = `${count} member${count !== 1 ? 's' : ''}`;
+  }
+
+  function populateAdminQuestionForm(data) {
+    const bs = document.getElementById('aq-belt');
+    if (bs && data.belts) { bs.innerHTML = '<option value="">Select belt level...</option>'; data.belts.forEach(b => bs.innerHTML += `<option value="${b.value}">${b.label}</option>`); }
+    const cs = document.getElementById('aq-category');
+    if (cs && data.categories) { cs.innerHTML = '<option value="">Select category...</option>'; data.categories.forEach(c => cs.innerHTML += `<option value="${c}">${c}</option>`); }
+    if (data.callerClub) { const l = document.getElementById('aq-club-label'); if (l) l.innerText = `${data.callerClub} members only`; }
+  }
+
+  function submitAdminQuestion() {
+    const question  = document.getElementById('aq-question').value.trim();
+    const correct   = document.getElementById('aq-correct').value.trim();
+    const opt1      = document.getElementById('aq-opt1').value.trim();
+    const opt2      = document.getElementById('aq-opt2').value.trim();
+    const opt3      = document.getElementById('aq-opt3').value.trim();
+    const beltLevel = document.getElementById('aq-belt').value;
+    const category  = document.getElementById('aq-category').value;
+    const clubOnly  = document.getElementById('aq-club-only').checked;
+    if (!question || !correct || !opt1 || !opt2 || !beltLevel || !category) {
+      showOverlayMessage('MISSING FIELDS','text-danger','Please fill in all required fields.','OK'); return;
+    }
+    toggleLoad(true);
+    google.script.run
+      .withSuccessHandler(res => {
+        toggleLoad(false);
+        if (res.success) {
+          showOverlayMessage('SUBMITTED!','text-success','Question added successfully.','OK');
+          ['aq-question','aq-correct','aq-opt1','aq-opt2','aq-opt3'].forEach(id => document.getElementById(id).value = '');
+          document.getElementById('aq-belt').value = ''; document.getElementById('aq-category').value = ''; document.getElementById('aq-club-only').checked = false;
+        } else showOverlayMessage('ERROR','text-danger',res.message,'OK');
+      })
+      .withFailureHandler(() => { toggleLoad(false); showOverlayMessage('ERROR','text-danger','Could not submit question.','OK'); })
+      .submitQuestion(activeUser, { question, correctAnswer: correct, opt1, opt2, opt3, beltLevel, category, clubOnly });
+  }
+
+  function showQuestionsSubTab(tab) {
+    ['view','submit'].forEach(t => {
+      document.getElementById(`admin-qtab-${t}`).classList.toggle('hidden', t !== tab);
+      document.getElementById(`qtab-${t}`).className = `btn btn-sm rounded-pill flex-fill ${t === tab ? 'btn-primary' : 'btn-outline-primary'}`;
+    });
+  }
+
+  function loadAdminQuestions() {
+    toggleLoad(true);
+    document.getElementById('admin-question-list').innerHTML = ''; document.getElementById('q-count-label').innerText = '';
+    google.script.run.withSuccessHandler(data => {
+      toggleLoad(false);
+      if (data.error) { document.getElementById('admin-question-list').innerHTML = `<div class="alert alert-danger small">${data.error}</div>`; return; }
+      window._adminAllQuestions = data.questions; window._adminQCallerClub = data.callerClub;
+      filterAdminQuestions();
+    }).withFailureHandler(() => { toggleLoad(false); document.getElementById('admin-question-list').innerHTML = '<div class="alert alert-danger small">Failed to load questions.</div>'; })
+    .getAdminQuestions(activeUser);
+  }
+
+  function initAdminQuestionFilters(data) {
+    const belts = [...new Map(data.questions.map(q => [q.beltLevel, q.beltName])).entries()].sort((a,b) => a[0]-b[0]);
+    const cats  = [...new Set(data.questions.map(q => q.category).filter(Boolean))].sort();
+    const clubs = [...new Set(data.questions.map(q => q.club).filter(Boolean))].sort();
+    const bs = document.getElementById('qf-belt'); bs.innerHTML = '<option value="">All Belts</option>'; belts.forEach(([v,l]) => bs.innerHTML += `<option value="${v}">${l}</option>`);
+    const cs = document.getElementById('qf-category'); cs.innerHTML = '<option value="">All Categories</option>'; cats.forEach(c => cs.innerHTML += `<option value="${c}">${c}</option>`);
+    if (!data.callerClub) {
+      const cl = document.getElementById('qf-club'); cl.innerHTML = '<option value="">All Clubs</option><option value="__none__">No Club</option>'; clubs.forEach(c => cl.innerHTML += `<option value="${c}">${c}</option>`);
+      document.getElementById('qf-club-wrap').classList.remove('hidden'); document.getElementById('qf-mine-wrap').classList.remove('hidden');
+    } else {
+      document.getElementById('qf-club-wrap').classList.add('hidden'); document.getElementById('qf-mine-wrap').classList.add('hidden');
+    }
+    const cqw = document.getElementById('qf-club-questions-wrap'), cql = document.getElementById('qf-club-questions-label');
+    if (data.callerClub) { cql.innerText = `${data.callerClub} questions only`; cqw.style.display = 'block'; } else cqw.style.display = 'none';
+    window._adminAllQuestions = data.questions; window._adminQCallerClub = data.callerClub;
+  }
+
+  function filterAdminQuestions() {
+    const all = window._adminAllQuestions || [], cc = window._adminQCallerClub || '';
+    const belt = document.getElementById('qf-belt').value, cat = document.getElementById('qf-category').value;
+    const club = document.getElementById('qf-club').value, mine = document.getElementById('qf-mine').value;
+    const cqo  = document.getElementById('qf-club-questions')?.checked;
+    renderAdminQuestions(all.filter(q => {
+      if (cc && q.club && q.club !== cc) return false;
+      if (belt && q.beltLevel.toString() !== belt) return false;
+      if (cat  && q.category !== cat) return false;
+      if (!cc) {
+        if (club === '__none__' && q.club) return false;
+        if (club && club !== '__none__' && q.club !== club) return false;
+      }
+      if (mine === 'mine' && !q.addedByMe) return false;
+      if (cqo && !q.club) return false;
+      return true;
+    }));
+  }
+
+  function renderAdminQuestions(questions) {
+    const label = document.getElementById('q-count-label');
+    label.innerText = `${questions.length} question${questions.length !== 1 ? 's' : ''}`;
+    if (!questions.length) { document.getElementById('admin-question-list').innerHTML = '<p class="text-muted small text-center py-3">No questions match the current filters.</p>'; return; }
+    document.getElementById('admin-question-list').innerHTML = questions.map(q => {
+      const inc = [q.opt1, q.opt2, q.opt3].filter(o => o && o.toString().trim() !== '' && o.toString().trim() !== q.answer.toString().trim());
+      return `<div class="mb-3 p-3 border rounded-3 border-light bg-white shadow-sm">
+        <div class="d-flex justify-content-between align-items-start mb-1">
+          <span class="small fw-bold" style="flex:1;padding-right:8px;">${q.question}</span>
+          <span class="badge bg-primary text-nowrap" style="font-size:0.65rem;">${q.beltName}</span>
+        </div>
+        <div class="small text-success mb-1">✓ ${q.answer}</div>
+        ${inc.length ? `<div class="small text-muted mb-2">✗ ${inc.join(' &nbsp;·&nbsp; ✗ ')}</div>` : ''}
+        <div class="d-flex gap-1 flex-wrap">
+          ${q.category  ? `<span class="badge bg-light text-dark border" style="font-size:0.65rem;">${q.category}</span>` : ''}
+          ${q.club       ? `<span class="badge bg-warning text-dark" style="font-size:0.65rem;">${q.club} only</span>` : ''}
+          ${q.examFlag === 'N' ? `<span class="badge bg-secondary" style="font-size:0.65rem;">Excluded</span>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function clearQuestionFilters() {
+    ['qf-belt','qf-category','qf-club','qf-mine'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    const cq = document.getElementById('qf-club-questions'); if (cq) cq.checked = false;
+    filterAdminQuestions();
+  }
+
+  function submitAdminContact() {
+    const type = document.getElementById('contact-type').value;
+    const msg  = document.getElementById('contact-message').value.trim();
+    if (!msg) { showOverlayMessage('MISSING MESSAGE','text-danger','Please enter a message before sending.','OK'); return; }
+    toggleLoad(true);
+    google.script.run
+      .withSuccessHandler(res => {
+        toggleLoad(false);
+        if (res.success) { showOverlayMessage('SENT!','text-success','Your message has been sent. Thank you.','OK'); document.getElementById('contact-message').value = ''; }
+        else showOverlayMessage('ERROR','text-danger','Could not send message.','OK');
+      })
+      .withFailureHandler(() => { toggleLoad(false); showOverlayMessage('ERROR','text-danger','Could not connect.','OK'); })
+      .submitContact(activeUser, {
+        displayName: document.getElementById('user-welcome').innerText,
+        club:        (window._adminFormData || {}).callerClub || '',
+        type, message: msg
+      });
+  }
+
+</script>
+</body>
+</html>
