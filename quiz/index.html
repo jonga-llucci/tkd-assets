@@ -26,7 +26,14 @@
         src="https://script.google.com/macros/s/AKfycbxLHqztLc4yqk-5goWZHhAJybWWSRqARQuxyRfzPEB8kW1-4x6N6A7LSMhjTclpaUCz/exec" 
         title="TKD Academy">
     </iframe>
-
+  <!--- <iframe id="appFrame" style="width:100%;height:100vh;border:none;"></iframe> --->
+  
+  <script>
+    // Grabs the first path segment: /PWA/ → "PWA", /TSX/ → "TSX", /Beanland/ → "Beanland"
+    const brand = window.location.pathname.split("/").filter(Boolean)[0] || "default";
+    const iframe = document.getElementById("appFrame");
+    iframe.src = "https://script.google.com/macros/s/AKfycbxLHqztLc4yqk-5goWZHhAJybWWSRqARQuxyRfzPEB8kW1-4x6N6A7LSMhjTclpaUCz/exec?brand=" + encodeURIComponent(brand);
+  </script>
 </body>
 </html>
 
